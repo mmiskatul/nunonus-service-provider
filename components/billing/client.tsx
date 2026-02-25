@@ -1,4 +1,7 @@
-"use client"
+"use client";
+
+import { useMemo, useState } from "react";
+import { FiCreditCard, FiDollarSign, FiEye, FiPercent, FiSearch, FiUsers } from "react-icons/fi";
 
 type PaymentStatus = "PAID" | "PENDING";
 
@@ -16,32 +19,68 @@ function payoutStatusClass(status: PaymentStatus) {
   return "bg-[#fef3c7] text-[#b45309]";
 }
 
-export function BillingManagementView({ data }: { data: { summaryCards: Array<{ label: string; value: string; note: string; tone: string }>; recentPayments: PaymentRow[] } }) {
+const pageSize = 5;
+
+export function BillingManagementView({
+  data
+}: {
+  data: { summaryCards: Array<{ label: string; value: string; note: string; tone: string }>; recentPayments: PaymentRow[] };
+}) {
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+
+  const filteredPayments = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return data.recentPayments;
+    return data.recentPayments.filter((payment) => {
+      return (
+        payment.vendorName.toLowerCase().includes(normalizedQuery) ||
+        payment.vendorCode.toLowerCase().includes(normalizedQuery) ||
+        payment.totalEarnings.toLowerCase().includes(normalizedQuery) ||
+        payment.netPayout.toLowerCase().includes(normalizedQuery)
+      );
+    });
+  }, [data.recentPayments, query]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredPayments.length / pageSize));
+  const pagedPayments = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredPayments.slice(start, start + pageSize);
+  }, [filteredPayments, page]);
+
   return (
-    <section className="space-y-4 rounded-md border border-[#dbe2ef] bg-[#f7f9fd] p-4">
-      <section className="grid grid-cols-1 gap-3 lg:grid-cols-4">
-        {data.summaryCards.map((card, i) => (
-          <article key={card.label} className="rounded-2xl border border-[#e6ecf7] bg-white p-4">
-            <div className="mb-2 flex items-center justify-between">
+    <section className="space-y-4">
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+        {data.summaryCards.map((card, index) => (
+          <article key={card.label} className="rounded-2xl border border-[#e6ecf7] bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
               <div className="grid h-9 w-9 place-items-center rounded-full bg-[#edf2fb] text-[#1f3d8f]">
-                <span className="text-xs">{i === 0 ? "â—§" : i === 1 ? "%" : i === 2 ? "â—«" : "â—‰"}</span>
+                {index === 0 && <FiDollarSign size={16} />}
+                {index === 1 && <FiPercent size={16} />}
+                {index === 2 && <FiCreditCard size={16} />}
+                {index === 3 && <FiUsers size={16} />}
               </div>
               <span className={`text-[10px] font-semibold ${card.tone}`}>{card.note}</span>
             </div>
             <p className="m-0 text-[10px] text-[#7d8ba6]">{card.label}</p>
-            <h3 className="m-0 mt-1 text-[34px] leading-none text-[#1d2a43]">{card.value}</h3>
+            <h3 className="m-0 mt-1 text-[24px] leading-none text-[#1d2a43]">{card.value}</h3>
           </article>
         ))}
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-[#dbe2ef] bg-white">
-        <div className="flex flex-col gap-2 border-b border-[#e6ecf7] p-3 md:flex-row md:items-center md:justify-between">
-          <h3 className="m-0 text-[18px] font-semibold text-[#1d2a43]">Recent Vendor Payments</h3>
-          <div className="flex h-8 min-w-[250px] items-center gap-2 rounded-full border border-[#e6ecf7] bg-[#f7f9fd] px-3">
-            <span className="text-[10px] text-[#8b96ad]">Q</span>
+      <section className="overflow-hidden rounded-2xl border border-[#e6ecf7] bg-white">
+        <div className="flex flex-col gap-3 border-b border-[#e6ecf7] px-4 py-3 md:flex-row md:items-center md:justify-between">
+          <h3 className="m-0 text-[15px] font-semibold text-[#1d2a43]">Recent Vendor Payments</h3>
+          <div className="flex h-8 min-w-[260px] items-center gap-2 rounded-full border border-[#e6ecf7] bg-[#f7f9fd] px-3">
+            <FiSearch size={12} className="text-[#8b96ad]" />
             <input
               type="text"
               placeholder="Search vendor or date..."
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setPage(1);
+              }}
               className="w-full border-0 bg-transparent text-[11px] text-[#2b3a59] outline-none placeholder:text-[#9aa6c0]"
             />
           </div>
@@ -59,11 +98,11 @@ export function BillingManagementView({ data }: { data: { summaryCards: Array<{ 
               </tr>
             </thead>
             <tbody>
-              {data.recentPayments.map((payment, index) => (
-                <tr key={payment.vendorName} className={index % 2 === 1 ? "bg-[#fbfcff]" : ""}>
+              {pagedPayments.map((payment, index) => (
+                <tr key={`${payment.vendorName}-${index}`} className={index % 2 === 1 ? "bg-[#fbfcff]" : ""}>
                   <td className="border-b border-[#edf1fa] px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <div className="grid h-6 w-6 place-items-center rounded-full bg-[#edf2fb] text-[9px] font-semibold text-[#3f4f70]">
+                      <div className="grid h-7 w-7 place-items-center rounded-full bg-[#edf2fb] text-[10px] font-semibold text-[#3f4f70]">
                         {payment.vendorCode}
                       </div>
                       <span className="text-[12px] text-[#1f2d46]">{payment.vendorName}</span>
@@ -78,11 +117,8 @@ export function BillingManagementView({ data }: { data: { summaryCards: Array<{ 
                     </span>
                   </td>
                   <td className="border-b border-[#edf1fa] px-4 py-3">
-                    <button type="button" className="text-[#60749d]">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                        <path d="M1.5 12s3.7-6.5 10.5-6.5S22.5 12 22.5 12s-3.7 6.5-10.5 6.5S1.5 12 1.5 12Z" stroke="currentColor" strokeWidth="1.8" />
-                        <circle cx="12" cy="12" r="3.5" stroke="currentColor" strokeWidth="1.8" />
-                      </svg>
+                    <button type="button" className="text-[#60749d]" aria-label={`View ${payment.vendorName}`}>
+                      <FiEye size={14} />
                     </button>
                   </td>
                 </tr>
@@ -92,15 +128,33 @@ export function BillingManagementView({ data }: { data: { summaryCards: Array<{ 
         </div>
 
         <footer className="flex items-center justify-between px-4 py-3 text-[10px] text-[#8b96ad]">
-          <span>Showing 3 of 124 results</span>
+          <span>
+            Showing {filteredPayments.length === 0 ? 0 : (page - 1) * pageSize + 1} to {Math.min(page * pageSize, filteredPayments.length)} of {filteredPayments.length} results
+          </span>
           <div className="flex items-center gap-2">
-            <button type="button" className="grid h-5 w-5 place-items-center rounded border border-[#e6ecf7] text-[#95a2b8]">â€¹</button>
-            <button type="button" className="grid h-5 w-5 place-items-center rounded border border-[#e6ecf7] text-[#95a2b8]">â€º</button>
+            <button
+              type="button"
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              className={`grid h-6 w-6 place-items-center rounded border border-[#e6ecf7] text-[11px] ${
+                page === 1 ? "text-[#94a3b8] opacity-60" : "text-[#64748b]"
+              }`}
+              aria-disabled={page === 1}
+            >
+              ?
+            </button>
+            <button
+              type="button"
+              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+              className={`grid h-6 w-6 place-items-center rounded border border-[#e6ecf7] text-[11px] ${
+                page === totalPages ? "text-[#94a3b8] opacity-60" : "text-[#64748b]"
+              }`}
+              aria-disabled={page === totalPages}
+            >
+              ?
+            </button>
           </div>
         </footer>
       </section>
     </section>
   );
 }
-
-

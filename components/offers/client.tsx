@@ -1,16 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { FaCheckCircle, FaRegCreditCard, FaShoppingCart } from "react-icons/fa";
 import {
-  FiCheckCircle,
   FiChevronLeft,
   FiChevronRight,
   FiClock,
-  FiCreditCard,
   FiEye,
   FiFilter,
   FiSearch,
-  FiShoppingCart,
   FiTag,
   FiX,
   FiZap,
@@ -92,10 +90,10 @@ export function OffersManagementView({
           <article key={card.label} className="rounded-2xl border border-[#e6ecf7] bg-white p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <div className="grid h-9 w-9 place-items-center rounded-lg bg-[#eef2ff] text-[#1f3d8f]">
-                {index === 0 && <FiCheckCircle size={16} />}
-                {index === 1 && <FiClock size={16} />}
-                {index === 2 && <FiShoppingCart size={16} />}
-                {index === 3 && <FiCreditCard size={16} />}
+                {index === 0 && <FaCheckCircle  size={18} />}
+                {index === 1 && <FiClock size={18} />}
+                {index === 2 && <FaShoppingCart  size={18} />}
+                {index === 3 && <FaRegCreditCard size={18} />}
               </div>
               <span className={`text-[10px] font-semibold ${card.tone}`}>{card.note}</span>
             </div>
