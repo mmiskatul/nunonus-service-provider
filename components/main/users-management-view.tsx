@@ -200,39 +200,41 @@ export function UsersManagementView() {
     setShowAllBookings(false);
   }, [selectedUserId]);
 
-  const toggleUserStatus = (id: string) => {
-    setUsers((prev) =>
-      prev.map((user) => {
-        if (user.id !== id) return user;
-        const nextStatus: UserStatus = user.status === "BLOCKED" ? "ACTIVE" : "BLOCKED";
-        const nextActions = user.actions.map((action) => {
-          if (action.label.toLowerCase().includes("block")) {
-            return {
-              ...action,
-              label: nextStatus === "BLOCKED" ? "Unblock Account" : "Block Account",
-              tone: nextStatus === "BLOCKED" ? "neutral" : "danger"
-            };
-          }
-          return action;
-        });
-        return { ...user, status: nextStatus, actions: nextActions };
-      })
-    );
-  };
+  useEffect(() => {
+    const controller = new AbortController();
+    const loadUsers = async () => {
+      try {
+        const response = await fetch("/api/users", { signal: controller.signal });
+        if (!response.ok) {
+          return;
+        }
+        const data = (await response.json()) as { users: UserProfile[] };
+        if (Array.isArray(data.users)) {
+          setUsers(data.users);
+        }
+      } catch (error) {
+        if ((error as { name?: string }).name !== "AbortError") {
+          return;
+        }
+      }
+    };
+    loadUsers();
+    return () => controller.abort();
+  }, []);
 
-  const markPasswordReset = (id: string) => {
-    setUsers((prev) =>
-      prev.map((user) => {
-        if (user.id !== id) return user;
-        const nextActions = user.actions.map((action) => {
-          if (action.label.toLowerCase().includes("reset password")) {
-            return { ...action, label: "Password Reset Sent", tone: "neutral" };
-          }
-          return action;
-        });
-        return { ...user, actions: nextActions };
-      })
-    );
+  const persistUserAction = async (id: string, action: "toggleStatus" | "resetPassword") => {
+    const response = await fetch(`/api/users/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action })
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to update user");
+    }
+
+    const data = (await response.json()) as { user: UserProfile };
+    setUsers((prev) => prev.map((user) => (user.id === id ? data.user : user)));
   };
 
   function exportCsv() {
@@ -408,7 +410,7 @@ export function UsersManagementView() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => toggleUserStatus(user.id)}
+                          onClick={() => persistUserAction(user.id, "toggleStatus")}
                           className={user.status === "BLOCKED" ? "text-[#16a34a]" : "text-[#ef4444]"}
                           aria-label={`${user.status === "BLOCKED" ? "Restore" : "Block"} ${user.name}`}
                         >
@@ -585,10 +587,10 @@ export function UsersManagementView() {
                   type="button"
                   onClick={() => {
                     if (action.label.toLowerCase().includes("block") || action.label.toLowerCase().includes("unblock")) {
-                      toggleUserStatus(selectedUser.id);
+                      persistUserAction(selectedUser.id, "toggleStatus");
                     }
                     if (action.label.toLowerCase().includes("reset password")) {
-                      markPasswordReset(selectedUser.id);
+                      persistUserAction(selectedUser.id, "resetPassword");
                     }
                   }}
                   className={`flex h-10 w-full items-center justify-between rounded-xl border px-3 text-left text-[13px] ${
