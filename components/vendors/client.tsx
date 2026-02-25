@@ -52,6 +52,8 @@ export function VendorsManagementView({
 }) {
   const [vendors, setVendors] = useState<Vendor[]>(data.vendors);
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   const selectedVendor = useMemo(
     () => vendors.find((vendor) => vendor.id === selectedVendorId) ?? null,
@@ -71,6 +73,12 @@ export function VendorsManagementView({
       return card;
     });
   }, [data.summaryCards, vendors]);
+
+  const totalPages = Math.max(1, Math.ceil(vendors.length / pageSize));
+  const pagedVendors = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return vendors.slice(start, start + pageSize);
+  }, [vendors, page]);
 
   async function updateVendorStatus(id: string, action: "approve" | "reject") {
     try {
@@ -162,7 +170,7 @@ export function VendorsManagementView({
                 </tr>
               </thead>
               <tbody>
-                {vendors.map((vendor, index) => (
+                {pagedVendors.map((vendor, index) => (
                   <tr key={vendor.id} className={index % 2 === 1 ? "bg-[#fbfcff]" : ""}>
                     <td className="border-b border-[#edf1fa] px-4 py-4 text-[11px] font-semibold text-[#2d3f62]">{vendor.id}</td>
                     <td className="border-b border-[#edf1fa] px-4 py-4">
@@ -251,13 +259,55 @@ export function VendorsManagementView({
           </div>
 
           <footer className="flex items-center justify-between px-5 py-4 text-[11px] text-[#8b96ad]">
-            <span>Showing 1-10 of {summaryCards[0]?.value ?? "0"} vendors</span>
+            <span>
+              Showing {vendors.length === 0 ? 0 : (page - 1) * pageSize + 1} to{" "}
+              {Math.min(page * pageSize, vendors.length)} of {vendors.length} vendors
+            </span>
             <div className="flex items-center gap-2">
-              <button type="button" className="rounded border border-[#e6ecf7] px-2 py-0.5 text-[10px] text-[#94a3b8]">Previous</button>
-              <button type="button" className="h-6 w-6 rounded bg-[#1f3d8f] text-[11px] text-white">1</button>
-              <button type="button" className="h-6 w-6 rounded border border-[#e6ecf7] text-[11px] text-[#64748b]">2</button>
-              <button type="button" className="h-6 w-6 rounded border border-[#e6ecf7] text-[11px] text-[#64748b]">3</button>
-              <button type="button" className="rounded border border-[#e6ecf7] px-2 py-0.5 text-[10px] text-[#64748b]">Next</button>
+              <button
+                type="button"
+                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                className={`rounded border border-[#e6ecf7] px-2 py-0.5 text-[10px] ${
+                  page === 1 ? "text-[#94a3b8] opacity-60" : "text-[#64748b]"
+                }`}
+                aria-disabled={page === 1}
+              >
+                Previous
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).slice(0, 5).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setPage(item)}
+                  className={`h-6 w-6 rounded text-[11px] ${
+                    item === page ? "bg-[#1f3d8f] text-white" : "border border-[#e6ecf7] text-[#64748b]"
+                  }`}
+                >
+                  {item}
+                </button>
+              ))}
+              {totalPages > 5 && <span className="px-1 text-[10px] text-[#94a3b8]">...</span>}
+              {totalPages > 5 && (
+                <button
+                  type="button"
+                  onClick={() => setPage(totalPages)}
+                  className={`h-6 w-6 rounded text-[11px] ${
+                    totalPages === page ? "bg-[#1f3d8f] text-white" : "border border-[#e6ecf7] text-[#64748b]"
+                  }`}
+                >
+                  {totalPages}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                className={`rounded border border-[#e6ecf7] px-2 py-0.5 text-[10px] ${
+                  page === totalPages ? "text-[#94a3b8] opacity-60" : "text-[#64748b]"
+                }`}
+                aria-disabled={page === totalPages}
+              >
+                Next
+              </button>
             </div>
           </footer>
         </section>
