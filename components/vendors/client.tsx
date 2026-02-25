@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import { IoAlertCircle, IoPeople, IoShieldCheckmark, IoTimeOutline } from "react-icons/io5";
-import { FaUsers } from "react-icons/fa";
 
 type VendorStatus = "PENDING" | "APPROVED" | "REJECTED";
 type VendorCategory = "HOSPITALITY" | "DINING" | "RENTALS";
@@ -59,21 +58,24 @@ export function VendorsManagementView({
   return (
     <section className="relative space-y-6">
       <div className="space-y-6">
-        <section className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+        <section className="grid grid-cols-1 gap-5 lg:grid-cols-4">
           {data.summaryCards.map((card) => {
             const { Icon, tone } = summaryIconByLabel[card.label] ?? summaryIconByLabel["Total Vendors"];
             return (
-            <article key={card.label} className="rounded-xl border border-[#e6ecf7] bg-white p-4 shadow-sm">
-              <div className="mb-2 flex items-center justify-between">
-                <p className="m-0 text-[11px] text-[#7d8ba6]">{card.label}</p>
-                <div className={`grid h-8 w-8 place-items-center rounded-lg ${tone}`}>
-                  <FaUsers  size={14} />
+              <article
+                key={card.label}
+                className="min-h-[120px] rounded-2xl border border-[#e6ecf7] bg-white p-5 shadow-[0_6px_14px_rgba(15,23,42,0.08)]"
+              >
+                <div className="mb-3 flex items-start justify-between">
+                  <p className="m-0 text-[12px] text-[#6b7b99]">{card.label}</p>
+                  <div className={`grid h-9 w-9 place-items-center rounded-lg ${tone}`}>
+                    <Icon size={16} />
+                  </div>
                 </div>
-              </div>
-              <h3 className="m-0 text-[28px] leading-none text-[#1d2a43]">{card.value}</h3>
-              <p className={`m-0 mt-2 text-[11px] ${card.tone}`}>{card.note}</p>
-            </article>
-          );
+                <h3 className="m-0 text-[30px] leading-none text-[#1d2a43]">{card.value}</h3>
+                <p className={`m-0 mt-2 text-[11px] ${card.tone}`}>{card.note}</p>
+              </article>
+            );
           })}
         </section>
 
@@ -218,7 +220,9 @@ export function VendorsManagementView({
           <div className="flex h-full flex-col overflow-hidden">
             <header className="flex items-center justify-between bg-[#1f3d8f] px-4 py-3 text-white">
               <h4 className="m-0 text-[12px] font-semibold">Verification Detail</h4>
-              <button type="button" onClick={() => setSelectedVendorId(null)} className="text-white">Ã—</button>
+              <button type="button" onClick={() => setSelectedVendorId(null)} className="text-white">
+                x
+              </button>
             </header>
 
             <div className="flex-1 overflow-y-auto px-5 py-5">
