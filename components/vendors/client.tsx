@@ -37,7 +37,7 @@ function vendorStatusClass(status: VendorStatus) {
   return "bg-[#fff4cc] text-[#b45309]";
 }
 
-const summaryIconByLabel: Record<string, { Icon: typeof IoPeople; tone: string }> = {
+const summaryIconByLabel: Record<string, { Icon: typeof FaUsers; tone: string }> = {
   "Total Vendors": { Icon: FaUsers, tone: "bg-[#edf2fb] text-[#1f3d8f]" },
   "Pending Approval": { Icon: IoTimeOutline, tone: "bg-[#fff7e5] text-[#f59e0b]" },
   "Approved Vendors": { Icon: IoShieldCheckmark, tone: "bg-[#e8f8ef] text-[#2da772]" },
@@ -101,7 +101,7 @@ export function VendorsManagementView({
                 <div className="mb-3 flex items-start justify-between">
                   <p className="m-0 text-[12px] text-[#6b7b99]">{card.label}</p>
                   <div className={`grid h-9 w-9 place-items-center rounded-lg ${tone}`}>
-                    <Icon size={16} />
+                    <Icon size={20} />
                   </div>
                 </div>
                 <h3 className="m-0 text-[30px] leading-none text-[#1d2a43]">{card.value}</h3>
@@ -352,14 +352,24 @@ export function VendorsManagementView({
             </div>
 
             <div className="mt-auto border-t border-[#e6ecf7] px-6 py-5">
-              <button
-                type="button"
-                onClick={() => updateVendorStatus(selectedVendor.id, "approve")}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#1f3d8f] text-[12px] font-semibold text-white shadow-[0_10px_20px_rgba(31,61,143,0.25)]"
-              >
-                <IoShieldCheckmark size={16} />
-                Approve Vendor
-              </button>
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => updateVendorStatus(selectedVendor.id, "approve")}
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#1f3d8f] text-[12px] font-semibold text-white shadow-[0_10px_20px_rgba(31,61,143,0.25)]"
+                >
+                  <IoShieldCheckmark size={16} />
+                  Approve Vendor
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateVendorStatus(selectedVendor.id, "reject")}
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[#fee2e2] bg-[#fff5f5] text-[12px] font-semibold text-[#ef4444]"
+                >
+                  <IoAlertCircle size={16} />
+                  Reject Vendor
+                </button>
+              </div>
             </div>
           </div>
         )}
