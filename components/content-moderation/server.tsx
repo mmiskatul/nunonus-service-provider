@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { ContentManagementViewClient } from "@/components/content-moderation/client";
+import { ContentManagementView } from "@/components/content-moderation/client";
 
 type DataPayload = any;
 
@@ -12,5 +12,5 @@ function getBaseUrl() {
 export async function ContentManagementViewServer() {
   const res = await fetch(`${getBaseUrl()}/api/content-moderation`, { cache: "no-store" });
   const data = (await res.json()) as DataPayload;
-  return <ContentManagementViewClient initialData={data} />;
+  return <ContentManagementView data={data} />;
 }

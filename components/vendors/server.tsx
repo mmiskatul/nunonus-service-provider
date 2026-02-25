@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { VendorsManagementViewClient } from "@/components/vendors/client";
+import { VendorsManagementView } from "@/components/vendors/client";
 
 type DataPayload = any;
 
@@ -12,5 +12,5 @@ function getBaseUrl() {
 export async function VendorsManagementViewServer() {
   const res = await fetch(`${getBaseUrl()}/api/vendors`, { cache: "no-store" });
   const data = (await res.json()) as DataPayload;
-  return <VendorsManagementViewClient initialData={data} />;
+  return <VendorsManagementView data={data} />;
 }

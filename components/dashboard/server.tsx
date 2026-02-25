@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
-import { DashboardClient } from "@/components/dashboard/client";
-import type { DashboardData } from "@/components/main/dashboard-view";
+import { DashboardView } from "@/components/dashboard/client";
+
+type DataPayload = any;
 
 function getBaseUrl() {
   const host = headers().get("host");
@@ -8,8 +9,8 @@ function getBaseUrl() {
   return `${protocol}://${host}`;
 }
 
-export async function DashboardServer() {
+export async function DashboardViewServer() {
   const res = await fetch(`${getBaseUrl()}/api/dashboard`, { cache: "no-store" });
-  const data = (await res.json()) as DashboardData;
-  return <DashboardClient initialData={data} />;
+  const data = (await res.json()) as DataPayload;
+  return <DashboardView data={data} />;
 }

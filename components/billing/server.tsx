@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { BillingManagementViewClient } from "@/components/billing/client";
+import { BillingManagementView } from "@/components/billing/client";
 
 type DataPayload = any;
 
@@ -12,5 +12,5 @@ function getBaseUrl() {
 export async function BillingManagementViewServer() {
   const res = await fetch(`${getBaseUrl()}/api/billing`, { cache: "no-store" });
   const data = (await res.json()) as DataPayload;
-  return <BillingManagementViewClient initialData={data} />;
+  return <BillingManagementView data={data} />;
 }
