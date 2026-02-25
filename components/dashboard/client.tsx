@@ -49,9 +49,13 @@ function vendorStatusClass(status: string) {
 
 export function DashboardView({ data }: { data: DashboardData }) {
   const [range, setRange] = useState<Range>("monthly");
+  const [vendorPage, setVendorPage] = useState(1);
+  const vendorPageSize = 10;
 
   const revenueData = range === "weekly" ? data.weeklyData : data.monthlyData;
   const pieData = data.bookingByRange[range];
+  const vendorTotalPages = Math.max(1, Math.ceil(data.vendors.length / vendorPageSize));
+  const pagedVendors = data.vendors.slice((vendorPage - 1) * vendorPageSize, vendorPage * vendorPageSize);
 
   return (
     <section className="space-y-4">
@@ -158,7 +162,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
               </tr>
             </thead>
             <tbody>
-              {data.vendors.map((vendor, i) => (
+              {pagedVendors.map((vendor, i) => (
                 <tr key={`${vendor.code}-${vendor.name}-${i}`} className={i % 2 === 1 ? "bg-[#fbfcff]" : ""}>
                   <td className="border-b border-[#edf1fa] px-4 py-4">
                     <div className="flex items-center gap-3">
@@ -179,6 +183,64 @@ export function DashboardView({ data }: { data: DashboardData }) {
             </tbody>
           </table>
         </div>
+        <footer className="flex items-center justify-between px-4 py-3 text-[10px] text-[#8b96ad]">
+          <span>
+            Showing {data.vendors.length === 0 ? 0 : (vendorPage - 1) * vendorPageSize + 1} to{" "}
+            {Math.min(vendorPage * vendorPageSize, data.vendors.length)} of {data.vendors.length} vendors
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setVendorPage((prev) => Math.max(1, prev - 1))}
+              className={`rounded border border-[#e6ecf7] px-2 py-0.5 text-[10px] ${
+                vendorPage === 1 ? "text-[#94a3b8] opacity-60" : "text-[#64748b]"
+              }`}
+              aria-disabled={vendorPage === 1}
+            >
+              Previous
+            </button>
+            {Array.from({ length: vendorTotalPages }, (_, idx) => idx + 1)
+              .slice(0, 5)
+              .map((pageNumber) => (
+                <button
+                  key={pageNumber}
+                  type="button"
+                  onClick={() => setVendorPage(pageNumber)}
+                  className={`h-6 w-6 rounded text-[11px] ${
+                    pageNumber === vendorPage
+                      ? "bg-[#1f3d8f] text-white"
+                      : "border border-[#e6ecf7] text-[#64748b]"
+                  }`}
+                >
+                  {pageNumber}
+                </button>
+              ))}
+            {vendorTotalPages > 5 && <span className="px-1 text-[10px] text-[#94a3b8]">...</span>}
+            {vendorTotalPages > 5 && (
+              <button
+                type="button"
+                onClick={() => setVendorPage(vendorTotalPages)}
+                className={`h-6 w-6 rounded text-[11px] ${
+                  vendorTotalPages === vendorPage
+                    ? "bg-[#1f3d8f] text-white"
+                    : "border border-[#e6ecf7] text-[#64748b]"
+                }`}
+              >
+                {vendorTotalPages}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setVendorPage((prev) => Math.min(vendorTotalPages, prev + 1))}
+              className={`rounded border border-[#e6ecf7] px-2 py-0.5 text-[10px] ${
+                vendorPage === vendorTotalPages ? "text-[#94a3b8] opacity-60" : "text-[#64748b]"
+              }`}
+              aria-disabled={vendorPage === vendorTotalPages}
+            >
+              Next
+            </button>
+          </div>
+        </footer>
       </section>
     </section>
   );
