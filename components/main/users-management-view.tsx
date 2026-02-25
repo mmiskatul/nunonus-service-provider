@@ -2,6 +2,16 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
+import {
+  FiDownload,
+  FiEye,
+  FiFilter,
+  FiSearch,
+  FiSlash,
+  FiUser,
+  FiUserCheck,
+  FiUsers
+} from "react-icons/fi";
 
 type UserStatus = "ACTIVE" | "BLOCKED";
 type ContactType = "mail" | "phone" | "pin";
@@ -43,14 +53,49 @@ type UserProfile = {
 };
 
 const usersApiResponse: {
-  summaryCards: Array<{ label: string; value: string; trend: string; tone: string }>;
+  summaryCards: Array<{
+    label: string;
+    value: string;
+    trend: string;
+    tone: string;
+    icon: "users" | "user" | "blocked" | "new";
+    iconWrap: string;
+  }>;
   users: UserProfile[];
 } = {
   summaryCards: [
-    { label: "TOTAL USERS", value: "12,845", trend: "+12%", tone: "text-[#18b67a] bg-[#dcf7ea]" },
-    { label: "ACTIVE USERS", value: "11,203", trend: "+5%", tone: "text-[#18b67a] bg-[#dcf7ea]" },
-    { label: "BLOCKED USERS", value: "452", trend: "-2%", tone: "text-[#d94848] bg-[#fde7e7]" },
-    { label: "NEW THIS MONTH", value: "1,092", trend: "+18%", tone: "text-[#f08a1e] bg-[#ffefdc]" }
+    {
+      label: "TOTAL USERS",
+      value: "12,845",
+      trend: "+12%",
+      tone: "text-[#18b67a] bg-[#dcf7ea]",
+      icon: "users",
+      iconWrap: "bg-[#e8eefb] text-[#27409b]"
+    },
+    {
+      label: "ACTIVE USERS",
+      value: "11,203",
+      trend: "+5%",
+      tone: "text-[#18b67a] bg-[#dcf7ea]",
+      icon: "user",
+      iconWrap: "bg-[#dcf7ea] text-[#27409b]"
+    },
+    {
+      label: "BLOCKED USERS",
+      value: "452",
+      trend: "-2%",
+      tone: "text-[#d94848] bg-[#fde7e7]",
+      icon: "blocked",
+      iconWrap: "bg-[#fde7e7] text-[#e11d48]"
+    },
+    {
+      label: "NEW THIS MONTH",
+      value: "1,092",
+      trend: "+18%",
+      tone: "text-[#f08a1e] bg-[#ffefdc]",
+      icon: "new",
+      iconWrap: "bg-[#fff4d8] text-[#f59e0b]"
+    }
   ],
   users: [
     {
@@ -211,6 +256,13 @@ function statusClass(status: UserStatus) {
   return "inline-flex rounded-full bg-[#fde7e7] px-2 py-1 text-[10px] font-semibold tracking-[0.02em] text-[#c23131]";
 }
 
+function summaryIcon(icon: (typeof usersApiResponse.summaryCards)[number]["icon"]) {
+  if (icon === "users") return <FiUsers size={20} />;
+  if (icon === "user") return <FiUser size={20} />;
+  if (icon === "blocked") return <FiSlash size={18} />;
+  return <FiUserCheck size={18} />;
+}
+
 function SectionIcon({ type }: { type: ContactType }) {
   if (type === "mail") {
     return (
@@ -254,44 +306,48 @@ export function UsersManagementView() {
   );
 
   return (
-    <section className="relative rounded-md border border-[#dbe2ef] bg-white">
-      <div className="space-y-4 bg-[#f7f9fd] p-4">
+    <section className="relative space-y-4">
+      <div className="space-y-4">
         <section className="grid grid-cols-1 gap-3 lg:grid-cols-4">
           {usersApiResponse.summaryCards.map((item) => (
-            <article key={item.label} className="rounded-md border border-[#e6ecf7] bg-white p-3">
+            <article key={item.label} className="rounded-xl border border-[#dbe2ef] bg-white p-4">
               <div className="mb-3 flex items-center justify-between">
-                <div className="h-7 w-7 rounded-md bg-[#edf2fb]" />
+                <div className={`grid h-10 w-10 place-items-center rounded-lg ${item.iconWrap}`}>
+                  {summaryIcon(item.icon)}
+                </div>
                 <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${item.tone}`}>
                   {item.trend}
                 </span>
               </div>
-              <p className="m-0 text-[10px] tracking-[0.05em] text-[#7d8ba6]">{item.label}</p>
-              <h3 className="m-0 mt-1 text-[30px] leading-none text-[#1d2a43]">{item.value}</h3>
+              <p className="m-0 text-[11px] tracking-[0.05em] text-[#70809d]">{item.label}</p>
+              <h3 className="m-0 mt-1 text-[39px] leading-none text-[#1d2a43]">{item.value}</h3>
             </article>
           ))}
         </section>
 
-        <section className="overflow-hidden rounded-md border border-[#dbe2ef] bg-white">
-          <div className="flex flex-col gap-2 border-b border-[#e6ecf7] p-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex h-8 w-full max-w-[420px] items-center gap-2 rounded border border-[#e6ecf7] bg-[#f7f9fd] px-2">
-              <span className="text-xs text-[#8b96ad]">Q</span>
+        <section className="overflow-hidden rounded-xl border border-[#dbe2ef] bg-white">
+          <div className="flex flex-col gap-2 border-b border-[#e6ecf7] px-4 py-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex h-9 w-full max-w-[420px] items-center gap-2 rounded-lg border border-[#edf1fa] bg-[#f7f9fd] px-3">
+              <FiSearch size={13} className="text-[#8b96ad]" />
               <input
                 type="text"
                 placeholder="Search by name, email, or ID..."
-                className="w-full border-0 bg-transparent text-xs text-[#2b3a59] outline-none placeholder:text-[#9aa6c0]"
+                className="w-full border-0 bg-transparent text-[12px] text-[#2b3a59] outline-none placeholder:text-[#9aa6c0]"
               />
             </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="h-8 rounded border border-[#e6ecf7] bg-white px-3 text-xs text-[#3a4b70]"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe2ef] bg-white px-4 text-[13px] text-[#3a4b70]"
               >
+                <FiFilter size={12} />
                 Filters
               </button>
               <button
                 type="button"
-                className="h-8 rounded border border-[#e6ecf7] bg-white px-3 text-xs text-[#3a4b70]"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe2ef] bg-white px-4 text-[13px] text-[#3a4b70]"
               >
+                <FiDownload size={12} />
                 Export CSV
               </button>
             </div>
@@ -304,7 +360,7 @@ export function UsersManagementView() {
                   {["USER ID", "NAME", "STATUS", "TOTAL BOOKINGS", "JOINED DATE", "ACTIONS"].map((head) => (
                     <th
                       key={head}
-                      className="border-b border-[#edf1fa] px-4 py-3 text-left text-[10px] tracking-[0.04em] text-[#7d8ba6]"
+                      className="border-b border-[#edf1fa] px-6 py-3 text-left text-[11px] tracking-[0.04em] text-[#6e7f9b]"
                     >
                       {head}
                     </th>
@@ -314,43 +370,37 @@ export function UsersManagementView() {
               <tbody>
                 {usersApiResponse.users.map((user, index) => (
                   <tr key={user.id} className={index % 2 === 1 ? "bg-[#fbfcff]" : ""}>
-                    <td className="border-b border-[#edf1fa] px-4 py-3 text-[11px] text-[#8b96ad]">{user.id}</td>
-                    <td className="border-b border-[#edf1fa] px-4 py-3">
+                    <td className="border-b border-[#edf1fa] px-6 py-4 text-[12px] text-[#9aa6c0]">{user.id}</td>
+                    <td className="border-b border-[#edf1fa] px-6 py-4">
                       <div className="flex items-center gap-2.5">
-                        <Image src={user.avatar} alt={user.name} width={24} height={24} className="h-6 w-6 rounded-full" />
+                        <Image src={user.avatar} alt={user.name} width={28} height={28} className="h-7 w-7 rounded-full" />
                         <div>
-                          <div className="text-[12px] font-semibold text-[#1f2d46]">{user.name}</div>
-                          <div className="text-[10px] text-[#8b96ad]">{user.email}</div>
+                          <div className="text-[13px] font-semibold text-[#1f2d46]">{user.name}</div>
+                          <div className="text-[11px] text-[#7f8ea9]">{user.email}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="border-b border-[#edf1fa] px-4 py-3">
+                    <td className="border-b border-[#edf1fa] px-6 py-4">
                       <span className={statusClass(user.status)}>{user.status}</span>
                     </td>
-                    <td className="border-b border-[#edf1fa] px-4 py-3 font-semibold text-[#2f3f60]">{user.totalBookings}</td>
-                    <td className="border-b border-[#edf1fa] px-4 py-3 text-[#7d8ba6]">{user.joinedDate}</td>
-                    <td className="border-b border-[#edf1fa] px-4 py-3 text-[#60749d]">
-                      <div className="flex items-center gap-3 text-sm">
+                    <td className="border-b border-[#edf1fa] px-6 py-4 font-semibold text-[#2f3f60]">{user.totalBookings}</td>
+                    <td className="border-b border-[#edf1fa] px-6 py-4 text-[13px] text-[#6e7f9b]">{user.joinedDate}</td>
+                    <td className="border-b border-[#edf1fa] px-6 py-4 text-[#60749d]">
+                      <div className="flex items-center gap-4 text-sm">
                         <button
                           type="button"
                           onClick={() => setSelectedUserId(user.id)}
                           className="text-[#294f99]"
                           aria-label={`View ${user.name} profile`}
                         >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                            <path
-                              d="M1.5 12s3.7-6.5 10.5-6.5S22.5 12 22.5 12s-3.7 6.5-10.5 6.5S1.5 12 1.5 12Z"
-                              stroke="currentColor"
-                              strokeWidth="1.8"
-                            />
-                            <circle cx="12" cy="12" r="3.5" stroke="currentColor" strokeWidth="1.8" />
-                          </svg>
+                          <FiEye size={14} />
                         </button>
-                        <button type="button" className="text-[#d94848]" aria-label={`Block ${user.name}`}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
-                            <path d="M8 16L16 8" stroke="currentColor" strokeWidth="1.8" />
-                          </svg>
+                        <button
+                          type="button"
+                          className={user.status === "BLOCKED" ? "text-[#c2cad8]" : "text-[#ef4444]"}
+                          aria-label={`${user.status === "BLOCKED" ? "Restore" : "Block"} ${user.name}`}
+                        >
+                          <FiSlash size={14} />
                         </button>
                       </div>
                     </td>
@@ -360,16 +410,18 @@ export function UsersManagementView() {
             </table>
           </div>
 
-          <footer className="flex items-center justify-between px-4 py-3 text-[10px] text-[#8b96ad]">
+          <footer className="flex items-center justify-between px-6 py-4 text-[11px] text-[#7f8ea9]">
             <span>Showing 1 to {usersApiResponse.users.length} of 12,845 entries</span>
-            <div className="flex items-center gap-2">
-              <button type="button" className="h-5 w-5 rounded bg-[#1f3d8f] text-white">
+            <div className="flex items-center gap-3">
+              <button type="button" className="text-[#b0bacd]">‹</button>
+              <button type="button" className="grid h-7 w-7 place-items-center rounded bg-[#1f3d8f] text-white">
                 1
               </button>
               <button type="button">2</button>
               <button type="button">3</button>
               <span>...</span>
               <button type="button">1285</button>
+              <button type="button">›</button>
             </div>
           </footer>
         </section>
@@ -511,4 +563,3 @@ export function UsersManagementView() {
     </section>
   );
 }
-
