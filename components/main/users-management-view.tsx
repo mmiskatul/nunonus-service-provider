@@ -489,8 +489,8 @@ export function UsersManagementView() {
             </div>
           </div>
 
-          <div className="overflow-x-auto px-4">
-            <table className="w-full min-w-[900px] border-collapse text-[12px]">
+          <div className="overflow-x-hidden px-4">
+            <table className="w-full border-collapse text-[12px]">
               <thead>
                 <tr>
                   {["USER ID", "NAME", "STATUS", "TOTAL BOOKINGS", "JOINED DATE", "ACTIONS"].map((head) => (
