@@ -18,7 +18,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: "Invalid email or password." }, { status: 401 });
     }
 
-    return NextResponse.json({ ok: true, user: { email: matched.email } }, { status: 200 });
+    const response = NextResponse.json({ ok: true, user: { email: matched.email } }, { status: 200 });
+    response.cookies.set("nunos_auth", "true", {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/"
+    });
+    return response;
   } catch {
     return NextResponse.json({ ok: false, message: "Login failed." }, { status: 500 });
   }
