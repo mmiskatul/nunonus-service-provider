@@ -5,6 +5,8 @@ import Image from "next/image";
 import {
   FiAlertCircle,
   FiCheck,
+  FiChevronLeft,
+  FiChevronRight,
   FiEye,
   FiFilter,
   FiInbox,
@@ -274,7 +276,7 @@ export function SupportDashboardView({
               }`}
               aria-disabled={page === 1}
             >
-              ?
+              <FiChevronLeft size={12} />
             </button>
             {paginationItems.map((item, index) => {
               if (item === "ellipsis") {
@@ -306,7 +308,7 @@ export function SupportDashboardView({
               }`}
               aria-disabled={page === totalPages}
             >
-              ?
+              <FiChevronRight size={12} />
             </button>
           </div>
         </footer>
