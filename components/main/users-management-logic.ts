@@ -111,8 +111,51 @@ export function useUsersManagement(initialData: { users: UserProfile[]; summaryC
   }, []);
 
   const persistUserAction = async (id: string, action: "toggleStatus" | "resetPassword") => {
-    const updated = await updateUserAction(id, action);
-    setUsers((prev) => prev.map((user) => (user.id === id ? updated : user)));
+    const applyLocalUpdate = (current: UserProfile) => {
+      if (action === "toggleStatus") {
+        const nextStatus: UserStatus = current.status === "BLOCKED" ? "ACTIVE" : "BLOCKED";
+        const nextActions = current.actions.map((actionItem) => {
+          if (actionItem.label.toLowerCase().includes("block")) {
+            return {
+              ...actionItem,
+              label: nextStatus === "BLOCKED" ? "Unblock Account" : "Block Account",
+              tone: nextStatus === "BLOCKED" ? "neutral" : "danger"
+            };
+          }
+          return actionItem;
+        });
+        return { ...current, status: nextStatus, actions: nextActions };
+      }
+
+      if (action === "resetPassword") {
+        const nextActions = current.actions.map((actionItem) => {
+          if (actionItem.label.toLowerCase().includes("reset password")) {
+            return { ...actionItem, label: "Password Reset Sent", tone: "neutral" };
+          }
+          return actionItem;
+        });
+        return { ...current, actions: nextActions };
+      }
+
+      return current;
+    };
+
+    setUsers((prev) => prev.map((user) => (user.id === id ? applyLocalUpdate(user) : user)));
+
+    try {
+      const updated = await updateUserAction(id, action);
+      setUsers((prev) => prev.map((user) => (user.id === id ? updated : user)));
+    } catch (error) {
+      const controller = new AbortController();
+      try {
+        const data = await fetchUsers(controller.signal);
+        if (Array.isArray(data.users)) {
+          setUsers(data.users);
+        }
+      } catch {
+        return;
+      }
+    }
   };
 
   return {
