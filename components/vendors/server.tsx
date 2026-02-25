@@ -1,4 +1,4 @@
-﻿import { headers } from "next/headers";
+import { headers } from "next/headers";
 import { VendorsManagementView } from "@/components/vendors/client";
 
 type DataPayload = any;

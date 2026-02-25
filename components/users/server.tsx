@@ -1,4 +1,4 @@
-﻿import { UsersClient } from "@/components/users/client";
+import { UsersClient } from "@/components/users/client";
 import type { SummaryCard, UserProfile } from "@/components/main/users-management-types";
 import { headers } from "next/headers";
 

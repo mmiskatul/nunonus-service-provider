@@ -56,7 +56,7 @@ export function SupportDashboardView({ data }: { data: { summaryCards: Array<{ l
           <article key={card.label} className="rounded-2xl border border-[#e6ecf7] bg-white p-4">
             <div className="mb-2 flex items-center gap-2">
               <div className={`grid h-8 w-8 place-items-center rounded-full ${summaryIcon(i)}`}>
-                <span className="text-sm">{i === 0 ? "✉" : i === 1 ? "⏱" : i === 2 ? "✓" : "!"}</span>
+                <span className="text-sm">{i === 0 ? "âœ‰" : i === 1 ? "â±" : i === 2 ? "âœ“" : "!"}</span>
               </div>
               <p className="m-0 text-[11px] text-[#7d8ba6]">{card.label}</p>
             </div>
@@ -137,11 +137,11 @@ export function SupportDashboardView({ data }: { data: { summaryCards: Array<{ l
         <footer className="flex items-center justify-between px-4 py-3 text-[10px] text-[#8b96ad]">
           <span>Showing 1 to {data.tickets.length} of 124 results</span>
           <div className="flex items-center gap-2">
-            <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] text-[#95a2b8]">‹</button>
+            <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] text-[#95a2b8]">â€¹</button>
             <button type="button" className="grid h-6 w-6 place-items-center rounded-full bg-[#3b1e8a] text-white">1</button>
             <button type="button">2</button>
             <button type="button">3</button>
-            <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] text-[#95a2b8]">›</button>
+            <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] text-[#95a2b8]">â€º</button>
           </div>
         </footer>
       </section>
@@ -195,7 +195,7 @@ export function SupportDashboardView({ data }: { data: { summaryCards: Array<{ l
                         {message.text}
                       </p>
                       <p className={`m-0 mt-1 text-[9px] text-[#9aa6c0] ${message.sender === "agent" ? "text-right" : ""}`}>
-                        {message.name} • {message.time}
+                        {message.name} â€¢ {message.time}
                       </p>
                     </div>
                   ))}

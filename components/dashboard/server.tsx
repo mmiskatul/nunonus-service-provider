@@ -1,4 +1,4 @@
-﻿import { headers } from "next/headers";
+import { headers } from "next/headers";
 import { DashboardView } from "@/components/dashboard/client";
 
 type DataPayload = any;

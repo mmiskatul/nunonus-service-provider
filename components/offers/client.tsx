@@ -20,9 +20,9 @@ function offerStatusClass(status: OfferStatus) {
 }
 
 function offerKindIcon(kind: DiscountKind) {
-  if (kind === "FLAT") return "⚡";
-  if (kind === "BOGO") return "🎁";
-  return "🏷️";
+  if (kind === "FLAT") return "âš¡";
+  if (kind === "BOGO") return "ðŸŽ";
+  return "ðŸ·ï¸";
 }
 
 export function OffersManagementView({ data }: { data: { summaryCards: Array<{ label: string; value: string; note: string; tone: string }>; offers: Offer[] } }) {
@@ -33,7 +33,7 @@ export function OffersManagementView({ data }: { data: { summaryCards: Array<{ l
           <article key={card.label} className="rounded-2xl border border-[#e6ecf7] bg-white p-4">
             <div className="mb-2 flex items-center justify-between">
               <div className="grid h-9 w-9 place-items-center rounded-full bg-[#edf2fb] text-[#1f3d8f]">
-                <span className="text-xs">●</span>
+                <span className="text-xs">â—</span>
               </div>
               <span className={`text-[10px] font-semibold ${card.tone}`}>{card.note}</span>
             </div>
@@ -119,11 +119,11 @@ export function OffersManagementView({ data }: { data: { summaryCards: Array<{ l
         <footer className="flex items-center justify-between px-4 py-3 text-[10px] text-[#8b96ad]">
           <span>Showing 1 to {data.offers.length} of 124 offers</span>
           <div className="flex items-center gap-2">
-            <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] text-[#95a2b8]">‹</button>
+            <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] text-[#95a2b8]">â€¹</button>
             <button type="button" className="grid h-6 w-6 place-items-center rounded-full bg-[#1f3d8f] text-white">1</button>
             <button type="button">2</button>
             <button type="button">3</button>
-            <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] text-[#95a2b8]">›</button>
+            <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] text-[#95a2b8]">â€º</button>
           </div>
         </footer>
       </section>

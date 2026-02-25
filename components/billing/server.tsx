@@ -1,4 +1,4 @@
-﻿import { headers } from "next/headers";
+import { headers } from "next/headers";
 import { BillingManagementView } from "@/components/billing/client";
 
 type DataPayload = any;

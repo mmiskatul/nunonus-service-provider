@@ -63,7 +63,7 @@ export function VendorsManagementView({
               <div className="mb-2 flex items-center justify-between">
                 <p className="m-0 text-[11px] text-[#7d8ba6]">{card.label}</p>
                 <div className={`grid h-8 w-8 place-items-center rounded-lg ${summaryIconColor(i)}`}>
-                  <span className="text-[12px]">�</span>
+                  <span className="text-[12px]">â€¢</span>
                 </div>
               </div>
               <h3 className="m-0 text-[28px] leading-none text-[#1d2a43]">{card.value}</h3>
@@ -213,7 +213,7 @@ export function VendorsManagementView({
           <div className="flex h-full flex-col overflow-hidden">
             <header className="flex items-center justify-between bg-[#1f3d8f] px-4 py-3 text-white">
               <h4 className="m-0 text-[12px] font-semibold">Verification Detail</h4>
-              <button type="button" onClick={() => setSelectedVendorId(null)} className="text-white">�</button>
+              <button type="button" onClick={() => setSelectedVendorId(null)} className="text-white">Ã—</button>
             </header>
 
             <div className="flex-1 overflow-y-auto px-5 py-5">

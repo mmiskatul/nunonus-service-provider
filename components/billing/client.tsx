@@ -24,7 +24,7 @@ export function BillingManagementView({ data }: { data: { summaryCards: Array<{ 
           <article key={card.label} className="rounded-2xl border border-[#e6ecf7] bg-white p-4">
             <div className="mb-2 flex items-center justify-between">
               <div className="grid h-9 w-9 place-items-center rounded-full bg-[#edf2fb] text-[#1f3d8f]">
-                <span className="text-xs">{i === 0 ? "◧" : i === 1 ? "%" : i === 2 ? "◫" : "◉"}</span>
+                <span className="text-xs">{i === 0 ? "â—§" : i === 1 ? "%" : i === 2 ? "â—«" : "â—‰"}</span>
               </div>
               <span className={`text-[10px] font-semibold ${card.tone}`}>{card.note}</span>
             </div>
@@ -94,8 +94,8 @@ export function BillingManagementView({ data }: { data: { summaryCards: Array<{ 
         <footer className="flex items-center justify-between px-4 py-3 text-[10px] text-[#8b96ad]">
           <span>Showing 3 of 124 results</span>
           <div className="flex items-center gap-2">
-            <button type="button" className="grid h-5 w-5 place-items-center rounded border border-[#e6ecf7] text-[#95a2b8]">‹</button>
-            <button type="button" className="grid h-5 w-5 place-items-center rounded border border-[#e6ecf7] text-[#95a2b8]">›</button>
+            <button type="button" className="grid h-5 w-5 place-items-center rounded border border-[#e6ecf7] text-[#95a2b8]">â€¹</button>
+            <button type="button" className="grid h-5 w-5 place-items-center rounded border border-[#e6ecf7] text-[#95a2b8]">â€º</button>
           </div>
         </footer>
       </section>

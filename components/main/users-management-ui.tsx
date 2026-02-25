@@ -282,7 +282,7 @@ export function UsersManagementUI({
                 onClick={() => setPage((prev: number) => Math.max(1, prev - 1))}
                 className={`text-[#3a4b70] ${page === 1 ? "pointer-events-none opacity-40" : ""}`}
               >
-                ‹
+                â€¹
               </button>
               {paginationItems.map((item, index) => {
                 if (item === "ellipsis") {
@@ -311,7 +311,7 @@ export function UsersManagementUI({
                 onClick={() => setPage((prev: number) => Math.min(totalPages, prev + 1))}
                 className={`text-[#3a4b70] ${page === totalPages ? "pointer-events-none opacity-40" : ""}`}
               >
-                ›
+                â€º
               </button>
             </div>
           </footer>

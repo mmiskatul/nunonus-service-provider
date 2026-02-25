@@ -1,4 +1,4 @@
-﻿import { headers } from "next/headers";
+import { headers } from "next/headers";
 import { ContentManagementView } from "@/components/content-moderation/client";
 
 type DataPayload = any;
