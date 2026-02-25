@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import { IoAlertCircle, IoPeople, IoShieldCheckmark, IoTimeOutline } from "react-icons/io5";
+import { FaUsers } from "react-icons/fa";
 
 type VendorStatus = "PENDING" | "APPROVED" | "REJECTED";
 type VendorCategory = "HOSPITALITY" | "DINING" | "RENTALS";
@@ -36,12 +37,12 @@ function vendorStatusClass(status: VendorStatus) {
   return "bg-[#fff4cc] text-[#b45309]";
 }
 
-const summaryIcons = [
-  { Icon: IoPeople, tone: "bg-[#edf2fb] text-[#1f3d8f]" },
-  { Icon: IoTimeOutline, tone: "bg-[#fff7e5] text-[#f59e0b]" },
-  { Icon: IoShieldCheckmark, tone: "bg-[#e8f8ef] text-[#2da772]" },
-  { Icon: IoAlertCircle, tone: "bg-[#feeeee] text-[#ef4444]" }
-];
+const summaryIconByLabel: Record<string, { Icon: typeof IoPeople; tone: string }> = {
+  "Total Vendors": { Icon: IoPeople, tone: "bg-[#edf2fb] text-[#1f3d8f]" },
+  "Pending Approval": { Icon: IoTimeOutline, tone: "bg-[#fff7e5] text-[#f59e0b]" },
+  "Approved Vendors": { Icon: IoShieldCheckmark, tone: "bg-[#e8f8ef] text-[#2da772]" },
+  "Rejected Vendors": { Icon: IoAlertCircle, tone: "bg-[#feeeee] text-[#ef4444]" }
+};
 
 export function VendorsManagementView({
   data
@@ -59,14 +60,14 @@ export function VendorsManagementView({
     <section className="relative space-y-6">
       <div className="space-y-6">
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-4">
-          {data.summaryCards.map((card, i) => {
-            const { Icon, tone } = summaryIcons[i] ?? summaryIcons[0];
+          {data.summaryCards.map((card) => {
+            const { Icon, tone } = summaryIconByLabel[card.label] ?? summaryIconByLabel["Total Vendors"];
             return (
             <article key={card.label} className="rounded-xl border border-[#e6ecf7] bg-white p-4 shadow-sm">
               <div className="mb-2 flex items-center justify-between">
                 <p className="m-0 text-[11px] text-[#7d8ba6]">{card.label}</p>
                 <div className={`grid h-8 w-8 place-items-center rounded-lg ${tone}`}>
-                  <Icon size={14} />
+                  <FaUsers  size={14} />
                 </div>
               </div>
               <h3 className="m-0 text-[28px] leading-none text-[#1d2a43]">{card.value}</h3>
