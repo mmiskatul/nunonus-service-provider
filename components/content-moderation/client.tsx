@@ -2,7 +2,10 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import { FiBarChart2, FiCheck, FiClock, FiEye, FiX } from "react-icons/fi";
+import {  FiCheck, FiClock, FiEye, FiX } from "react-icons/fi";
+import { FaCheckCircle } from "react-icons/fa";
+import { IoBarChart } from "react-icons/io5";
+import { IoMdCloseCircle } from "react-icons/io";
 
 type QueueType = "PHOTO" | "MENU" | "INFO";
 type ApprovalState = "pending" | "approved" | "rejected";
@@ -68,10 +71,10 @@ export function ContentManagementView({ data }: { data: { totalSubmissions: numb
             <div className="mb-3 flex items-center justify-between">
               <p className="m-0 text-[10px] tracking-[0.08em] text-[#7d8ba6]">{card.label}</p>
               <div className="grid h-9 w-9 place-items-center rounded-lg bg-[#eef2ff] text-[#1f3d8f]">
-                {index === 0 && <FiBarChart2 size={16} />}
-                {index === 1 && <FiClock size={16} />}
-                {index === 2 && <FiCheck size={16} />}
-                {index === 3 && <FiX size={16} />}
+                {index === 0 && <IoBarChart  size={18}  />}
+                {index === 1 && <FiClock size={18} />}
+                {index === 2 && <FaCheckCircle  size={18} color="green"/>}
+                {index === 3 && <IoMdCloseCircle size={18} color="red"/>}
               </div>
             </div>
             <h3 className={`m-0 text-[26px] leading-none ${card.tone}`}>{card.value}</h3>

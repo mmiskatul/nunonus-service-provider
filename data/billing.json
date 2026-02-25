@@ -1,9 +1,29 @@
 {
   "summaryCards": [
-    { "label": "Total Revenue", "value": "$1,248,600.00", "note": "+12.5%", "tone": "text-[#16a34a]" },
-    { "label": "Platform Commission", "value": "$187,290.00", "note": "+8.2%", "tone": "text-[#16a34a]" },
-    { "label": "Pending Payouts", "value": "$45,820.50", "note": "Action Needed", "tone": "text-[#f59e0b]" },
-    { "label": "Active Subscriptions", "value": "1,240", "note": "optional", "tone": "text-[#8b96ad]" }
+    {
+      "label": "Total Revenue",
+      "value": "$1,248,600.00",
+      "note": "+12.5%",
+      "tone": "text-[#16a34a]"
+    },
+    {
+      "label": "Platform Commission",
+      "value": "$187,290.00",
+      "note": "+8.2%",
+      "tone": "text-[#16a34a]"
+    },
+    {
+      "label": "Pending Payouts",
+      "value": "$45,820.50",
+      "note": "Action Needed",
+      "tone": "text-[#f59e0b]"
+    },
+    {
+      "label": "Active Subscriptions",
+      "value": "1,240",
+      "note": "optional",
+      "tone": "text-[#8b96ad]"
+    }
   ],
   "recentPayments": [
     {
@@ -29,6 +49,166 @@
       "commission": "-$1,215.00",
       "netPayout": "$6,885.00",
       "status": "PAID"
+    },
+    {
+      "vendorCode": "PG",
+      "vendorName": "Pioneer Group",
+      "totalEarnings": "$8,726.00",
+      "commission": "-$1,308.90",
+      "netPayout": "$7,417.10",
+      "status": "PENDING"
+    },
+    {
+      "vendorCode": "SH",
+      "vendorName": "Summit Hospitality",
+      "totalEarnings": "$16,793.00",
+      "commission": "-$2,518.95",
+      "netPayout": "$14,274.05",
+      "status": "PAID"
+    },
+    {
+      "vendorCode": "NH",
+      "vendorName": "Nova Holdings",
+      "totalEarnings": "$6,346.00",
+      "commission": "-$951.90",
+      "netPayout": "$5,394.10",
+      "status": "PENDING"
+    },
+    {
+      "vendorCode": "AH",
+      "vendorName": "Atlas Holdings",
+      "totalEarnings": "$9,610.00",
+      "commission": "-$1,441.50",
+      "netPayout": "$8,168.50",
+      "status": "PAID"
+    },
+    {
+      "vendorCode": "SH",
+      "vendorName": "Summit Holdings",
+      "totalEarnings": "$9,769.00",
+      "commission": "-$1,465.35",
+      "netPayout": "$8,303.65",
+      "status": "PAID"
+    },
+    {
+      "vendorCode": "SL",
+      "vendorName": "Summit Labs",
+      "totalEarnings": "$17,301.00",
+      "commission": "-$2,595.15",
+      "netPayout": "$14,705.85",
+      "status": "PAID"
+    },
+    {
+      "vendorCode": "NL",
+      "vendorName": "Nimbus Labs",
+      "totalEarnings": "$15,544.00",
+      "commission": "-$2,331.60",
+      "netPayout": "$13,212.40",
+      "status": "PAID"
+    },
+    {
+      "vendorCode": "PL",
+      "vendorName": "Pioneer Labs",
+      "totalEarnings": "$8,641.00",
+      "commission": "-$1,296.15",
+      "netPayout": "$7,344.85",
+      "status": "PENDING"
+    },
+    {
+      "vendorCode": "AS",
+      "vendorName": "Atlas Studios",
+      "totalEarnings": "$11,202.00",
+      "commission": "-$1,680.30",
+      "netPayout": "$9,521.70",
+      "status": "PENDING"
+    },
+    {
+      "vendorCode": "NS",
+      "vendorName": "Nova Studios",
+      "totalEarnings": "$5,285.00",
+      "commission": "-$792.75",
+      "netPayout": "$4,492.25",
+      "status": "PAID"
+    },
+    {
+      "vendorCode": "NG",
+      "vendorName": "Nimbus Group",
+      "totalEarnings": "$16,767.00",
+      "commission": "-$2,515.05",
+      "netPayout": "$14,251.95",
+      "status": "PENDING"
+    },
+    {
+      "vendorCode": "NS",
+      "vendorName": "Nova Studios",
+      "totalEarnings": "$10,653.00",
+      "commission": "-$1,597.95",
+      "netPayout": "$9,055.05",
+      "status": "PAID"
+    },
+    {
+      "vendorCode": "AH",
+      "vendorName": "Atlas Hospitality",
+      "totalEarnings": "$12,951.00",
+      "commission": "-$1,942.65",
+      "netPayout": "$11,008.35",
+      "status": "PENDING"
+    },
+    {
+      "vendorCode": "BL",
+      "vendorName": "Beacon Labs",
+      "totalEarnings": "$13,425.00",
+      "commission": "-$2,013.75",
+      "netPayout": "$11,411.25",
+      "status": "PAID"
+    },
+    {
+      "vendorCode": "BL",
+      "vendorName": "Beacon Labs",
+      "totalEarnings": "$13,601.00",
+      "commission": "-$2,040.15",
+      "netPayout": "$11,560.85",
+      "status": "PAID"
+    },
+    {
+      "vendorCode": "NH",
+      "vendorName": "Nimbus Hospitality",
+      "totalEarnings": "$17,986.00",
+      "commission": "-$2,697.90",
+      "netPayout": "$15,288.10",
+      "status": "PENDING"
+    },
+    {
+      "vendorCode": "NL",
+      "vendorName": "Nova Labs",
+      "totalEarnings": "$12,968.00",
+      "commission": "-$1,945.20",
+      "netPayout": "$11,022.80",
+      "status": "PENDING"
+    },
+    {
+      "vendorCode": "SL",
+      "vendorName": "Summit Labs",
+      "totalEarnings": "$9,984.00",
+      "commission": "-$1,497.60",
+      "netPayout": "$8,486.40",
+      "status": "PENDING"
+    },
+    {
+      "vendorCode": "AH",
+      "vendorName": "Atlas Hospitality",
+      "totalEarnings": "$16,481.00",
+      "commission": "-$2,472.15",
+      "netPayout": "$14,008.85",
+      "status": "PENDING"
+    },
+    {
+      "vendorCode": "NS",
+      "vendorName": "Nimbus Studios",
+      "totalEarnings": "$8,748.00",
+      "commission": "-$1,312.20",
+      "netPayout": "$7,435.80",
+      "status": "PENDING"
     }
   ]
 }
