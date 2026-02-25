@@ -280,9 +280,12 @@ export function UsersManagementUI({
               <button
                 type="button"
                 onClick={() => setPage((prev: number) => Math.max(1, prev - 1))}
-                className={`text-[#3a4b70] ${page === 1 ? "pointer-events-none opacity-40" : ""}`}
+                className={`rounded border border-[#e6ecf7] px-2 py-0.5 text-[10px] ${
+                  page === 1 ? "text-[#94a3b8] opacity-60" : "text-[#64748b]"
+                }`}
+                aria-disabled={page === 1}
               >
-                â€¹
+                Previous
               </button>
               {paginationItems.map((item, index) => {
                 if (item === "ellipsis") {
@@ -298,8 +301,8 @@ export function UsersManagementUI({
                     key={item}
                     type="button"
                     onClick={() => setPage(item)}
-                    className={`grid h-7 w-7 place-items-center rounded text-[11px] ${
-                      item === page ? "bg-[#1f3d8f] text-white" : "text-[#3a4b70]"
+                    className={`grid h-6 w-6 place-items-center rounded text-[11px] ${
+                      item === page ? "bg-[#1f3d8f] text-white" : "border border-[#e6ecf7] text-[#64748b]"
                     }`}
                   >
                     {item}
@@ -309,9 +312,12 @@ export function UsersManagementUI({
               <button
                 type="button"
                 onClick={() => setPage((prev: number) => Math.min(totalPages, prev + 1))}
-                className={`text-[#3a4b70] ${page === totalPages ? "pointer-events-none opacity-40" : ""}`}
+                className={`rounded border border-[#e6ecf7] px-2 py-0.5 text-[10px] ${
+                  page === totalPages ? "text-[#94a3b8] opacity-60" : "text-[#64748b]"
+                }`}
+                aria-disabled={page === totalPages}
               >
-                â€º
+                Next
               </button>
             </div>
           </footer>

@@ -25,7 +25,7 @@ async function updateUserAction(id: string, action: "block" | "unblock" | "reset
   return data.user;
 }
 
-const pageSize = 10;
+const pageSize = 5;
 
 export function useUsersManagement(initialData: { users: UserProfile[]; summaryCards: SummaryCard[] }) {
   const [users, setUsers] = useState<UserProfile[]>(initialData.users);
