@@ -159,7 +159,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
             </thead>
             <tbody>
               {data.vendors.map((vendor, i) => (
-                <tr key={vendor.name} className={i % 2 === 1 ? "bg-[#fbfcff]" : ""}>
+                <tr key={`${vendor.code}-${vendor.name}-${i}`} className={i % 2 === 1 ? "bg-[#fbfcff]" : ""}>
                   <td className="border-b border-[#edf1fa] px-4 py-4">
                     <div className="flex items-center gap-3">
                       <span className="grid h-7 w-7 place-items-center rounded bg-[#edf2fb] text-[11px] font-semibold text-[#415a91]">{vendor.code}</span>
