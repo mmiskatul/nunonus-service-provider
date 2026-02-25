@@ -328,6 +328,45 @@ export function UsersManagementView() {
     return filteredUsers.slice(start, start + pageSize);
   }, [filteredUsers, page]);
 
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  const paginationItems = useMemo(() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    const items: Array<number | "ellipsis"> = [1];
+    let start = Math.max(2, page - 1);
+    let end = Math.min(totalPages - 1, page + 1);
+
+    if (page <= 3) {
+      start = 2;
+      end = 4;
+    } else if (page >= totalPages - 2) {
+      start = totalPages - 3;
+      end = totalPages - 1;
+    }
+
+    if (start > 2) {
+      items.push("ellipsis");
+    }
+
+    for (let i = start; i <= end; i += 1) {
+      items.push(i);
+    }
+
+    if (end < totalPages - 1) {
+      items.push("ellipsis");
+    }
+
+    items.push(totalPages);
+    return items;
+  }, [page, totalPages]);
+
   const selectedUser = useMemo(
     () => usersApiResponse.users.find((user) => user.id === selectedUserId) ?? null,
     [selectedUserId]
@@ -531,18 +570,28 @@ export function UsersManagementView() {
               >
                 ‹
               </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNumber) => (
-                <button
-                  key={pageNumber}
-                  type="button"
-                  onClick={() => setPage(pageNumber)}
-                  className={`grid h-7 w-7 place-items-center rounded text-[11px] ${
-                    pageNumber === page ? "bg-[#1f3d8f] text-white" : "text-[#3a4b70]"
-                  }`}
-                >
-                  {pageNumber}
-                </button>
-              ))}
+              {paginationItems.map((item, index) => {
+                if (item === "ellipsis") {
+                  return (
+                    <span key={`ellipsis-${index}`} className="px-1 text-[#a1aac0]">
+                      ...
+                    </span>
+                  );
+                }
+
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setPage(item)}
+                    className={`grid h-7 w-7 place-items-center rounded text-[11px] ${
+                      item === page ? "bg-[#1f3d8f] text-white" : "text-[#3a4b70]"
+                    }`}
+                  >
+                    {item}
+                  </button>
+                );
+              })}
               <button
                 type="button"
                 onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
