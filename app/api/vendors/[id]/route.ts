@@ -13,15 +13,16 @@ async function writeVendorsFile(data: unknown) {
   await fs.writeFile(dataPath, JSON.stringify(data, null, 2) + "\n", "utf-8");
 }
 
-export async function PATCH(request: Request, context: { params: { id: string } }) {
+export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const id = decodeURIComponent(context.params.id);
+    const { id } = await context.params;
+    const decodedId = decodeURIComponent(id);
     const body = await request.json();
     const action = body?.action as string | undefined;
 
     const data = await readVendorsFile();
     const vendors = data.vendors as Array<Record<string, any>>;
-    const index = vendors.findIndex((vendor) => vendor.id === id);
+    const index = vendors.findIndex((vendor) => vendor.id === decodedId);
 
     if (index === -1) {
       return NextResponse.json({ error: "Vendor not found" }, { status: 404 });
