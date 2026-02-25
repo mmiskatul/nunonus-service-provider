@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { IoAlertCircle, IoPeople, IoShieldCheckmark, IoTimeOutline } from "react-icons/io5";
 import { FaUsers } from "react-icons/fa";
@@ -79,6 +79,33 @@ export function VendorsManagementView({
     const start = (page - 1) * pageSize;
     return vendors.slice(start, start + pageSize);
   }, [vendors, page]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  const paginationItems = useMemo(() => {
+    if (totalPages <= 4) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    const items: Array<number | "ellipsis"> = [1];
+
+    if (page <= 3) {
+      items.push(2, 3, "ellipsis", totalPages);
+      return items;
+    }
+
+    if (page >= totalPages - 2) {
+      items.push("ellipsis", totalPages - 2, totalPages - 1, totalPages);
+      return items;
+    }
+
+    items.push("ellipsis", page - 1, page, page + 1, "ellipsis", totalPages);
+    return items;
+  }, [page, totalPages]);
 
   async function updateVendorStatus(id: string, action: "approve" | "reject") {
     try {
@@ -274,30 +301,28 @@ export function VendorsManagementView({
               >
                 Previous
               </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).slice(0, 5).map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setPage(item)}
-                  className={`h-6 w-6 rounded text-[11px] ${
-                    item === page ? "bg-[#1f3d8f] text-white" : "border border-[#e6ecf7] text-[#64748b]"
-                  }`}
-                >
-                  {item}
-                </button>
-              ))}
-              {totalPages > 5 && <span className="px-1 text-[10px] text-[#94a3b8]">...</span>}
-              {totalPages > 5 && (
-                <button
-                  type="button"
-                  onClick={() => setPage(totalPages)}
-                  className={`h-6 w-6 rounded text-[11px] ${
-                    totalPages === page ? "bg-[#1f3d8f] text-white" : "border border-[#e6ecf7] text-[#64748b]"
-                  }`}
-                >
-                  {totalPages}
-                </button>
-              )}
+              {paginationItems.map((item, index) => {
+                if (item === "ellipsis") {
+                  return (
+                    <span key={`ellipsis-${index}`} className="px-1 text-[10px] text-[#94a3b8]">
+                      ...
+                    </span>
+                  );
+                }
+
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setPage(item)}
+                    className={`h-6 w-6 rounded text-[11px] ${
+                      item === page ? "bg-[#1f3d8f] text-white" : "border border-[#e6ecf7] text-[#64748b]"
+                    }`}
+                  >
+                    {item}
+                  </button>
+                );
+              })}
               <button
                 type="button"
                 onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
