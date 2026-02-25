@@ -53,6 +53,8 @@ export function VendorsManagementView({
   const [vendors, setVendors] = useState<Vendor[]>(data.vendors);
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<"ALL" | VendorStatus>("ALL");
   const pageSize = 5;
 
   const selectedVendor = useMemo(
@@ -74,11 +76,16 @@ export function VendorsManagementView({
     });
   }, [data.summaryCards, vendors]);
 
-  const totalPages = Math.max(1, Math.ceil(vendors.length / pageSize));
+  const filteredVendors = useMemo(() => {
+    if (statusFilter === "ALL") return vendors;
+    return vendors.filter((vendor) => vendor.status === statusFilter);
+  }, [statusFilter, vendors]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredVendors.length / pageSize));
   const pagedVendors = useMemo(() => {
     const start = (page - 1) * pageSize;
-    return vendors.slice(start, start + pageSize);
-  }, [vendors, page]);
+    return filteredVendors.slice(start, start + pageSize);
+  }, [filteredVendors, page]);
 
   useEffect(() => {
     if (page > totalPages) {
@@ -150,9 +157,10 @@ export function VendorsManagementView({
         <section className="overflow-hidden rounded-xl border border-[#e6ecf7] bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-[#eef2f7] px-5 py-4">
             <h3 className="m-0 text-[15px] font-semibold text-[#1d2a43]">Vendor Directory</h3>
-            <div className="flex items-center gap-2">
+            <div className="relative flex items-center gap-2">
               <button
                 type="button"
+                onClick={() => setFiltersOpen((prev) => !prev)}
                 className="inline-flex h-8 items-center gap-2 rounded-lg border border-[#e6ecf7] bg-white px-3 text-[11px] text-[#3a4b70]"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
@@ -170,6 +178,26 @@ export function VendorsManagementView({
                 </svg>
                 Export
               </button>
+              {filtersOpen && (
+                <div className="absolute right-5 top-14 z-10 w-40 rounded-lg border border-[#e6ecf7] bg-white p-2 text-[11px] text-[#3a4b70] shadow-sm">
+                  {(["ALL", "PENDING", "APPROVED", "REJECTED"] as const).map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => {
+                        setStatusFilter(status);
+                        setPage(1);
+                        setFiltersOpen(false);
+                      }}
+                      className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left ${
+                        statusFilter === status ? "bg-[#f3f6fd] font-semibold text-[#1f3d8f]" : ""
+                      }`}
+                    >
+                      {status === "ALL" ? "All vendors" : status}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -287,8 +315,8 @@ export function VendorsManagementView({
 
           <footer className="flex items-center justify-between px-5 py-4 text-[11px] text-[#8b96ad]">
             <span>
-              Showing {vendors.length === 0 ? 0 : (page - 1) * pageSize + 1} to{" "}
-              {Math.min(page * pageSize, vendors.length)} of {vendors.length} vendors
+              Showing {filteredVendors.length === 0 ? 0 : (page - 1) * pageSize + 1} to{" "}
+              {Math.min(page * pageSize, filteredVendors.length)} of {filteredVendors.length} vendors
             </span>
             <div className="flex items-center gap-2">
               <button
