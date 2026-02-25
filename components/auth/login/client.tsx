@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FiEye, FiEyeOff, FiLock, FiMail } from "react-icons/fi";
 import { login } from "@/components/auth/auth-client";
 
 export function LoginView() {
   const router = useRouter();
+  const params = useSearchParams();
+  const nextUrl = params.get("next") || "/";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -23,7 +25,7 @@ export function LoginView() {
       setError(result.message ?? "Login failed.");
       return;
     }
-    router.push("/");
+    router.push(nextUrl);
   };
 
   return (
