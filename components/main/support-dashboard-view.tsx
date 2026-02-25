@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
+import supportData from "@/data/support.json";
 
 type TicketStatus = "In Progress" | "Open" | "Resolved";
 type TicketType = "Account" | "Technical";
@@ -28,71 +29,9 @@ type SupportTicket = {
   conversation: ConversationMessage[];
 };
 
-const supportApiResponse: {
+const supportApiResponse = supportData as {
   summaryCards: Array<{ label: string; value: string; note: string; tone: string }>;
   tickets: SupportTicket[];
-} = {
-  summaryCards: [
-    { label: "Open Tickets", value: "124", note: "", tone: "text-[#1f3d8f]" },
-    { label: "In Progress", value: "48", note: "", tone: "text-[#1f3d8f]" },
-    { label: "Resolved", value: "1,204", note: "", tone: "text-[#16a34a]" },
-    { label: "High Priority", value: "12", note: "", tone: "text-[#dc2626]" }
-  ],
-  tickets: [
-    {
-      id: "#TK-8802",
-      userName: "Sarah Jenkins",
-      userRole: "User",
-      avatar: "https://i.pravatar.cc/80?img=32",
-      type: "Account",
-      subject: "Unable to process monthly subscription payment",
-      status: "In Progress",
-      priority: "High",
-      openedAt: "Oct 24, 2023 • 09:45 AM",
-      issueDetails:
-        "Hello, I've been trying to renew my premium subscription for the last 2 hours. Every time I enter my card details, the page spins and eventually shows a generic error. Please help.",
-      conversation: [
-        {
-          sender: "agent",
-          text: "Hello Sarah, thank you for reaching out. We are looking into our payment gateway logs right now. Could you confirm if you are using a VPN?",
-          time: "10:15 AM",
-          name: "You"
-        },
-        {
-          sender: "user",
-          text: "Yes, I am using a corporate VPN. Does that matter?",
-          time: "10:22 AM",
-          name: "Sarah Jenkins"
-        }
-      ]
-    },
-    {
-      id: "#TK-8795",
-      userName: "TechFlow Solutions",
-      userRole: "Vendor",
-      avatar: "https://i.pravatar.cc/80?img=60",
-      type: "Technical",
-      subject: "API Endpoint returning 500 errors during callback",
-      status: "Open",
-      priority: "Medium",
-      openedAt: "Oct 24, 2023 • 11:30 AM",
-      issueDetails: "Callback endpoint is failing with 500 for select requests. Logs attached for investigation.",
-      conversation: []
-    },
-    {
-      id: "#TK-8742",
-      userName: "John Doe",
-      userRole: "User",
-      avatar: "https://i.pravatar.cc/80?img=15",
-      type: "Account",
-      subject: "Request to change registered email address",
-      status: "Resolved",
-      priority: "Low",
-      openedAt: "Oct 22, 2023 • 04:02 PM",
-      issueDetails: "User requested to update primary email address due to typo during onboarding.",
-      conversation: []
-    }
-  ]
 };
 
 function ticketStatusClass(status: TicketStatus) {
@@ -123,7 +62,7 @@ export function SupportDashboardView() {
           <article key={card.label} className="rounded-2xl border border-[#e6ecf7] bg-white p-4">
             <div className="mb-2 flex items-center gap-2">
               <div className={`grid h-8 w-8 place-items-center rounded-full ${summaryIcon(i)}`}>
-                <span className="text-sm">{i === 0 ? "✉" : i === 1 ? "⏱" : i === 2 ? "✓" : "!"}</span>
+                <span className="text-sm">{i === 0 ? "âœ‰" : i === 1 ? "â±" : i === 2 ? "âœ“" : "!"}</span>
               </div>
               <p className="m-0 text-[11px] text-[#7d8ba6]">{card.label}</p>
             </div>
@@ -204,11 +143,11 @@ export function SupportDashboardView() {
         <footer className="flex items-center justify-between px-4 py-3 text-[10px] text-[#8b96ad]">
           <span>Showing 1 to {supportApiResponse.tickets.length} of 124 results</span>
           <div className="flex items-center gap-2">
-            <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] text-[#95a2b8]">‹</button>
+            <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] text-[#95a2b8]">â€¹</button>
             <button type="button" className="grid h-6 w-6 place-items-center rounded-full bg-[#3b1e8a] text-white">1</button>
             <button type="button">2</button>
             <button type="button">3</button>
-            <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] text-[#95a2b8]">›</button>
+            <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] text-[#95a2b8]">â€º</button>
           </div>
         </footer>
       </section>
@@ -262,7 +201,7 @@ export function SupportDashboardView() {
                         {message.text}
                       </p>
                       <p className={`m-0 mt-1 text-[9px] text-[#9aa6c0] ${message.sender === "agent" ? "text-right" : ""}`}>
-                        {message.name} • {message.time}
+                        {message.name} â€¢ {message.time}
                       </p>
                     </div>
                   ))}

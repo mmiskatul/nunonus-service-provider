@@ -20,91 +20,29 @@ import {
   FiUsers
 } from "react-icons/fi";
 import { FaStar } from "react-icons/fa6";
+import dashboardData from "@/data/dashboard.json";
 
 type Range = "weekly" | "monthly";
 
-const stats = [
-  {
-    label: "TOTAL REVENUE",
-    value: "$4,285,120",
-    sub: "vs. $3.8M last month",
-    trend: "+12.5%",
-    icon: FiTag
-  },
-  {
-    label: "ACTIVE USERS",
-    value: "85,420",
-    sub: "Daily active sessions peak",
-    trend: "+5.2%",
-    icon: FiUsers
-  },
-  {
-    label: "ACTIVE VENDORS",
-    value: "85,40",
-    sub: "Daily active sessions peak",
-    trend: "+5.2%",
-    icon: FiShoppingBag
-  },
-  {
-    label: "TOTAL BOOKINGS",
-    value: "12,300",
-    sub: "Across all 52 vendors",
-    trend: "+8.1%",
-    icon: FiCalendar
-  },
-  {
-    label: "Customer Satisfaction",
-    value: "4.82/5",
-    sub: "BASED ON 12K REVIEWS",
-    trend: "0.0%",
-    icon: FiSmile
-  }
-] as const;
+type StatIcon = "tag" | "users" | "shopping_bag" | "calendar" | "smile";
 
-const monthlyData = [
-  { period: "JAN", value: 38 },
-  { period: "FEB", value: 55 },
-  { period: "MAR", value: 42 },
-  { period: "APR", value: 68 },
-  { period: "MAY", value: 60 },
-  { period: "JUN", value: 84 },
-  { period: "JUL", value: 95 },
-  { period: "AUG", value: 78 },
-  { period: "SEP", value: 90 },
-  { period: "OCT", value: 74 },
-  { period: "NOV", value: 82 },
-  { period: "DEC", value: 98 }
-];
+type DashboardData = {
+  stats: Array<{ label: string; value: string; sub: string; trend: string; icon: StatIcon }>;
+  monthlyData: Array<{ period: string; value: number }>;
+  weeklyData: Array<{ period: string; value: number }>;
+  bookingByRange: Record<Range, Array<{ name: string; value: number; color: string }>>;
+  vendors: Array<{ code: string; name: string; category: string; rating: string; revenue: string; status: string }>;
+};
 
-const weeklyData = [
-  { period: "MON", value: 52 },
-  { period: "TUE", value: 71 },
-  { period: "WED", value: 64 },
-  { period: "THU", value: 86 },
-  { period: "FRI", value: 93 },
-  { period: "SAT", value: 88 },
-  { period: "SUN", value: 97 }
-];
+const statsIconMap: Record<StatIcon, typeof FiTag> = {
+  tag: FiTag,
+  users: FiUsers,
+  shopping_bag: FiShoppingBag,
+  calendar: FiCalendar,
+  smile: FiSmile
+};
 
-const bookingByRange = {
-  monthly: [
-    { name: "Hotels & Stays", value: 45, color: "#27409b" },
-    { name: "Flight Bundles", value: 32, color: "#7a88ff" },
-    { name: "Local Tours", value: 23, color: "#dce2ef" }
-  ],
-  weekly: [
-    { name: "Hotels & Stays", value: 43, color: "#27409b" },
-    { name: "Flight Bundles", value: 34, color: "#7a88ff" },
-    { name: "Local Tours", value: 23, color: "#dce2ef" }
-  ]
-} as const;
-
-const vendors = [
-  { code: "AL", name: "Azure Luxury Resorts", category: "Hospitality", rating: "4.9", revenue: "$1,240,500", status: "TOP PERFORMER" },
-  { code: "SA", name: "SkyHigh Airways", category: "Aviation", rating: "4.7", revenue: "$890,200", status: "STEADY" },
-  { code: "GT", name: "Global Travels Co.", category: "Tours", rating: "4.2", revenue: "$450,100", status: "AT RISK" },
-  { code: "UV", name: "Urban Velocity", category: "Car Rentals", rating: "4.5", revenue: "$312,000", status: "STEADY" }
-];
+const { stats, monthlyData, weeklyData, bookingByRange, vendors } = dashboardData as DashboardData;
 
 function vendorStatusClass(status: string) {
   if (status === "TOP PERFORMER") return "bg-[#dcf7ea] text-[#137f56]";
@@ -121,11 +59,13 @@ export function DashboardView() {
   return (
     <section className="space-y-4">
       <section className="grid grid-cols-1 gap-3 lg:grid-cols-5">
-        {stats.map((card) => (
+        {stats.map((card) => {
+          const CardIcon = statsIconMap[card.icon];
+          return (
           <article key={card.label} className="rounded-xl border border-[#dbe2ef] bg-white p-4">
             <div className="flex items-center justify-between">
               <div className="grid h-11 w-11 place-items-center rounded-full bg-[#eef2fb] text-[#27409b]">
-                <card.icon size={23} strokeWidth={2.2} />
+                <CardIcon size={23} strokeWidth={2.2} />
               </div>
               <span className="text-[11px] font-semibold text-[#17a765]">~{card.trend}</span>
             </div>
@@ -133,7 +73,8 @@ export function DashboardView() {
             <h3 className="m-0 mt-1 text-[42px] leading-none text-[#1f2b43]">{card.value}</h3>
             <p className="m-0 mt-2 text-[10px] text-[#97a3bc]">{card.sub}</p>
           </article>
-        ))}
+        );
+        })}
       </section>
 
       <section className="grid grid-cols-1 gap-3 xl:grid-cols-[2.2fr_1fr]">

@@ -1,0 +1,186 @@
+{
+  "summaryCards": [
+    {
+      "label": "TOTAL USERS",
+      "value": "12,845",
+      "trend": "+12%",
+      "tone": "text-[#18b67a] bg-[#dcf7ea]",
+      "icon": "users",
+      "iconWrap": "bg-[#e8eefb] text-[#27409b]"
+    },
+    {
+      "label": "ACTIVE USERS",
+      "value": "11,203",
+      "trend": "+5%",
+      "tone": "text-[#18b67a] bg-[#dcf7ea]",
+      "icon": "user",
+      "iconWrap": "bg-[#dcf7ea] text-[#27409b]"
+    },
+    {
+      "label": "BLOCKED USERS",
+      "value": "452",
+      "trend": "-2%",
+      "tone": "text-[#d94848] bg-[#fde7e7]",
+      "icon": "blocked",
+      "iconWrap": "bg-[#fde7e7] text-[#e11d48]"
+    },
+    {
+      "label": "NEW THIS MONTH",
+      "value": "1,092",
+      "trend": "+18%",
+      "tone": "text-[#f08a1e] bg-[#ffefdc]",
+      "icon": "new",
+      "iconWrap": "bg-[#fff4d8] text-[#f59e0b]"
+    }
+  ],
+  "users": [
+    {
+      "id": "#USR-82910",
+      "name": "Sarah Jenkins",
+      "email": "sarah.j@example.com",
+      "avatar": "https://i.pravatar.cc/120?img=32",
+      "status": "ACTIVE",
+      "totalBookings": 42,
+      "joinedDate": "Feb 10, 2026",
+      "memberSince": "Oct 2025",
+      "age": 29,
+      "stats": { "bookings": 42, "spent": "$4.2K", "rating": "4.9" },
+      "contacts": [
+        { "type": "mail", "label": "Email Address", "value": "sarah.j@example.com" },
+        { "type": "phone", "label": "Phone Number", "value": "+1 (555) 902-3481" },
+        { "type": "pin", "label": "Default Location", "value": "San Francisco, CA" }
+      ],
+      "recentBookings": [
+        {
+          "hotel": "Grand Plaza Resort & Spa",
+          "range": "Feb 10 - Feb 15, 2026",
+          "amount": "$1,240",
+          "status": "PAID",
+          "image": "https://picsum.photos/seed/sarah-1/80/80"
+        },
+        {
+          "hotel": "Skyline View Penthouse",
+          "range": "Jan 22 - Jan 24, 2026",
+          "amount": "$580",
+          "status": "PAID",
+          "image": "https://picsum.photos/seed/sarah-2/80/80"
+        }
+      ],
+      "actions": [
+        { "label": "Block Account", "tone": "danger" },
+        { "label": "Reset Password", "tone": "neutral" }
+      ]
+    },
+    {
+      "id": "#USR-83415",
+      "name": "Michael Ross",
+      "email": "m.ross@corp.com",
+      "avatar": "https://i.pravatar.cc/120?img=59",
+      "status": "ACTIVE",
+      "totalBookings": 18,
+      "joinedDate": "Feb 11, 2026",
+      "memberSince": "Jan 2025",
+      "age": 34,
+      "stats": { "bookings": 18, "spent": "$1.6K", "rating": "4.6" },
+      "contacts": [
+        { "type": "mail", "label": "Email Address", "value": "m.ross@corp.com" },
+        { "type": "phone", "label": "Phone Number", "value": "+1 (555) 441-1022" },
+        { "type": "pin", "label": "Default Location", "value": "Chicago, IL" }
+      ],
+      "recentBookings": [
+        {
+          "hotel": "Oceanfront Suites",
+          "range": "Mar 2 - Mar 5, 2026",
+          "amount": "$740",
+          "status": "PAID",
+          "image": "https://picsum.photos/seed/michael-1/80/80"
+        },
+        {
+          "hotel": "Lakeview Hotel",
+          "range": "Jan 11 - Jan 13, 2026",
+          "amount": "$410",
+          "status": "PAID",
+          "image": "https://picsum.photos/seed/michael-2/80/80"
+        }
+      ],
+      "actions": [
+        { "label": "Block Account", "tone": "danger" },
+        { "label": "Reset Password", "tone": "neutral" }
+      ]
+    },
+    {
+      "id": "#USR-82741",
+      "name": "David Lee",
+      "email": "david.lee@mail.com",
+      "avatar": "https://i.pravatar.cc/120?img=68",
+      "status": "BLOCKED",
+      "totalBookings": 2,
+      "joinedDate": "Feb 12, 2026",
+      "memberSince": "Aug 2024",
+      "age": 26,
+      "stats": { "bookings": 2, "spent": "$220", "rating": "3.9" },
+      "contacts": [
+        { "type": "mail", "label": "Email Address", "value": "david.lee@mail.com" },
+        { "type": "phone", "label": "Phone Number", "value": "+1 (555) 718-2290" },
+        { "type": "pin", "label": "Default Location", "value": "Austin, TX" }
+      ],
+      "recentBookings": [
+        {
+          "hotel": "Metro Stay Inn",
+          "range": "Feb 1 - Feb 2, 2026",
+          "amount": "$120",
+          "status": "PAID",
+          "image": "https://picsum.photos/seed/david-1/80/80"
+        },
+        {
+          "hotel": "Cityline Apartments",
+          "range": "Nov 6 - Nov 7, 2025",
+          "amount": "$100",
+          "status": "PAID",
+          "image": "https://picsum.photos/seed/david-2/80/80"
+        }
+      ],
+      "actions": [
+        { "label": "Unblock Account", "tone": "neutral" },
+        { "label": "Reset Password", "tone": "neutral" }
+      ]
+    },
+    {
+      "id": "#USR-82109",
+      "name": "Emma Wilson",
+      "email": "emma.wilson@live.com",
+      "avatar": "https://i.pravatar.cc/120?img=44",
+      "status": "ACTIVE",
+      "totalBookings": 112,
+      "joinedDate": "Feb 13, 2026",
+      "memberSince": "May 2023",
+      "age": 31,
+      "stats": { "bookings": 112, "spent": "$12.8K", "rating": "4.9" },
+      "contacts": [
+        { "type": "mail", "label": "Email Address", "value": "emma.wilson@live.com" },
+        { "type": "phone", "label": "Phone Number", "value": "+1 (555) 223-8855" },
+        { "type": "pin", "label": "Default Location", "value": "Seattle, WA" }
+      ],
+      "recentBookings": [
+        {
+          "hotel": "Mountain Peak Lodge",
+          "range": "Jan 16 - Jan 21, 2026",
+          "amount": "$2,140",
+          "status": "PAID",
+          "image": "https://picsum.photos/seed/emma-1/80/80"
+        },
+        {
+          "hotel": "Downtown Executive Suites",
+          "range": "Dec 3 - Dec 7, 2025",
+          "amount": "$1,880",
+          "status": "PAID",
+          "image": "https://picsum.photos/seed/emma-2/80/80"
+        }
+      ],
+      "actions": [
+        { "label": "Block Account", "tone": "danger" },
+        { "label": "Reset Password", "tone": "neutral" }
+      ]
+    }
+  ]
+}

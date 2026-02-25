@@ -1,0 +1,70 @@
+{
+  "summaryCards": [
+    { "label": "Total Vendors", "value": "1,284", "note": "+12% from last month", "tone": "text-[#2da772]" },
+    { "label": "Pending Approval", "value": "42", "note": "Requires attention", "tone": "text-[#f59e0b]" },
+    { "label": "Approved Vendors", "value": "1,198", "note": "Active businesses", "tone": "text-[#2da772]" },
+    { "label": "Rejected Vendors", "value": "44", "note": "Audit complete", "tone": "text-[#ef4444]" }
+  ],
+  "vendors": [
+    {
+      "id": "#V-89312",
+      "businessName": "Azure Bay Resort",
+      "owner": "Marcus Sterling",
+      "category": "HOSPITALITY",
+      "bookings": 1240,
+      "rating": 4.8,
+      "status": "PENDING",
+      "avatar": "https://picsum.photos/seed/vendor-azure/80/80",
+      "verification": {
+        "description": "Luxury 5-star oceanfront resort offering premium suites and private beach access.",
+        "address": "482 Coastal Highway, Marina Bay, CA 90210",
+        "reviewScore": 4.8,
+        "reviewCount": 1240,
+        "docs": [
+          { "title": "Business_License.pdf", "state": "Verified" },
+          { "title": "Tax_ID_Proof.jpg", "state": "Rejected" }
+        ]
+      }
+    },
+    {
+      "id": "#V-89313",
+      "businessName": "The Golden Grill",
+      "owner": "Elena Rodriguez",
+      "category": "DINING",
+      "bookings": 856,
+      "rating": 5.0,
+      "status": "APPROVED",
+      "avatar": "https://picsum.photos/seed/vendor-grill/80/80",
+      "verification": {
+        "description": "Fine dining destination known for chef-curated tasting menus and premium service.",
+        "address": "118 Market Street, San Francisco, CA 94105",
+        "reviewScore": 5.0,
+        "reviewCount": 980,
+        "docs": [
+          { "title": "Food_Safety_Certificate.pdf", "state": "Verified" },
+          { "title": "Owner_ID_Proof.jpg", "state": "Verified" }
+        ]
+      }
+    },
+    {
+      "id": "#V-89314",
+      "businessName": "Speedy Rentals",
+      "owner": "John Wickson",
+      "category": "RENTALS",
+      "bookings": 432,
+      "rating": 3.6,
+      "status": "REJECTED",
+      "avatar": "https://picsum.photos/seed/vendor-speedy/80/80",
+      "verification": {
+        "description": "Urban mobility rental service with scooters and compact city vehicles.",
+        "address": "23 Transit Plaza, Oakland, CA 94612",
+        "reviewScore": 3.6,
+        "reviewCount": 315,
+        "docs": [
+          { "title": "Vehicle_Compliance.pdf", "state": "Rejected" },
+          { "title": "Insurance_Record.pdf", "state": "Verified" }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "summaryCards": [
+    { "label": "ACTIVE OFFERS", "value": "124", "note": "+12%", "tone": "text-[#16a34a]" },
+    { "label": "EXPIRED OFFERS", "value": "58", "note": "Stable", "tone": "text-[#8b96ad]" },
+    { "label": "TOTAL REDEMPTIONS", "value": "18,294", "note": "+24%", "tone": "text-[#16a34a]" },
+    { "label": "REVENUE GENERATED", "value": "$45,200", "note": "+8%", "tone": "text-[#16a34a]" }
+  ],
+  "offers": [
+    {
+      "id": "#OFR-2401",
+      "name": "Summer Sale 2024",
+      "discount": "20% OFF",
+      "validity": "Jun 01 - Aug 31",
+      "appliedTo": "All Vendors",
+      "status": "Active",
+      "redemptions": 1450,
+      "kind": "PERCENT"
+    },
+    {
+      "id": "#OFR-2402",
+      "name": "Flash Friday Deal",
+      "discount": "$15.00 Flat",
+      "validity": "May 10 - May 11",
+      "appliedTo": "All Vendors",
+      "status": "Inactive",
+      "redemptions": 890,
+      "kind": "FLAT"
+    },
+    {
+      "id": "#OFR-2403",
+      "name": "New User Welcome",
+      "discount": "BOGO Free",
+      "validity": "Ongoing",
+      "appliedTo": "Platform Wide",
+      "status": "Active",
+      "redemptions": 5122,
+      "kind": "BOGO"
+    }
+  ]
+}

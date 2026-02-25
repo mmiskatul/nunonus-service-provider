@@ -1,3 +1,5 @@
+import billingData from "@/data/billing.json";
+
 type PaymentStatus = "PAID" | "PENDING";
 
 type PaymentRow = {
@@ -9,42 +11,9 @@ type PaymentRow = {
   status: PaymentStatus;
 };
 
-const billingApiResponse: {
+const billingApiResponse = billingData as {
   summaryCards: Array<{ label: string; value: string; note: string; tone: string }>;
   recentPayments: PaymentRow[];
-} = {
-  summaryCards: [
-    { label: "Total Revenue", value: "$1,248,600.00", note: "+12.5%", tone: "text-[#16a34a]" },
-    { label: "Platform Commission", value: "$187,290.00", note: "+8.2%", tone: "text-[#16a34a]" },
-    { label: "Pending Payouts", value: "$45,820.50", note: "Action Needed", tone: "text-[#f59e0b]" },
-    { label: "Active Subscriptions", value: "1,240", note: "optional", tone: "text-[#8b96ad]" }
-  ],
-  recentPayments: [
-    {
-      vendorCode: "SM",
-      vendorName: "Skyline Media",
-      totalEarnings: "$4,250.00",
-      commission: "-$637.50",
-      netPayout: "$3,612.50",
-      status: "PAID"
-    },
-    {
-      vendorCode: "AV",
-      vendorName: "Alpha Ventures",
-      totalEarnings: "$12,800.00",
-      commission: "-$1,920.00",
-      netPayout: "$10,880.00",
-      status: "PENDING"
-    },
-    {
-      vendorCode: "UP",
-      vendorName: "Urban Peak Co.",
-      totalEarnings: "$8,100.00",
-      commission: "-$1,215.00",
-      netPayout: "$6,885.00",
-      status: "PAID"
-    }
-  ]
 };
 
 function payoutStatusClass(status: PaymentStatus) {
