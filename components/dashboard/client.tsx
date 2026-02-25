@@ -30,6 +30,7 @@ export type DashboardData = {
   monthlyData: Array<{ period: string; value: number }>;
   weeklyData: Array<{ period: string; value: number }>;
   bookingByRange: Record<Range, Array<{ name: string; value: number; color: string }>>;
+  bookingTotals: Record<Range, number>;
   vendors: Array<{ code: string; name: string; category: string; rating: string; revenue: string; status: string }>;
 };
 
@@ -47,13 +48,28 @@ function vendorStatusClass(status: string) {
   return "bg-[#e0ebff] text-[#2456a9]";
 }
 
+function formatCompactNumber(value: number) {
+  if (value >= 1_000_000) {
+    return `${(value / 1_000_000).toFixed(1)}m`;
+  }
+  if (value >= 1_000) {
+    return `${(value / 1_000).toFixed(1)}k`;
+  }
+  return `${value}`;
+}
+
+function formatPercent(value: number) {
+  return Number.isInteger(value) ? `${value}` : value.toFixed(1);
+}
+
 export function DashboardView({ data }: { data: DashboardData }) {
   const [range, setRange] = useState<Range>("monthly");
   const [vendorPage, setVendorPage] = useState(1);
   const vendorPageSize = 10;
 
   const revenueData = range === "weekly" ? data.weeklyData : data.monthlyData;
-  const pieData = data.bookingByRange[range];
+  const pieData = data.bookingByRange[range] ?? [];
+  const bookingTotal = data.bookingTotals[range] ?? 0;
   const vendorTotalPages = Math.max(1, Math.ceil(data.vendors.length / vendorPageSize));
   const pagedVendors = data.vendors.slice((vendorPage - 1) * vendorPageSize, vendorPage * vendorPageSize);
 
@@ -105,7 +121,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
               <BarChart data={revenueData} margin={{ top: 12, right: 4, left: 0, bottom: 8 }} barGap={4}>
                 <XAxis dataKey="period" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#9aa6c0", fontWeight: 700 }} />
                 <YAxis hide domain={[0, 100]} />
-                <Tooltip formatter={(v: number) => [`${v}`, "Index"]} />
+                <Tooltip formatter={(value) => [`${value ?? 0}`, "Index"]} />
                 <Bar dataKey="value" fill="#bec5d8" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -126,7 +142,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
             </ResponsiveContainer>
             <div className="pointer-events-none absolute inset-0 grid place-items-center text-center">
               <div>
-                <p className="m-0 text-[44px] font-semibold text-[#1f2b43]">12.3k</p>
+                <p className="m-0 text-[44px] font-semibold text-[#1f2b43]">{formatCompactNumber(bookingTotal)}</p>
                 <p className="m-0 text-[11px] text-[#9aa6c0]">TOTAL</p>
               </div>
             </div>
@@ -138,7 +154,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
                   <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: item.color }} />
                   {item.name}
                 </span>
-                <strong className="text-[#2b3852]">{item.value}%</strong>
+                <strong className="text-[#2b3852]">{formatPercent(item.value)}%</strong>
               </li>
             ))}
           </ul>

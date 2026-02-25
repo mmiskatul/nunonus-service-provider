@@ -1,17 +1,26 @@
-import { headers } from "next/headers";
 import { OffersManagementView } from "@/components/offers/client";
+import { fetchApiData } from "@/lib/server-api";
 
-type DataPayload = any;
+type DataPayload = {
+  summaryCards: Array<{ label: string; value: string; note: string; tone: string }>;
+  offers: Array<{
+    id: string;
+    name: string;
+    discount: string;
+    validity: string;
+    appliedTo: string;
+    status: "Active" | "Inactive";
+    redemptions: number;
+    kind: "PERCENT" | "FLAT" | "BOGO";
+  }>;
+};
 
-async function getBaseUrl() {
-  const headerList = await headers();
-  const host = headerList.get("host");
-  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
-  return `${protocol}://${host}`;
-}
+const fallbackData: DataPayload = {
+  summaryCards: [],
+  offers: []
+};
 
 export async function OffersManagementViewServer() {
-  const res = await fetch(`${await getBaseUrl()}/api/offers`, { cache: "no-store" });
-  const data = (await res.json()) as DataPayload;
+  const data = await fetchApiData<DataPayload>("/api/offers", fallbackData);
   return <OffersManagementView data={data} />;
 }

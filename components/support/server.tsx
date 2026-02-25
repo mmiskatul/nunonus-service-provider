@@ -1,17 +1,29 @@
-import { headers } from "next/headers";
 import { SupportDashboardView } from "@/components/support/client";
+import { fetchApiData } from "@/lib/server-api";
 
-type DataPayload = any;
+type DataPayload = {
+  summaryCards: Array<{ label: string; value: string; note: string; tone: string }>;
+  tickets: Array<{
+    id: string;
+    userName: string;
+    userRole: "User" | "Vendor";
+    avatar: string;
+    type: "Account" | "Technical" | "Billing" | "Compliance";
+    subject: string;
+    status: "In Progress" | "Open" | "Resolved";
+    priority: "High" | "Medium" | "Low";
+    openedAt: string;
+    issueDetails: string;
+    conversation: Array<{ sender: "agent" | "user"; text: string; time: string; name?: string }>;
+  }>;
+};
 
-async function getBaseUrl() {
-  const headerList = await headers();
-  const host = headerList.get("host");
-  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
-  return `${protocol}://${host}`;
-}
+const fallbackData: DataPayload = {
+  summaryCards: [],
+  tickets: []
+};
 
 export async function SupportDashboardViewServer() {
-  const res = await fetch(`${await getBaseUrl()}/api/support`, { cache: "no-store" });
-  const data = (await res.json()) as DataPayload;
+  const data = await fetchApiData<DataPayload>("/api/support", fallbackData);
   return <SupportDashboardView data={data} />;
 }

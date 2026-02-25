@@ -1,28 +1,37 @@
-import { headers } from "next/headers";
 import { DashboardView } from "@/components/dashboard/client";
-import dashboardFallback from "@/data/dashboard.json";
+import { fetchApiData } from "@/lib/server-api";
 
-type DataPayload = any;
+type DataPayload = {
+  stats: Array<{ label: string; value: string; sub: string; trend: string; icon: "tag" | "users" | "shopping_bag" | "calendar" | "smile" }>;
+  monthlyData: Array<{ period: string; value: number }>;
+  weeklyData: Array<{ period: string; value: number }>;
+  bookingByRange: {
+    weekly: Array<{ name: string; value: number; color: string }>;
+    monthly: Array<{ name: string; value: number; color: string }>;
+  };
+  bookingTotals: {
+    weekly: number;
+    monthly: number;
+  };
+  vendors: Array<{ code: string; name: string; category: string; rating: string; revenue: string; status: string }>;
+};
 
-async function getBaseUrl() {
-  const headerList = await headers();
-  const host = headerList.get("host");
-  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
-  return `${protocol}://${host}`;
-}
+const fallbackData: DataPayload = {
+  stats: [],
+  monthlyData: [],
+  weeklyData: [],
+  bookingByRange: {
+    weekly: [],
+    monthly: []
+  },
+  bookingTotals: {
+    weekly: 0,
+    monthly: 0
+  },
+  vendors: []
+};
 
 export async function DashboardViewServer() {
-  try {
-    const res = await fetch(`${await getBaseUrl()}/api/dashboard`, { cache: "no-store" });
-    if (!res.ok) {
-      return <DashboardView data={dashboardFallback as DataPayload} />;
-    }
-    const data = (await res.json()) as DataPayload;
-    if (!data?.stats || !data?.bookingByRange) {
-      return <DashboardView data={dashboardFallback as DataPayload} />;
-    }
-    return <DashboardView data={data} />;
-  } catch {
-    return <DashboardView data={dashboardFallback as DataPayload} />;
-  }
+  const data = await fetchApiData<DataPayload>("/api/dashboard", fallbackData);
+  return <DashboardView data={data} />;
 }

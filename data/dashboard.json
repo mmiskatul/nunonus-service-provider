@@ -36,6 +36,50 @@
       "icon": "smile"
     }
   ],
+  "statMetrics": [
+    {
+      "label": "TOTAL REVENUE",
+      "current": 4285120,
+      "previous": 3800000,
+      "sub": "vs. $3.8M last month",
+      "icon": "tag",
+      "format": "currency"
+    },
+    {
+      "label": "ACTIVE USERS",
+      "current": 85420,
+      "previous": 81190,
+      "sub": "Daily active sessions peak",
+      "icon": "users",
+      "format": "count"
+    },
+    {
+      "label": "ACTIVE VENDORS",
+      "current": 8540,
+      "previous": 8120,
+      "sub": "Daily active sessions peak",
+      "icon": "shopping_bag",
+      "format": "count"
+    },
+    {
+      "label": "TOTAL BOOKINGS",
+      "current": 12300,
+      "previous": 11380,
+      "sub": "Across all 52 vendors",
+      "icon": "calendar",
+      "format": "count"
+    },
+    {
+      "label": "Customer Satisfaction",
+      "current": 4.82,
+      "previous": 4.79,
+      "sub": "BASED ON 12K REVIEWS",
+      "icon": "smile",
+      "format": "score",
+      "decimals": 2,
+      "scoreMax": 5
+    }
+  ],
   "monthlyData": [
     {
       "period": "JAN",
@@ -116,6 +160,42 @@
       "value": 97
     }
   ],
+  "bookingMetricsByRange": {
+    "monthly": [
+      {
+        "name": "Hotels & Stays",
+        "count": 5535,
+        "color": "#27409b"
+      },
+      {
+        "name": "Flight Bundles",
+        "count": 3936,
+        "color": "#7a88ff"
+      },
+      {
+        "name": "Local Tours",
+        "count": 2829,
+        "color": "#dce2ef"
+      }
+    ],
+    "weekly": [
+      {
+        "name": "Hotels & Stays",
+        "count": 1376,
+        "color": "#27409b"
+      },
+      {
+        "name": "Flight Bundles",
+        "count": 1088,
+        "color": "#7a88ff"
+      },
+      {
+        "name": "Local Tours",
+        "count": 736,
+        "color": "#dce2ef"
+      }
+    ]
+  },
   "bookingByRange": {
     "monthly": [
       {

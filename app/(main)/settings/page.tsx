@@ -1,5 +1,5 @@
-import { SectionPlaceholder } from "@/components/main/section-placeholder";
+import { SettingsViewServer } from "@/components/settings/server";
 
 export default function SettingsPage() {
-  return <SectionPlaceholder title="Settings" description="Configure platform preferences, policies, and account controls." />;
+  return <SettingsViewServer />;
 }

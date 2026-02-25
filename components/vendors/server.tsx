@@ -1,17 +1,33 @@
-import { headers } from "next/headers";
 import { VendorsManagementView } from "@/components/vendors/client";
+import { fetchApiData } from "@/lib/server-api";
 
-type DataPayload = any;
+type DataPayload = {
+  summaryCards: Array<{ label: string; value: string; note: string; tone: string }>;
+  vendors: Array<{
+    id: string;
+    businessName: string;
+    owner: string;
+    category: "HOSPITALITY" | "DINING" | "RENTALS";
+    bookings: number;
+    rating: number;
+    status: "PENDING" | "APPROVED" | "REJECTED";
+    avatar: string;
+    verification: {
+      description: string;
+      address: string;
+      reviewScore: number;
+      reviewCount: number;
+      docs: Array<{ title: string; state: "Verified" | "Rejected" }>;
+    };
+  }>;
+};
 
-async function getBaseUrl() {
-  const headerList = await headers();
-  const host = headerList.get("host");
-  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
-  return `${protocol}://${host}`;
-}
+const fallbackData: DataPayload = {
+  summaryCards: [],
+  vendors: []
+};
 
 export async function VendorsManagementViewServer() {
-  const res = await fetch(`${await getBaseUrl()}/api/vendors`, { cache: "no-store" });
-  const data = (await res.json()) as DataPayload;
+  const data = await fetchApiData<DataPayload>("/api/vendors", fallbackData);
   return <VendorsManagementView data={data} />;
 }

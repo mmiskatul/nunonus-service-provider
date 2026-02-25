@@ -1,17 +1,28 @@
-import { headers } from "next/headers";
 import { ContentManagementView } from "@/components/content-moderation/client";
+import { fetchApiData } from "@/lib/server-api";
 
-type DataPayload = any;
+type DataPayload = {
+  totalSubmissions: number;
+  items: Array<{
+    id: string;
+    title: string;
+    age: string;
+    subtitle: string;
+    venue: string;
+    location: string;
+    vendorId: string;
+    queueType: "PHOTO" | "MENU" | "INFO";
+    previewImage: string;
+    state: "pending" | "approved" | "rejected";
+  }>;
+};
 
-async function getBaseUrl() {
-  const headerList = await headers();
-  const host = headerList.get("host");
-  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
-  return `${protocol}://${host}`;
-}
+const fallbackData: DataPayload = {
+  totalSubmissions: 0,
+  items: []
+};
 
 export async function ContentManagementViewServer() {
-  const res = await fetch(`${await getBaseUrl()}/api/content-moderation`, { cache: "no-store" });
-  const data = (await res.json()) as DataPayload;
+  const data = await fetchApiData<DataPayload>("/api/content-moderation", fallbackData);
   return <ContentManagementView data={data} />;
 }
