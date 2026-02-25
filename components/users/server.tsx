@@ -1,17 +1,20 @@
-import { promises as fs } from "fs";
-import path from "path";
 import { UsersClient } from "@/components/users/client";
 import type { SummaryCard, UserProfile } from "@/components/main/users-management-types";
+import { headers } from "next/headers";
 
 type UsersData = {
   summaryCards: SummaryCard[];
   users: UserProfile[];
 };
 
-export async function UsersServer() {
-  const dataPath = path.join(process.cwd(), "data", "users.json");
-  const raw = await fs.readFile(dataPath, "utf-8");
-  const data = JSON.parse(raw) as UsersData;
+function getBaseUrl() {
+  const host = headers().get("host");
+  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
+  return `${protocol}://${host}`;
+}
 
+export async function UsersServer() {
+  const res = await fetch(`${getBaseUrl()}/api/users`, { cache: "no-store" });
+  const data = (await res.json()) as UsersData;
   return <UsersClient initialData={data} />;
 }

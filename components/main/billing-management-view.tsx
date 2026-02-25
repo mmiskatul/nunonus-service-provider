@@ -1,6 +1,4 @@
-import billingData from "@/data/billing.json";
-
-type PaymentStatus = "PAID" | "PENDING";
+﻿type PaymentStatus = "PAID" | "PENDING";
 
 type PaymentRow = {
   vendorCode: string;
@@ -11,25 +9,20 @@ type PaymentRow = {
   status: PaymentStatus;
 };
 
-const billingApiResponse = billingData as {
-  summaryCards: Array<{ label: string; value: string; note: string; tone: string }>;
-  recentPayments: PaymentRow[];
-};
-
 function payoutStatusClass(status: PaymentStatus) {
   if (status === "PAID") return "bg-[#dcfce7] text-[#15803d]";
   return "bg-[#fef3c7] text-[#b45309]";
 }
 
-export function BillingManagementView() {
+export function BillingManagementView({ data }: { data: { summaryCards: Array<{ label: string; value: string; note: string; tone: string }>; recentPayments: PaymentRow[] } }) {
   return (
     <section className="space-y-4 rounded-md border border-[#dbe2ef] bg-[#f7f9fd] p-4">
       <section className="grid grid-cols-1 gap-3 lg:grid-cols-4">
-        {billingApiResponse.summaryCards.map((card, i) => (
+        {data.summaryCards.map((card, i) => (
           <article key={card.label} className="rounded-2xl border border-[#e6ecf7] bg-white p-4">
             <div className="mb-2 flex items-center justify-between">
               <div className="grid h-9 w-9 place-items-center rounded-full bg-[#edf2fb] text-[#1f3d8f]">
-                <span className="text-xs">{i === 0 ? "◧" : i === 1 ? "%" : i === 2 ? "◫" : "◉"}</span>
+                <span className="text-xs">{i === 0 ? "â—§" : i === 1 ? "%" : i === 2 ? "â—«" : "â—‰"}</span>
               </div>
               <span className={`text-[10px] font-semibold ${card.tone}`}>{card.note}</span>
             </div>
@@ -64,7 +57,7 @@ export function BillingManagementView() {
               </tr>
             </thead>
             <tbody>
-              {billingApiResponse.recentPayments.map((payment, index) => (
+              {data.recentPayments.map((payment, index) => (
                 <tr key={payment.vendorName} className={index % 2 === 1 ? "bg-[#fbfcff]" : ""}>
                   <td className="border-b border-[#edf1fa] px-4 py-3">
                     <div className="flex items-center gap-2">
@@ -99,8 +92,8 @@ export function BillingManagementView() {
         <footer className="flex items-center justify-between px-4 py-3 text-[10px] text-[#8b96ad]">
           <span>Showing 3 of 124 results</span>
           <div className="flex items-center gap-2">
-            <button type="button" className="grid h-5 w-5 place-items-center rounded border border-[#e6ecf7] text-[#95a2b8]">‹</button>
-            <button type="button" className="grid h-5 w-5 place-items-center rounded border border-[#e6ecf7] text-[#95a2b8]">›</button>
+            <button type="button" className="grid h-5 w-5 place-items-center rounded border border-[#e6ecf7] text-[#95a2b8]">â€¹</button>
+            <button type="button" className="grid h-5 w-5 place-items-center rounded border border-[#e6ecf7] text-[#95a2b8]">â€º</button>
           </div>
         </footer>
       </section>

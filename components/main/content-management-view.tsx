@@ -1,8 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import moderationData from "@/data/content-moderation.json";
 
 type QueueType = "PHOTO" | "MENU" | "INFO";
 type ApprovalState = "pending" | "approved" | "rejected";
@@ -20,11 +19,6 @@ type ModerationItem = {
   state: ApprovalState;
 };
 
-const moderationApiResponse = moderationData as {
-  totalSubmissions: number;
-  items: ModerationItem[];
-};
-
 function queueClass(type: QueueType) {
   if (type === "MENU") return "bg-[#eef2ff] text-[#1f3d8f]";
   if (type === "INFO") return "bg-[#eff6ff] text-[#0f766e]";
@@ -37,8 +31,8 @@ function statusDot(state: ApprovalState) {
   return "bg-[#f59e0b]";
 }
 
-export function ContentManagementView() {
-  const [items, setItems] = useState<ModerationItem[]>(moderationApiResponse.items);
+export function ContentManagementView({ data }: { data: { totalSubmissions: number; items: ModerationItem[] } }) {
+  const [items, setItems] = useState<ModerationItem[]>(data.items);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
   const selectedItem = useMemo(() => items.find((item) => item.id === selectedItemId) ?? null, [items, selectedItemId]);
@@ -48,7 +42,7 @@ export function ContentManagementView() {
     const approved = items.filter((item) => item.state === "approved").length;
     const rejected = items.filter((item) => item.state === "rejected").length;
     return [
-      { label: "TOTAL SUBMISSIONS", value: moderationApiResponse.totalSubmissions.toLocaleString(), tone: "text-[#1f3d8f]" },
+      { label: "TOTAL SUBMISSIONS", value: data.totalSubmissions.toLocaleString(), tone: "text-[#1f3d8f]" },
       { label: "PENDING REVIEW", value: pending.toLocaleString(), tone: "text-[#1f3d8f]" },
       { label: "APPROVED TODAY", value: approved.toLocaleString(), tone: "text-[#16a34a]" },
       { label: "REJECTED TODAY", value: rejected.toLocaleString(), tone: "text-[#e11d48]" }

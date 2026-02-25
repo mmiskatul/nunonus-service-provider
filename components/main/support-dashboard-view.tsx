@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import supportData from "@/data/support.json";
 
 type TicketStatus = "In Progress" | "Open" | "Resolved";
 type TicketType = "Account" | "Technical";
@@ -29,11 +28,6 @@ type SupportTicket = {
   conversation: ConversationMessage[];
 };
 
-const supportApiResponse = supportData as {
-  summaryCards: Array<{ label: string; value: string; note: string; tone: string }>;
-  tickets: SupportTicket[];
-};
-
 function ticketStatusClass(status: TicketStatus) {
   if (status === "Open") return "bg-[#dbeafe] text-[#1d4ed8]";
   if (status === "Resolved") return "bg-[#dcfce7] text-[#15803d]";
@@ -47,18 +41,18 @@ function summaryIcon(i: number) {
   return "bg-[#ede9fe] text-[#3b1e8a]";
 }
 
-export function SupportDashboardView() {
+export function SupportDashboardView({ data }: { data: { summaryCards: Array<{ label: string; value: string; note: string; tone: string }>; tickets: SupportTicket[] } }) {
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
 
   const selectedTicket = useMemo(
-    () => supportApiResponse.tickets.find((ticket) => ticket.id === selectedTicketId) ?? null,
+    () => data.tickets.find((ticket) => ticket.id === selectedTicketId) ?? null,
     [selectedTicketId]
   );
 
   return (
     <section className="relative space-y-4 rounded-md border border-[#dbe2ef] bg-[#f7f9fd] p-4">
       <section className="grid grid-cols-1 gap-3 lg:grid-cols-4">
-        {supportApiResponse.summaryCards.map((card, i) => (
+        {data.summaryCards.map((card, i) => (
           <article key={card.label} className="rounded-2xl border border-[#e6ecf7] bg-white p-4">
             <div className="mb-2 flex items-center gap-2">
               <div className={`grid h-8 w-8 place-items-center rounded-full ${summaryIcon(i)}`}>
@@ -103,7 +97,7 @@ export function SupportDashboardView() {
               </tr>
             </thead>
             <tbody>
-              {supportApiResponse.tickets.map((ticket, index) => (
+              {data.tickets.map((ticket, index) => (
                 <tr key={ticket.id} className={index % 2 === 1 ? "bg-[#fbfcff]" : ""}>
                   <td className="border-b border-[#edf1fa] px-4 py-3 text-[12px] font-semibold text-[#3b1e8a]">{ticket.id}</td>
                   <td className="border-b border-[#edf1fa] px-4 py-3">
@@ -141,7 +135,7 @@ export function SupportDashboardView() {
         </div>
 
         <footer className="flex items-center justify-between px-4 py-3 text-[10px] text-[#8b96ad]">
-          <span>Showing 1 to {supportApiResponse.tickets.length} of 124 results</span>
+          <span>Showing 1 to {data.tickets.length} of 124 results</span>
           <div className="flex items-center gap-2">
             <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] text-[#95a2b8]">â€¹</button>
             <button type="button" className="grid h-6 w-6 place-items-center rounded-full bg-[#3b1e8a] text-white">1</button>

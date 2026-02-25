@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import {
@@ -20,13 +20,12 @@ import {
   FiUsers
 } from "react-icons/fi";
 import { FaStar } from "react-icons/fa6";
-import dashboardData from "@/data/dashboard.json";
 
 type Range = "weekly" | "monthly";
 
-type StatIcon = "tag" | "users" | "shopping_bag" | "calendar" | "smile";
+export type StatIcon = "tag" | "users" | "shopping_bag" | "calendar" | "smile";
 
-type DashboardData = {
+export type DashboardData = {
   stats: Array<{ label: string; value: string; sub: string; trend: string; icon: StatIcon }>;
   monthlyData: Array<{ period: string; value: number }>;
   weeklyData: Array<{ period: string; value: number }>;
@@ -42,24 +41,22 @@ const statsIconMap: Record<StatIcon, typeof FiTag> = {
   smile: FiSmile
 };
 
-const { stats, monthlyData, weeklyData, bookingByRange, vendors } = dashboardData as DashboardData;
-
 function vendorStatusClass(status: string) {
   if (status === "TOP PERFORMER") return "bg-[#dcf7ea] text-[#137f56]";
   if (status === "AT RISK") return "bg-[#ffeecf] text-[#ae6a09]";
   return "bg-[#e0ebff] text-[#2456a9]";
 }
 
-export function DashboardView() {
+export function DashboardView({ data }: { data: DashboardData }) {
   const [range, setRange] = useState<Range>("monthly");
 
-  const revenueData = range === "weekly" ? weeklyData : monthlyData;
-  const pieData = bookingByRange[range];
+  const revenueData = range === "weekly" ? data.weeklyData : data.monthlyData;
+  const pieData = data.bookingByRange[range];
 
   return (
     <section className="space-y-4">
       <section className="grid grid-cols-1 gap-3 lg:grid-cols-5">
-        {stats.map((card) => {
+        {data.stats.map((card) => {
           const CardIcon = statsIconMap[card.icon];
           return (
           <article key={card.label} className="rounded-xl border border-[#dbe2ef] bg-white p-4">
@@ -161,7 +158,7 @@ export function DashboardView() {
               </tr>
             </thead>
             <tbody>
-              {vendors.map((vendor, i) => (
+              {data.vendors.map((vendor, i) => (
                 <tr key={vendor.name} className={i % 2 === 1 ? "bg-[#fbfcff]" : ""}>
                   <td className="border-b border-[#edf1fa] px-4 py-4">
                     <div className="flex items-center gap-3">

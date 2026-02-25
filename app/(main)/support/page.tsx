@@ -1,5 +1,5 @@
-import { SupportDashboardView } from "@/components/main/support-dashboard-view";
+import { SupportDashboardViewServer } from "@/components/support/server";
 
 export default function SupportPage() {
-  return <SupportDashboardView />;
+  return <SupportDashboardViewServer />;
 }

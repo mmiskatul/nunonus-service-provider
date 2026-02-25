@@ -1,6 +1,4 @@
-import offersData from "@/data/offers.json";
-
-type OfferStatus = "Active" | "Inactive";
+﻿type OfferStatus = "Active" | "Inactive";
 type DiscountKind = "PERCENT" | "FLAT" | "BOGO";
 
 type Offer = {
@@ -14,31 +12,26 @@ type Offer = {
   kind: DiscountKind;
 };
 
-const offersApiResponse = offersData as {
-  summaryCards: Array<{ label: string; value: string; note: string; tone: string }>;
-  offers: Offer[];
-};
-
 function offerStatusClass(status: OfferStatus) {
   if (status === "Active") return "bg-[#dcfce7] text-[#15803d]";
   return "bg-[#e2e8f0] text-[#64748b]";
 }
 
 function offerKindIcon(kind: DiscountKind) {
-  if (kind === "FLAT") return "⚡";
-  if (kind === "BOGO") return "🎁";
-  return "🏷️";
+  if (kind === "FLAT") return "âš¡";
+  if (kind === "BOGO") return "ðŸŽ";
+  return "ðŸ·ï¸";
 }
 
-export function OffersManagementView() {
+export function OffersManagementView({ data }: { data: { summaryCards: Array<{ label: string; value: string; note: string; tone: string }>; offers: Offer[] } }) {
   return (
     <section className="space-y-4 rounded-md border border-[#dbe2ef] bg-[#f7f9fd] p-4">
       <section className="grid grid-cols-1 gap-3 lg:grid-cols-4">
-        {offersApiResponse.summaryCards.map((card) => (
+        {data.summaryCards.map((card) => (
           <article key={card.label} className="rounded-2xl border border-[#e6ecf7] bg-white p-4">
             <div className="mb-2 flex items-center justify-between">
               <div className="grid h-9 w-9 place-items-center rounded-full bg-[#edf2fb] text-[#1f3d8f]">
-                <span className="text-xs">●</span>
+                <span className="text-xs">â—</span>
               </div>
               <span className={`text-[10px] font-semibold ${card.tone}`}>{card.note}</span>
             </div>
@@ -78,7 +71,7 @@ export function OffersManagementView() {
               </tr>
             </thead>
             <tbody>
-              {offersApiResponse.offers.map((offer, index) => (
+              {data.offers.map((offer, index) => (
                 <tr key={offer.id} className={index % 2 === 1 ? "bg-[#fbfcff]" : ""}>
                   <td className="border-b border-[#edf1fa] px-4 py-3">
                     <div className="flex items-center gap-2.5">
@@ -122,13 +115,13 @@ export function OffersManagementView() {
         </div>
 
         <footer className="flex items-center justify-between px-4 py-3 text-[10px] text-[#8b96ad]">
-          <span>Showing 1 to {offersApiResponse.offers.length} of 124 offers</span>
+          <span>Showing 1 to {data.offers.length} of 124 offers</span>
           <div className="flex items-center gap-2">
-            <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] text-[#95a2b8]">‹</button>
+            <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] text-[#95a2b8]">â€¹</button>
             <button type="button" className="grid h-6 w-6 place-items-center rounded-full bg-[#1f3d8f] text-white">1</button>
             <button type="button">2</button>
             <button type="button">3</button>
-            <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] text-[#95a2b8]">›</button>
+            <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] text-[#95a2b8]">â€º</button>
           </div>
         </footer>
       </section>

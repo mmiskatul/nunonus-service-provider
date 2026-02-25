@@ -1,5 +1,5 @@
-import { ContentManagementView } from "@/components/main/content-management-view";
+import { ContentManagementViewServer } from "@/components/content-moderation/server";
 
 export default function ContentModerationPage() {
-  return <ContentManagementView />;
+  return <ContentManagementViewServer />;
 }

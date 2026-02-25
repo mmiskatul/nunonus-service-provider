@@ -1,8 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import vendorsData from "@/data/vendors.json";
 
 type VendorStatus = "PENDING" | "APPROVED" | "REJECTED";
 type VendorCategory = "HOSPITALITY" | "DINING" | "RENTALS";
@@ -30,11 +29,6 @@ type Vendor = {
   };
 };
 
-const vendorsApiResponse = vendorsData as {
-  summaryCards: Array<{ label: string; value: string; note: string; tone: string }>;
-  vendors: Vendor[];
-};
-
 function vendorStatusClass(status: VendorStatus) {
   if (status === "APPROVED") return "bg-[#dcfce7] text-[#15803d]";
   if (status === "REJECTED") return "bg-[#fee2e2] text-[#b91c1c]";
@@ -48,11 +42,11 @@ function summaryIconColor(i: number) {
   return "bg-[#edf2fb] text-[#1f3d8f]";
 }
 
-export function VendorsManagementView() {
+export function VendorsManagementView({ data }: { data: { summaryCards: Array<{ label: string; value: string; note: string; tone: string }>; vendors: Vendor[] } }) {
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
 
   const selectedVendor = useMemo(
-    () => vendorsApiResponse.vendors.find((vendor) => vendor.id === selectedVendorId) ?? null,
+    () => data.vendors.find((vendor) => vendor.id === selectedVendorId) ?? null,
     [selectedVendorId]
   );
 
@@ -60,12 +54,12 @@ export function VendorsManagementView() {
     <section className="relative rounded-md border border-[#dbe2ef] bg-white">
       <div className="space-y-4 bg-[#f7f9fd] p-4">
         <section className="grid grid-cols-1 gap-3 lg:grid-cols-4">
-          {vendorsApiResponse.summaryCards.map((card, i) => (
+          {data.summaryCards.map((card, i) => (
             <article key={card.label} className="rounded-md border border-[#e6ecf7] bg-white p-3">
               <div className="mb-2 flex items-center justify-between">
                 <p className="m-0 text-[10px] text-[#7d8ba6]">{card.label}</p>
                 <div className={`grid h-6 w-6 place-items-center rounded ${summaryIconColor(i)}`}>
-                  <span className="text-[10px]">•</span>
+                  <span className="text-[10px]">â€¢</span>
                 </div>
               </div>
               <h3 className="m-0 text-[30px] leading-none text-[#1d2a43]">{card.value}</h3>
@@ -99,7 +93,7 @@ export function VendorsManagementView() {
                 </tr>
               </thead>
               <tbody>
-                {vendorsApiResponse.vendors.map((vendor, index) => (
+                {data.vendors.map((vendor, index) => (
                   <tr key={vendor.id} className={index % 2 === 1 ? "bg-[#fbfcff]" : ""}>
                     <td className="border-b border-[#edf1fa] px-4 py-3 text-[11px] font-semibold text-[#2d3f62]">{vendor.id}</td>
                     <td className="border-b border-[#edf1fa] px-4 py-3">
@@ -113,7 +107,7 @@ export function VendorsManagementView() {
                       <span className="rounded bg-[#f1f5f9] px-2 py-1 text-[9px] text-[#64748b]">{vendor.category}</span>
                     </td>
                     <td className="border-b border-[#edf1fa] px-4 py-3 text-[#2f3f60]">{vendor.bookings.toLocaleString()}</td>
-                    <td className="border-b border-[#edf1fa] px-4 py-3 text-[#f59e0b]">{"★".repeat(5)} <span className="text-[#7d8ba6]">{vendor.rating.toFixed(1)}</span></td>
+                    <td className="border-b border-[#edf1fa] px-4 py-3 text-[#f59e0b]">{"â˜…".repeat(5)} <span className="text-[#7d8ba6]">{vendor.rating.toFixed(1)}</span></td>
                     <td className="border-b border-[#edf1fa] px-4 py-3">
                       <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold ${vendorStatusClass(vendor.status)}`}>
                         {vendor.status}
@@ -148,7 +142,7 @@ export function VendorsManagementView() {
           </div>
 
           <footer className="flex items-center justify-between px-4 py-3 text-[10px] text-[#8b96ad]">
-            <span>Showing 1-10 of {vendorsApiResponse.summaryCards[0].value} vendors</span>
+            <span>Showing 1-10 of {data.summaryCards[0].value} vendors</span>
             <div className="flex items-center gap-2">
               <button type="button" className="rounded border border-[#e6ecf7] px-2 py-0.5">Previous</button>
               <button type="button" className="h-5 w-5 rounded bg-[#1f3d8f] text-white">1</button>
@@ -201,7 +195,7 @@ export function VendorsManagementView() {
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     {selectedVendor.verification.docs.map((doc) => (
                       <div key={doc.title} className="rounded border border-[#dfe6f3] bg-white p-2">
-                        <div className="grid h-9 place-items-center rounded bg-[#f2f5fb] text-[#9aabca]">□</div>
+                        <div className="grid h-9 place-items-center rounded bg-[#f2f5fb] text-[#9aabca]">â–¡</div>
                         <p className="m-0 mt-2 truncate text-[8px] font-semibold text-[#3f4f70]">{doc.title}</p>
                         <p className={`m-0 text-[8px] ${doc.state === "Verified" ? "text-[#16a34a]" : "text-[#ef4444]"}`}>{doc.state}</p>
                       </div>

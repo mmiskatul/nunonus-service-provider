@@ -1,5 +1,5 @@
-import { VendorsManagementView } from "@/components/main/vendors-management-view";
+import { VendorsManagementViewServer } from "@/components/vendors/server";
 
 export default function VendorsPage() {
-  return <VendorsManagementView />;
+  return <VendorsManagementViewServer />;
 }

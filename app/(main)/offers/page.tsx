@@ -1,5 +1,5 @@
-import { OffersManagementView } from "@/components/main/offers-management-view";
+import { OffersManagementViewServer } from "@/components/offers/server";
 
 export default function OffersPage() {
-  return <OffersManagementView />;
+  return <OffersManagementViewServer />;
 }
