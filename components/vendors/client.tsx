@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import { IoAlertCircle, IoPeople, IoShieldCheckmark, IoTimeOutline } from "react-icons/io5";
+import { FaUsers } from "react-icons/fa";
 
 type VendorStatus = "PENDING" | "APPROVED" | "REJECTED";
 type VendorCategory = "HOSPITALITY" | "DINING" | "RENTALS";
@@ -37,7 +38,7 @@ function vendorStatusClass(status: VendorStatus) {
 }
 
 const summaryIconByLabel: Record<string, { Icon: typeof IoPeople; tone: string }> = {
-  "Total Vendors": { Icon: IoPeople, tone: "bg-[#edf2fb] text-[#1f3d8f]" },
+  "Total Vendors": { Icon: FaUsers, tone: "bg-[#edf2fb] text-[#1f3d8f]" },
   "Pending Approval": { Icon: IoTimeOutline, tone: "bg-[#fff7e5] text-[#f59e0b]" },
   "Approved Vendors": { Icon: IoShieldCheckmark, tone: "bg-[#e8f8ef] text-[#2da772]" },
   "Rejected Vendors": { Icon: IoAlertCircle, tone: "bg-[#feeeee] text-[#ef4444]" }
@@ -48,18 +49,49 @@ export function VendorsManagementView({
 }: {
   data: { summaryCards: Array<{ label: string; value: string; note: string; tone: string }>; vendors: Vendor[] };
 }) {
+  const [vendors, setVendors] = useState<Vendor[]>(data.vendors);
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
 
   const selectedVendor = useMemo(
-    () => data.vendors.find((vendor) => vendor.id === selectedVendorId) ?? null,
-    [selectedVendorId, data.vendors]
+    () => vendors.find((vendor) => vendor.id === selectedVendorId) ?? null,
+    [selectedVendorId, vendors]
   );
+
+  const summaryCards = useMemo(() => {
+    const total = vendors.length;
+    const pending = vendors.filter((vendor) => vendor.status === "PENDING").length;
+    const approved = vendors.filter((vendor) => vendor.status === "APPROVED").length;
+    const rejected = vendors.filter((vendor) => vendor.status === "REJECTED").length;
+    return data.summaryCards.map((card) => {
+      if (card.label === "Total Vendors") return { ...card, value: total.toLocaleString() };
+      if (card.label === "Pending Approval") return { ...card, value: pending.toLocaleString() };
+      if (card.label === "Approved Vendors") return { ...card, value: approved.toLocaleString() };
+      if (card.label === "Rejected Vendors") return { ...card, value: rejected.toLocaleString() };
+      return card;
+    });
+  }, [data.summaryCards, vendors]);
+
+  async function updateVendorStatus(id: string, action: "approve" | "reject") {
+    try {
+      const res = await fetch(`/api/vendors/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action })
+      });
+      if (!res.ok) return;
+      const payload = (await res.json()) as { vendor?: Vendor };
+      if (!payload.vendor) return;
+      setVendors((prev) => prev.map((vendor) => (vendor.id === payload.vendor?.id ? payload.vendor : vendor)));
+    } catch {
+      // no-op for mock API
+    }
+  }
 
   return (
     <section className="relative space-y-6">
       <div className="space-y-6">
         <section className="grid grid-cols-1 gap-5 lg:grid-cols-4">
-          {data.summaryCards.map((card) => {
+          {summaryCards.map((card) => {
             const { Icon, tone } = summaryIconByLabel[card.label] ?? summaryIconByLabel["Total Vendors"];
             return (
               <article
@@ -129,7 +161,7 @@ export function VendorsManagementView({
                 </tr>
               </thead>
               <tbody>
-                {data.vendors.map((vendor, index) => (
+                {vendors.map((vendor, index) => (
                   <tr key={vendor.id} className={index % 2 === 1 ? "bg-[#fbfcff]" : ""}>
                     <td className="border-b border-[#edf1fa] px-4 py-4 text-[11px] font-semibold text-[#2d3f62]">{vendor.id}</td>
                     <td className="border-b border-[#edf1fa] px-4 py-4">
@@ -172,13 +204,21 @@ export function VendorsManagementView({
                             <circle cx="12" cy="12" r="3.5" stroke="currentColor" strokeWidth="1.8" />
                           </svg>
                         </button>
-                        <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#d7f2e3] text-[#16a34a]">
+                        <button
+                          type="button"
+                          onClick={() => updateVendorStatus(vendor.id, "approve")}
+                          className="grid h-6 w-6 place-items-center rounded-full border border-[#d7f2e3] text-[#16a34a]"
+                        >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                             <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
                             <path d="m8 12 2.5 2.5L16 9" stroke="currentColor" strokeWidth="1.8" />
                           </svg>
                         </button>
-                        <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#fde2e2] text-[#ef4444]">
+                        <button
+                          type="button"
+                          onClick={() => updateVendorStatus(vendor.id, "reject")}
+                          className="grid h-6 w-6 place-items-center rounded-full border border-[#fde2e2] text-[#ef4444]"
+                        >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                             <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
                             <path d="M8 16L16 8" stroke="currentColor" strokeWidth="1.8" />
@@ -193,7 +233,7 @@ export function VendorsManagementView({
           </div>
 
           <footer className="flex items-center justify-between px-5 py-4 text-[11px] text-[#8b96ad]">
-            <span>Showing 1-10 of {data.summaryCards[0].value} vendors</span>
+            <span>Showing 1-10 of {summaryCards[0]?.value ?? "0"} vendors</span>
             <div className="flex items-center gap-2">
               <button type="button" className="rounded border border-[#e6ecf7] px-2 py-0.5 text-[10px] text-[#94a3b8]">Previous</button>
               <button type="button" className="h-6 w-6 rounded bg-[#1f3d8f] text-[11px] text-white">1</button>
@@ -206,49 +246,91 @@ export function VendorsManagementView({
       </div>
 
       <div
-        className={`fixed inset-0 z-20 ${selectedVendor ? "pointer-events-auto" : "pointer-events-none"}`}
+        className={`fixed inset-0 z-20 bg-black/40 transition-opacity ${
+          selectedVendor ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+        }`}
         onClick={() => setSelectedVendorId(null)}
         aria-hidden
       />
 
       <aside
-        className={`fixed right-0 top-0 z-30 h-full w-full max-w-[320px] border-l border-[#e6ecf7] bg-white shadow-sm transition-transform duration-300 ${
+        className={`fixed right-0 top-0 z-30 h-full w-full max-w-[320px] border-l border-[#e6ecf7] bg-white shadow-[0_16px_40px_rgba(15,23,42,0.16)] transition-transform duration-300 ${
           selectedVendor ? "translate-x-0" : "translate-x-full"
         }`}
       >
         {selectedVendor && (
           <div className="flex h-full flex-col overflow-hidden">
-            <header className="flex items-center justify-between bg-[#1f3d8f] px-4 py-3 text-white">
-              <h4 className="m-0 text-[12px] font-semibold">Verification Detail</h4>
+            <header className="flex items-center justify-between bg-[#1f3d8f] px-5 py-4 text-white">
+              <h4 className="m-0 text-[13px] font-semibold">Verification Detail</h4>
               <button type="button" onClick={() => setSelectedVendorId(null)} className="text-white">
                 x
               </button>
             </header>
 
-            <div className="flex-1 overflow-y-auto px-5 py-5">
+            <div className="flex-1 overflow-y-auto px-6 py-6">
               <div className="flex flex-col items-center">
-                <Image src={selectedVendor.avatar} alt={selectedVendor.businessName} width={64} height={48} className="h-12 w-16 rounded object-cover" />
+                <Image
+                  src={selectedVendor.avatar}
+                  alt={selectedVendor.businessName}
+                  width={64}
+                  height={64}
+                  className="h-14 w-14 rounded-lg object-cover"
+                />
                 <h3 className="m-0 mt-3 text-[16px] font-semibold text-[#1d2a43]">{selectedVendor.businessName}</h3>
-                <span className="mt-1 rounded-full bg-[#fff3d7] px-2 py-0.5 text-[9px] font-semibold text-[#b45309]">PENDING VERIFICATION</span>
+                <span className="mt-1 rounded-full bg-[#fff3d7] px-3 py-1 text-[9px] font-semibold text-[#b45309]">
+                  {selectedVendor.status === "APPROVED" ? "APPROVED" : selectedVendor.status === "REJECTED" ? "REJECTED" : "PENDING VERIFICATION"}
+                </span>
               </div>
 
-              <div className="mt-5 space-y-4">
+              <div className="mt-6 space-y-5">
                 <section>
-                  <h5 className="m-0 text-[9px] tracking-[0.08em] text-[#8b96ad] uppercase">Description</h5>
-                  <p className="m-0 mt-1 text-[10px] leading-[1.45] text-[#60718f]">{selectedVendor.verification.description}</p>
+                  <div className="flex items-start gap-2">
+                    <div className="grid h-6 w-6 place-items-center rounded-full bg-[#eef2ff] text-[#1f3d8f]">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+                        <path d="M12 8v5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                        <circle cx="12" cy="16.5" r="1" fill="currentColor" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h5 className="m-0 text-[9px] tracking-[0.08em] text-[#8b96ad] uppercase">Description</h5>
+                      <p className="m-0 mt-1 text-[10px] leading-[1.45] text-[#60718f]">
+                        {selectedVendor.verification.description}
+                      </p>
+                    </div>
+                  </div>
                 </section>
 
                 <section>
-                  <h5 className="m-0 text-[9px] tracking-[0.08em] text-[#8b96ad] uppercase">Address</h5>
-                  <p className="m-0 mt-1 text-[10px] leading-[1.45] text-[#60718f]">{selectedVendor.verification.address}</p>
+                  <div className="flex items-start gap-2">
+                    <div className="grid h-6 w-6 place-items-center rounded-full bg-[#eef2ff] text-[#1f3d8f]">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M12 3.5c-3.2 0-5.5 2.4-5.5 5.6 0 4.2 5.5 10 5.5 10s5.5-5.8 5.5-10c0-3.2-2.3-5.6-5.5-5.6Z"
+                          stroke="currentColor"
+                          strokeWidth="1.6"
+                        />
+                        <circle cx="12" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.6" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h5 className="m-0 text-[9px] tracking-[0.08em] text-[#8b96ad] uppercase">Address</h5>
+                      <p className="m-0 mt-1 text-[10px] leading-[1.45] text-[#60718f]">{selectedVendor.verification.address}</p>
+                    </div>
+                  </div>
                 </section>
 
                 <section>
                   <h5 className="m-0 text-[9px] tracking-[0.08em] text-[#8b96ad] uppercase">Verification Documents</h5>
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     {selectedVendor.verification.docs.map((doc) => (
-                      <div key={doc.title} className="rounded-lg border border-[#e6ecf7] bg-white p-2">
-                        <div className="grid h-9 place-items-center rounded bg-[#f2f5fb] text-[#9aabca]">?</div>
+                      <div key={doc.title} className="rounded-lg border border-[#e6ecf7] bg-white p-3">
+                        <div className="grid h-10 place-items-center rounded bg-[#f2f5fb] text-[#9aabca]">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <path d="M7 4h7l4 4v12H7V4Z" stroke="currentColor" strokeWidth="1.6" />
+                            <path d="M14 4v4h4" stroke="currentColor" strokeWidth="1.6" />
+                          </svg>
+                        </div>
                         <p className="m-0 mt-2 truncate text-[9px] font-semibold text-[#3f4f70]">{doc.title}</p>
                         <p className={`m-0 text-[9px] ${doc.state === "Verified" ? "text-[#16a34a]" : "text-[#ef4444]"}`}>{doc.state}</p>
                       </div>
@@ -258,16 +340,24 @@ export function VendorsManagementView({
 
                 <section>
                   <h5 className="m-0 text-[9px] tracking-[0.08em] text-[#8b96ad] uppercase">Reviews Summary</h5>
-                  <div className="mt-1 flex items-end gap-2">
-                    <span className="text-[34px] leading-none text-[#1d2a43]">{selectedVendor.verification.reviewScore.toFixed(1)}</span>
-                    <span className="mb-1 text-[9px] text-[#8b96ad]">Based on {selectedVendor.verification.reviewCount.toLocaleString()} verified reviews</span>
+                  <div className="mt-2 flex items-end gap-3">
+                    <span className="text-[30px] leading-none text-[#1d2a43]">{selectedVendor.verification.reviewScore.toFixed(1)}</span>
+                    <span className="text-[11px] text-[#f59e0b]">{"★".repeat(5)}</span>
                   </div>
+                  <span className="mt-1 block text-[9px] text-[#8b96ad]">
+                    Based on {selectedVendor.verification.reviewCount.toLocaleString()} verified reviews
+                  </span>
                 </section>
               </div>
             </div>
 
-            <div className="mt-auto border-t border-[#e6ecf7] px-5 py-4">
-              <button type="button" className="h-10 w-full rounded-full bg-[#1f3d8f] text-[12px] font-semibold text-white">
+            <div className="mt-auto border-t border-[#e6ecf7] px-6 py-5">
+              <button
+                type="button"
+                onClick={() => updateVendorStatus(selectedVendor.id, "approve")}
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#1f3d8f] text-[12px] font-semibold text-white shadow-[0_10px_20px_rgba(31,61,143,0.25)]"
+              >
+                <IoShieldCheckmark size={16} />
                 Approve Vendor
               </button>
             </div>
