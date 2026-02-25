@@ -335,35 +335,23 @@ export function UsersManagementView() {
   }, [page, totalPages]);
 
   const paginationItems = useMemo(() => {
-    if (totalPages <= 7) {
+    if (totalPages <= 4) {
       return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
 
     const items: Array<number | "ellipsis"> = [1];
-    let start = Math.max(2, page - 1);
-    let end = Math.min(totalPages - 1, page + 1);
 
     if (page <= 3) {
-      start = 2;
-      end = 4;
-    } else if (page >= totalPages - 2) {
-      start = totalPages - 3;
-      end = totalPages - 1;
+      items.push(2, 3, "ellipsis", totalPages);
+      return items;
     }
 
-    if (start > 2) {
-      items.push("ellipsis");
+    if (page >= totalPages - 2) {
+      items.push("ellipsis", totalPages - 2, totalPages - 1, totalPages);
+      return items;
     }
 
-    for (let i = start; i <= end; i += 1) {
-      items.push(i);
-    }
-
-    if (end < totalPages - 1) {
-      items.push("ellipsis");
-    }
-
-    items.push(totalPages);
+    items.push("ellipsis", page - 1, page, page + 1, "ellipsis", totalPages);
     return items;
   }, [page, totalPages]);
 
