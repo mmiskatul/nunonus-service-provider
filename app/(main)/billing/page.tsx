@@ -1,5 +1,5 @@
-import { SectionPlaceholder } from "@/components/main/section-placeholder";
+import { BillingManagementView } from "@/components/main/billing-management-view";
 
 export default function BillingPage() {
-  return <SectionPlaceholder title="Billing" description="Track invoices, transactions, refunds, and settlement status." />;
+  return <BillingManagementView />;
 }

@@ -1,5 +1,5 @@
-import { SectionPlaceholder } from "@/components/main/section-placeholder";
+import { UsersManagementView } from "@/components/main/users-management-view";
 
 export default function UsersPage() {
-  return <SectionPlaceholder title="Users" description="Manage user profiles, permissions, activity, and engagement." />;
+  return <UsersManagementView />;
 }

@@ -1,5 +1,5 @@
-import { SectionPlaceholder } from "@/components/main/section-placeholder";
+import { VendorsManagementView } from "@/components/main/vendors-management-view";
 
 export default function VendorsPage() {
-  return <SectionPlaceholder title="Vendors" description="Monitor vendor onboarding, performance, and payout readiness." />;
+  return <VendorsManagementView />;
 }

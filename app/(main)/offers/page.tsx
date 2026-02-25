@@ -1,5 +1,5 @@
-import { SectionPlaceholder } from "@/components/main/section-placeholder";
+import { OffersManagementView } from "@/components/main/offers-management-view";
 
 export default function OffersPage() {
-  return <SectionPlaceholder title="Offers" description="Create and manage promotions, bundles, and seasonal campaigns." />;
+  return <OffersManagementView />;
 }

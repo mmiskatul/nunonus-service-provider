@@ -200,6 +200,26 @@ a {
   background: #e6ebff;
 }
 
+.chart-stage {
+  width: 100%;
+  height: 240px;
+}
+
+.pie-stage {
+  position: relative;
+  width: 100%;
+  height: 240px;
+}
+
+.pie-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  pointer-events: none;
+}
+
 .bars {
   display: grid;
   grid-template-columns: repeat(12, minmax(18px, 1fr));
