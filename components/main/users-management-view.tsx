@@ -593,13 +593,13 @@ export function UsersManagementView() {
       </div>
 
       <div
-        className={`absolute inset-0 z-20 ${selectedUser ? "pointer-events-auto" : "pointer-events-none"}`}
+        className={`fixed inset-0 z-20 ${selectedUser ? "pointer-events-auto" : "pointer-events-none"}`}
         onClick={() => setSelectedUserId(null)}
         aria-hidden
       />
 
       <aside
-        className={`absolute right-0 top-0 z-30 h-full w-full max-w-[320px] border-l border-[#e6ecf7] bg-white shadow-sm transition-transform duration-300 ${
+        className={`fixed right-0 top-0 z-30 h-full w-full max-w-[320px] border-l border-[#e6ecf7] bg-white shadow-sm transition-transform duration-300 ${
           selectedUser ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -616,7 +616,7 @@ export function UsersManagementView() {
               </button>
             </div>
 
-            <div className="px-6 py-6">
+            <div className="flex-1 overflow-y-auto px-6 py-6">
               <div className="mx-auto mb-6 flex w-fit flex-col items-center">
                 <div className="relative">
                   <Image
