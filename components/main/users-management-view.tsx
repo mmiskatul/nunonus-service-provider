@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import {
   FiDownload,
@@ -302,6 +302,8 @@ export function UsersManagementView() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | UserStatus>("ALL");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   const filteredUsers = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -315,6 +317,16 @@ export function UsersManagementView() {
       return matchesQuery && matchesStatus;
     });
   }, [query, statusFilter]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const pagedUsers = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredUsers.slice(start, start + pageSize);
+  }, [filteredUsers, page]);
 
   const selectedUser = useMemo(
     () => usersApiResponse.users.find((user) => user.id === selectedUserId) ?? null,
@@ -465,7 +477,7 @@ export function UsersManagementView() {
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((user, index) => (
+                {pagedUsers.map((user, index) => (
                   <tr key={user.id} className={index % 2 === 1 ? "bg-[#fbfcff]" : ""}>
                     <td className="border-b border-[#edf1fa] px-4 py-4 text-[12px] text-[#9aa6c0] ">{user.id}</td>
                     <td className="border-b border-[#edf1fa] px-4 py-4">
@@ -506,21 +518,38 @@ export function UsersManagementView() {
               </tbody>
             </table>
           </div>
-
           <footer className="flex items-center justify-between px-4 py-4 text-[11px] text-[#7f8ea9]">
             <span>
-              Showing 1 to {filteredUsers.length} of {usersApiResponse.users.length} entries
+              Showing {filteredUsers.length === 0 ? 0 : (page - 1) * pageSize + 1} to{" "}
+              {Math.min(page * pageSize, filteredUsers.length)} of {filteredUsers.length} entries
             </span>
-            <div className="flex items-center gap-3">
-              <button type="button" className="text-[#b0bacd]">‹</button>
-              <button type="button" className="grid h-7 w-7 place-items-center rounded bg-[#1f3d8f] text-white">
-                1
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                className={`text-[#3a4b70] ${page === 1 ? "pointer-events-none opacity-40" : ""}`}
+              >
+                ‹
               </button>
-              <button type="button">2</button>
-              <button type="button">3</button>
-              <span>...</span>
-              <button type="button">1285</button>
-              <button type="button">›</button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNumber) => (
+                <button
+                  key={pageNumber}
+                  type="button"
+                  onClick={() => setPage(pageNumber)}
+                  className={`grid h-7 w-7 place-items-center rounded text-[11px] ${
+                    pageNumber === page ? "bg-[#1f3d8f] text-white" : "text-[#3a4b70]"
+                  }`}
+                >
+                  {pageNumber}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                className={`text-[#3a4b70] ${page === totalPages ? "pointer-events-none opacity-40" : ""}`}
+              >
+                ›
+              </button>
             </div>
           </footer>
         </section>
@@ -662,3 +691,4 @@ export function UsersManagementView() {
     </section>
   );
 }
+
