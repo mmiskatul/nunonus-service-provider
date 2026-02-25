@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 import { IoAlertCircle, IoPeople, IoShieldCheckmark, IoTimeOutline } from "react-icons/io5";
 import { FaUsers } from "react-icons/fa";
+import { BsPatchCheckFill } from "react-icons/bs";
 
 type VendorStatus = "PENDING" | "APPROVED" | "REJECTED";
 type VendorCategory = "HOSPITALITY" | "DINING" | "RENTALS";
@@ -277,7 +278,7 @@ export function VendorsManagementView({
       >
         {selectedVendor && (
           <div className="flex h-full flex-col overflow-hidden">
-            <header className="flex items-center justify-between bg-[#1f3d8f] px-5 py-4 text-white">
+            <header className="flex items-center justify-between bg-[#1f3d8f] -pl-1 px-5 py-4 text-white">
               <h4 className="m-0 text-[13px] font-semibold">Verification Detail</h4>
               <button type="button" onClick={() => setSelectedVendorId(null)} className="text-white">
                 x
@@ -375,7 +376,7 @@ export function VendorsManagementView({
                   onClick={() => updateVendorStatus(selectedVendor.id, "approve")}
                   className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#1f3d8f] text-[12px] font-semibold text-white shadow-[0_10px_20px_rgba(31,61,143,0.25)]"
                 >
-                  <IoShieldCheckmark size={16} />
+                  <BsPatchCheckFill size={18}/>
                   Approve Vendor
                 </button>
                 <button

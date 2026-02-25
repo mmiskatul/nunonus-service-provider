@@ -98,7 +98,7 @@
       "name": "Michael Ross",
       "email": "m.ross@corp.com",
       "avatar": "https://i.pravatar.cc/120?img=59",
-      "status": "ACTIVE",
+      "status": "BLOCKED",
       "totalBookings": 18,
       "joinedDate": "Feb 11, 2026",
       "memberSince": "Jan 2025",
@@ -143,8 +143,8 @@
       ],
       "actions": [
         {
-          "label": "Block Account",
-          "tone": "danger"
+          "label": "Unblock Account",
+          "tone": "neutral"
         },
         {
           "label": "Reset Password",
@@ -157,7 +157,7 @@
       "name": "David Lee",
       "email": "david.lee@mail.com",
       "avatar": "https://i.pravatar.cc/120?img=68",
-      "status": "BLOCKED",
+      "status": "ACTIVE",
       "totalBookings": 2,
       "joinedDate": "Feb 12, 2026",
       "memberSince": "Aug 2024",
@@ -202,8 +202,8 @@
       ],
       "actions": [
         {
-          "label": "Unblock Account",
-          "tone": "neutral"
+          "label": "Block Account",
+          "tone": "danger"
         },
         {
           "label": "Reset Password",
