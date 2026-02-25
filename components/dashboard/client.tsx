@@ -97,7 +97,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
           </div>
 
           <div className="h-[330px] w-full">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={300}>
+            <ResponsiveContainer width="100%" height={300} minWidth={0} minHeight={300}>
               <BarChart data={revenueData} margin={{ top: 12, right: 4, left: 0, bottom: 8 }} barGap={4}>
                 <XAxis dataKey="period" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#9aa6c0", fontWeight: 700 }} />
                 <YAxis hide domain={[0, 100]} />
@@ -111,7 +111,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
         <article className="rounded-xl border border-[#dbe2ef] bg-white p-4">
           <h3 className="m-0 mb-2 text-[32px] font-semibold text-[#1f2b43]">Booking Insights</h3>
           <div className="relative h-[240px] w-full">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={240}>
+            <ResponsiveContainer width="100%" height={240} minWidth={0} minHeight={240}>
               <PieChart>
                 <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={56} outerRadius={86} paddingAngle={0}>
                   {pieData.map((item) => (
