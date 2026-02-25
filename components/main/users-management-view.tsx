@@ -13,6 +13,7 @@ import {
   FiUsers
 } from "react-icons/fi";
 import usersData from "@/data/users.json";
+import { fetchUsers, updateUserAction as updateUserActionClient } from "@/lib/users-client";
 
 type UserStatus = "ACTIVE" | "BLOCKED";
 type ContactType = "mail" | "phone" | "pin";
@@ -26,7 +27,7 @@ type BookingItem = {
   image: string;
 };
 
-type UserProfile = {
+export type UserProfile = {
   id: string;
   name: string;
   email: string;
@@ -204,11 +205,7 @@ export function UsersManagementView() {
     const controller = new AbortController();
     const loadUsers = async () => {
       try {
-        const response = await fetch("/api/users", { signal: controller.signal });
-        if (!response.ok) {
-          return;
-        }
-        const data = (await response.json()) as { users: UserProfile[] };
+        const data = await fetchUsers(controller.signal);
         if (Array.isArray(data.users)) {
           setUsers(data.users);
         }
@@ -223,18 +220,8 @@ export function UsersManagementView() {
   }, []);
 
   const persistUserAction = async (id: string, action: "toggleStatus" | "resetPassword") => {
-    const response = await fetch(`/api/users/${encodeURIComponent(id)}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action })
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to update user");
-    }
-
-    const data = (await response.json()) as { user: UserProfile };
-    setUsers((prev) => prev.map((user) => (user.id === id ? data.user : user)));
+    const updated = await updateUserActionClient(id, action);
+    setUsers((prev) => prev.map((user) => (user.id === id ? updated : user)));
   };
 
   function exportCsv() {
