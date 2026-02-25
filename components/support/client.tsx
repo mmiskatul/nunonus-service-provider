@@ -2,9 +2,18 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
+import {
+  FiAlertCircle,
+  FiCheck,
+  FiEye,
+  FiFilter,
+  FiInbox,
+  FiSearch,
+  FiSliders
+} from "react-icons/fi";
 
 type TicketStatus = "In Progress" | "Open" | "Resolved";
-type TicketType = "Account" | "Technical";
+type TicketType = "Account" | "Technical" | "Billing" | "Compliance";
 type Priority = "High" | "Medium" | "Low";
 
 type ConversationMessage = {
@@ -41,47 +50,168 @@ function summaryIcon(i: number) {
   return "bg-[#ede9fe] text-[#3b1e8a]";
 }
 
-export function SupportDashboardView({ data }: { data: { summaryCards: Array<{ label: string; value: string; note: string; tone: string }>; tickets: SupportTicket[] } }) {
+const pageSize = 5;
+
+export function SupportDashboardView({
+  data
+}: {
+  data: { summaryCards: Array<{ label: string; value: string; note: string; tone: string }>; tickets: SupportTicket[] };
+}) {
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | TicketStatus>("ALL");
+  const [priorityFilter, setPriorityFilter] = useState<"ALL" | Priority>("ALL");
+  const [page, setPage] = useState(1);
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [priorityOpen, setPriorityOpen] = useState(false);
 
   const selectedTicket = useMemo(
     () => data.tickets.find((ticket) => ticket.id === selectedTicketId) ?? null,
-    [selectedTicketId]
+    [selectedTicketId, data.tickets]
   );
 
+  const filteredTickets = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return data.tickets.filter((ticket) => {
+      const matchesQuery =
+        normalizedQuery.length === 0 ||
+        ticket.id.toLowerCase().includes(normalizedQuery) ||
+        ticket.userName.toLowerCase().includes(normalizedQuery) ||
+        ticket.subject.toLowerCase().includes(normalizedQuery);
+      const matchesStatus = statusFilter === "ALL" || ticket.status === statusFilter;
+      const matchesPriority = priorityFilter === "ALL" || ticket.priority === priorityFilter;
+      return matchesQuery && matchesStatus && matchesPriority;
+    });
+  }, [data.tickets, query, statusFilter, priorityFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredTickets.length / pageSize));
+  const pagedTickets = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredTickets.slice(start, start + pageSize);
+  }, [filteredTickets, page]);
+
+  const paginationItems = useMemo(() => {
+    if (totalPages <= 4) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    const items: Array<number | "ellipsis"> = [1];
+
+    if (page <= 3) {
+      items.push(2, 3, "ellipsis", totalPages);
+      return items;
+    }
+
+    if (page >= totalPages - 2) {
+      items.push("ellipsis", totalPages - 2, totalPages - 1, totalPages);
+      return items;
+    }
+
+    items.push("ellipsis", page - 1, page, page + 1, "ellipsis", totalPages);
+    return items;
+  }, [page, totalPages]);
+
   return (
-    <section className="relative space-y-4 rounded-md border border-[#dbe2ef] bg-[#f7f9fd] p-4">
-      <section className="grid grid-cols-1 gap-3 lg:grid-cols-4">
+    <section className="relative space-y-4">
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-4">
         {data.summaryCards.map((card, i) => (
-          <article key={card.label} className="rounded-2xl border border-[#e6ecf7] bg-white p-4">
+          <article key={card.label} className="rounded-2xl border border-[#e6ecf7] bg-white p-4 shadow-sm">
             <div className="mb-2 flex items-center gap-2">
-              <div className={`grid h-8 w-8 place-items-center rounded-full ${summaryIcon(i)}`}>
-                <span className="text-sm">{i === 0 ? "âœ‰" : i === 1 ? "â±" : i === 2 ? "âœ“" : "!"}</span>
+              <div className={`grid h-9 w-9 place-items-center rounded-full ${summaryIcon(i)}`}>
+                {i === 0 && <FiInbox size={16} />}
+                {i === 1 && <FiSliders size={16} />}
+                {i === 2 && <FiCheck size={16} />}
+                {i === 3 && <FiAlertCircle size={16} />}
               </div>
-              <p className="m-0 text-[11px] text-[#7d8ba6]">{card.label}</p>
+              <div>
+                <p className="m-0 text-[10px] text-[#7d8ba6]">{card.label}</p>
+                <h3 className={`m-0 text-[20px] font-semibold text-[#1d2a43]`}>{card.value}</h3>
+              </div>
             </div>
-            <h3 className={`m-0 text-[34px] leading-none ${card.tone}`}>{card.value}</h3>
           </article>
         ))}
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-[#dbe2ef] bg-white">
-        <div className="flex flex-col gap-2 border-b border-[#e6ecf7] p-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex h-8 w-full max-w-[430px] items-center gap-2 rounded border border-[#e6ecf7] bg-[#f7f9fd] px-2">
-            <span className="text-xs text-[#8b96ad]">Q</span>
+      <section className="overflow-hidden rounded-2xl border border-[#e6ecf7] bg-white">
+        <div className="flex flex-col gap-3 border-b border-[#e6ecf7] px-4 py-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex h-9 w-full max-w-[520px] items-center gap-2 rounded-full border border-[#e6ecf7] bg-[#f7f9fd] px-3">
+            <FiSearch size={12} className="text-[#8b96ad]" />
             <input
               type="text"
               placeholder="Search by Ticket ID, User, or Subject..."
-              className="w-full border-0 bg-transparent text-xs text-[#2b3a59] outline-none placeholder:text-[#9aa6c0]"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setPage(1);
+              }}
+              className="w-full border-0 bg-transparent text-[11px] text-[#2b3a59] outline-none placeholder:text-[#9aa6c0]"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <button type="button" className="h-8 rounded border border-[#e6ecf7] bg-white px-3 text-[11px] text-[#3a4b70]">
+          <div className="relative flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setStatusOpen((prev) => !prev);
+                setPriorityOpen(false);
+              }}
+              className="inline-flex h-9 items-center gap-2 rounded-full border border-[#e6ecf7] bg-white px-3 text-[11px] text-[#3a4b70]"
+            >
               All Statuses
+              <FiFilter size={12} />
             </button>
-            <button type="button" className="h-8 rounded border border-[#e6ecf7] bg-white px-3 text-[11px] text-[#3a4b70]">
+            <button
+              type="button"
+              onClick={() => {
+                setPriorityOpen((prev) => !prev);
+                setStatusOpen(false);
+              }}
+              className="inline-flex h-9 items-center gap-2 rounded-full border border-[#e6ecf7] bg-white px-3 text-[11px] text-[#3a4b70]"
+            >
               All Priority
+              <FiFilter size={12} />
             </button>
+
+            {statusOpen && (
+              <div className="absolute right-[132px] top-11 z-10 w-36 rounded-lg border border-[#e6ecf7] bg-white p-2 text-[11px] text-[#3a4b70] shadow-sm">
+                {(["ALL", "Open", "In Progress", "Resolved"] as const).map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter(status);
+                      setPage(1);
+                      setStatusOpen(false);
+                    }}
+                    className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left ${
+                      statusFilter === status ? "bg-[#f3f6fd] font-semibold text-[#1f3d8f]" : ""
+                    }`}
+                  >
+                    {status === "ALL" ? "All Statuses" : status}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {priorityOpen && (
+              <div className="absolute right-0 top-11 z-10 w-36 rounded-lg border border-[#e6ecf7] bg-white p-2 text-[11px] text-[#3a4b70] shadow-sm">
+                {(["ALL", "High", "Medium", "Low"] as const).map((priority) => (
+                  <button
+                    key={priority}
+                    type="button"
+                    onClick={() => {
+                      setPriorityFilter(priority);
+                      setPage(1);
+                      setPriorityOpen(false);
+                    }}
+                    className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left ${
+                      priorityFilter === priority ? "bg-[#f3f6fd] font-semibold text-[#1f3d8f]" : ""
+                    }`}
+                  >
+                    {priority === "ALL" ? "All Priority" : priority}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -97,12 +227,12 @@ export function SupportDashboardView({ data }: { data: { summaryCards: Array<{ l
               </tr>
             </thead>
             <tbody>
-              {data.tickets.map((ticket, index) => (
+              {pagedTickets.map((ticket, index) => (
                 <tr key={ticket.id} className={index % 2 === 1 ? "bg-[#fbfcff]" : ""}>
                   <td className="border-b border-[#edf1fa] px-4 py-3 text-[12px] font-semibold text-[#3b1e8a]">{ticket.id}</td>
                   <td className="border-b border-[#edf1fa] px-4 py-3">
                     <div className="flex items-center gap-2.5">
-                      <Image src={ticket.avatar} alt={ticket.userName} width={24} height={24} className="h-6 w-6 rounded-full" />
+                      <Image src={ticket.avatar} alt={ticket.userName} width={28} height={28} className="h-7 w-7 rounded-full" />
                       <div>
                         <div className="text-[12px] font-semibold text-[#1f2d46]">{ticket.userName}</div>
                         <div className="text-[10px] text-[#8b96ad]">{ticket.userRole}</div>
@@ -110,7 +240,7 @@ export function SupportDashboardView({ data }: { data: { summaryCards: Array<{ l
                     </div>
                   </td>
                   <td className="border-b border-[#edf1fa] px-4 py-3">
-                    <span className="rounded bg-[#f1f5f9] px-2 py-1 text-[9px] text-[#64748b]">{ticket.type}</span>
+                    <span className="rounded-full bg-[#f1f5f9] px-2 py-1 text-[9px] text-[#64748b]">{ticket.type}</span>
                   </td>
                   <td className="max-w-[300px] overflow-hidden text-ellipsis border-b border-[#edf1fa] px-4 py-3 whitespace-nowrap text-[#1e293b]">
                     {ticket.subject}
@@ -122,10 +252,7 @@ export function SupportDashboardView({ data }: { data: { summaryCards: Array<{ l
                   </td>
                   <td className="border-b border-[#edf1fa] px-4 py-3">
                     <button type="button" onClick={() => setSelectedTicketId(ticket.id)} className="text-[#294f99]" aria-label={`View ${ticket.id}`}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                        <path d="M1.5 12s3.7-6.5 10.5-6.5S22.5 12 22.5 12s-3.7 6.5-10.5 6.5S1.5 12 1.5 12Z" stroke="currentColor" strokeWidth="1.8" />
-                        <circle cx="12" cy="12" r="3.5" stroke="currentColor" strokeWidth="1.8" />
-                      </svg>
+                      <FiEye size={14} />
                     </button>
                   </td>
                 </tr>
@@ -135,58 +262,95 @@ export function SupportDashboardView({ data }: { data: { summaryCards: Array<{ l
         </div>
 
         <footer className="flex items-center justify-between px-4 py-3 text-[10px] text-[#8b96ad]">
-          <span>Showing 1 to {data.tickets.length} of 124 results</span>
+          <span>
+            Showing {filteredTickets.length === 0 ? 0 : (page - 1) * pageSize + 1} to {Math.min(page * pageSize, filteredTickets.length)} of {filteredTickets.length} results
+          </span>
           <div className="flex items-center gap-2">
-            <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] text-[#95a2b8]">â€¹</button>
-            <button type="button" className="grid h-6 w-6 place-items-center rounded-full bg-[#3b1e8a] text-white">1</button>
-            <button type="button">2</button>
-            <button type="button">3</button>
-            <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] text-[#95a2b8]">â€º</button>
+            <button
+              type="button"
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              className={`grid h-6 w-6 place-items-center rounded border border-[#e6ecf7] text-[11px] ${
+                page === 1 ? "text-[#94a3b8] opacity-60" : "text-[#64748b]"
+              }`}
+              aria-disabled={page === 1}
+            >
+              ?
+            </button>
+            {paginationItems.map((item, index) => {
+              if (item === "ellipsis") {
+                return (
+                  <span key={`ellipsis-${index}`} className="px-1 text-[#a1aac0]">
+                    ...
+                  </span>
+                );
+              }
+
+              return (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setPage(item)}
+                  className={`grid h-6 w-6 place-items-center rounded text-[11px] ${
+                    item === page ? "bg-[#3b1e8a] text-white" : "border border-[#e6ecf7] text-[#64748b]"
+                  }`}
+                >
+                  {item}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+              className={`grid h-6 w-6 place-items-center rounded border border-[#e6ecf7] text-[11px] ${
+                page === totalPages ? "text-[#94a3b8] opacity-60" : "text-[#64748b]"
+              }`}
+              aria-disabled={page === totalPages}
+            >
+              ?
+            </button>
           </div>
         </footer>
       </section>
 
       <div
-        className={`absolute inset-0 z-20 ${selectedTicket ? "pointer-events-auto" : "pointer-events-none"}`}
+        className={`fixed inset-0 z-20 bg-black/40 transition-opacity ${
+          selectedTicket ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+        }`}
         onClick={() => setSelectedTicketId(null)}
         aria-hidden
       />
 
-      <aside
-        className={`absolute right-0 top-0 z-30 h-full w-full max-w-[450px] border-l border-[#dbe2ef] bg-[#f6f8fc] transition-transform duration-300 ${
-          selectedTicket ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        {selectedTicket && (
-          <div className="flex h-full flex-col overflow-hidden bg-white">
+      {selectedTicket && (
+        <div className="fixed inset-0 z-30 grid place-items-center px-4">
+          <aside className="w-full max-w-[520px] overflow-hidden rounded-2xl border border-[#e6ecf7] bg-white shadow-[0_18px_40px_rgba(15,23,42,0.2)]">
             <header className="flex items-start justify-between border-b border-[#e6ecf7] px-6 py-5">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="m-0 text-[33px] leading-none text-[#1d2a43]">{selectedTicket.id}</h3>
+                  <h3 className="m-0 text-[18px] font-semibold text-[#1d2a43]">{selectedTicket.id}</h3>
                   {selectedTicket.priority === "High" && (
-                    <span className="rounded bg-[#fee2e2] px-2 py-0.5 text-[9px] font-semibold text-[#dc2626]">HIGH PRIORITY</span>
+                    <span className="rounded-full bg-[#fee2e2] px-2 py-0.5 text-[9px] font-semibold text-[#dc2626]">HIGH PRIORITY</span>
                   )}
                 </div>
-                <p className="m-0 mt-2 text-[13px] text-[#7d8ba6]">Opened {selectedTicket.openedAt}</p>
+                <p className="m-0 mt-1 text-[11px] text-[#7d8ba6]">Opened {selectedTicket.openedAt}</p>
               </div>
               <button type="button" onClick={() => setSelectedTicketId(null)} className="text-[#95a2b8]">x</button>
             </header>
 
             <div className="px-6 py-5">
               <section className="mb-6">
-                <h4 className="m-0 text-[11px] tracking-[0.09em] text-[#8b96ad] uppercase">Issue Details</h4>
-                <p className="m-0 mt-2 rounded-2xl bg-[#f1f5f9] px-4 py-3 text-[13px] leading-[1.45] text-[#475569]">
+                <h4 className="m-0 text-[10px] tracking-[0.09em] text-[#8b96ad] uppercase">Issue Details</h4>
+                <p className="m-0 mt-2 rounded-2xl bg-[#f1f5f9] px-4 py-3 text-[12px] leading-[1.45] text-[#475569]">
                   {selectedTicket.issueDetails}
                 </p>
               </section>
 
               <section>
-                <h4 className="m-0 text-[11px] tracking-[0.09em] text-[#8b96ad] uppercase">Conversation</h4>
+                <h4 className="m-0 text-[10px] tracking-[0.09em] text-[#8b96ad] uppercase">Conversation</h4>
                 <div className="mt-3 space-y-3">
                   {selectedTicket.conversation.map((message, i) => (
                     <div key={`${message.time}-${i}`}>
                       <p
-                        className={`m-0 max-w-[330px] rounded-2xl p-3 text-[13px] leading-[1.35] ${
+                        className={`m-0 max-w-[360px] rounded-2xl p-3 text-[12px] leading-[1.35] ${
                           message.sender === "agent"
                             ? "ml-auto rounded-tr-md bg-[#3b1e8a] text-white"
                             : "rounded-tl-md bg-[#f1f5f9] text-[#475569]"
@@ -195,11 +359,11 @@ export function SupportDashboardView({ data }: { data: { summaryCards: Array<{ l
                         {message.text}
                       </p>
                       <p className={`m-0 mt-1 text-[9px] text-[#9aa6c0] ${message.sender === "agent" ? "text-right" : ""}`}>
-                        {message.name} â€¢ {message.time}
+                        {message.name} ? {message.time}
                       </p>
                     </div>
                   ))}
-                  <p className="m-0 text-center text-[9px] text-[#9aa6c0] uppercase">Status changed to &quot;In Progress&quot;</p>
+                  <p className="m-0 text-center text-[9px] text-[#9aa6c0] uppercase">Status changed to "In Progress"</p>
                 </div>
               </section>
             </div>
@@ -207,16 +371,15 @@ export function SupportDashboardView({ data }: { data: { summaryCards: Array<{ l
             <div className="mt-auto border-t border-[#e6ecf7] bg-[#f8fafc] px-6 py-4">
               <textarea
                 placeholder="Type your reply here..."
-                className="h-18 w-full rounded-2xl border border-[#dbe2ef] bg-white px-4 py-3 text-[13px] text-[#475569] outline-none"
+                className="h-20 w-full rounded-2xl border border-[#dbe2ef] bg-white px-4 py-3 text-[12px] text-[#475569] outline-none"
               />
               <button type="button" className="mt-3 h-11 w-full rounded-full bg-[#3b1e8a] text-[13px] font-semibold text-white">
-                Update Ticket &amp; Send Reply
+                Update Ticket & Send Reply
               </button>
             </div>
-          </div>
-        )}
-      </aside>
+          </aside>
+        </div>
+      )}
     </section>
   );
 }
-
