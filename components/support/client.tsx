@@ -453,6 +453,12 @@ export function SupportDashboardView({
                   placeholder="Type your reply here..."
                   value={reply}
                   onChange={(event) => setReply(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      handleSendReply();
+                    }
+                  }}
                   className="h-20 w-full rounded-2xl border border-[#dbe2ef] bg-white px-4 py-3 text-[11px] text-[#475569] outline-none"
                 />
                 <div className="absolute bottom-3 right-3 flex items-center gap-2 text-[#9aa6c0]">
