@@ -1,9 +1,29 @@
 {
   "summaryCards": [
-    { "label": "Total Vendors", "value": "1,284", "note": "+12% from last month", "tone": "text-[#2da772]" },
-    { "label": "Pending Approval", "value": "42", "note": "Requires attention", "tone": "text-[#f59e0b]" },
-    { "label": "Approved Vendors", "value": "1,198", "note": "Active businesses", "tone": "text-[#2da772]" },
-    { "label": "Rejected Vendors", "value": "44", "note": "Audit complete", "tone": "text-[#ef4444]" }
+    {
+      "label": "Total Vendors",
+      "value": "1,284",
+      "note": "+12% from last month",
+      "tone": "text-[#2da772]"
+    },
+    {
+      "label": "Pending Approval",
+      "value": "42",
+      "note": "Requires attention",
+      "tone": "text-[#f59e0b]"
+    },
+    {
+      "label": "Approved Vendors",
+      "value": "1,198",
+      "note": "Active businesses",
+      "tone": "text-[#2da772]"
+    },
+    {
+      "label": "Rejected Vendors",
+      "value": "44",
+      "note": "Audit complete",
+      "tone": "text-[#ef4444]"
+    }
   ],
   "vendors": [
     {
@@ -13,7 +33,7 @@
       "category": "HOSPITALITY",
       "bookings": 1240,
       "rating": 4.8,
-      "status": "PENDING",
+      "status": "REJECTED",
       "avatar": "https://picsum.photos/seed/vendor-azure/80/80",
       "verification": {
         "description": "Luxury 5-star oceanfront resort offering premium suites and private beach access.",
@@ -21,8 +41,14 @@
         "reviewScore": 4.8,
         "reviewCount": 1240,
         "docs": [
-          { "title": "Business_License.pdf", "state": "Verified" },
-          { "title": "Tax_ID_Proof.jpg", "state": "Rejected" }
+          {
+            "title": "Business_License.pdf",
+            "state": "Verified"
+          },
+          {
+            "title": "Tax_ID_Proof.jpg",
+            "state": "Rejected"
+          }
         ]
       }
     },
@@ -32,17 +58,23 @@
       "owner": "Elena Rodriguez",
       "category": "DINING",
       "bookings": 856,
-      "rating": 5.0,
-      "status": "APPROVED",
+      "rating": 5,
+      "status": "REJECTED",
       "avatar": "https://picsum.photos/seed/vendor-grill/80/80",
       "verification": {
         "description": "Fine dining destination known for chef-curated tasting menus and premium service.",
         "address": "118 Market Street, San Francisco, CA 94105",
-        "reviewScore": 5.0,
+        "reviewScore": 5,
         "reviewCount": 980,
         "docs": [
-          { "title": "Food_Safety_Certificate.pdf", "state": "Verified" },
-          { "title": "Owner_ID_Proof.jpg", "state": "Verified" }
+          {
+            "title": "Food_Safety_Certificate.pdf",
+            "state": "Verified"
+          },
+          {
+            "title": "Owner_ID_Proof.jpg",
+            "state": "Verified"
+          }
         ]
       }
     },
@@ -53,7 +85,7 @@
       "category": "RENTALS",
       "bookings": 432,
       "rating": 3.6,
-      "status": "REJECTED",
+      "status": "APPROVED",
       "avatar": "https://picsum.photos/seed/vendor-speedy/80/80",
       "verification": {
         "description": "Urban mobility rental service with scooters and compact city vehicles.",
@@ -61,8 +93,14 @@
         "reviewScore": 3.6,
         "reviewCount": 315,
         "docs": [
-          { "title": "Vehicle_Compliance.pdf", "state": "Rejected" },
-          { "title": "Insurance_Record.pdf", "state": "Verified" }
+          {
+            "title": "Vehicle_Compliance.pdf",
+            "state": "Rejected"
+          },
+          {
+            "title": "Insurance_Record.pdf",
+            "state": "Verified"
+          }
         ]
       }
     }

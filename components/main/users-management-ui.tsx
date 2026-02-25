@@ -258,7 +258,7 @@ export function UsersManagementUI({
                         </button>
                         <button
                           type="button"
-                          onClick={() => persistUserAction(user.id, "toggleStatus")}
+                          onClick={() => persistUserAction(user.id, user.status === "BLOCKED" ? "unblock" : "block")}
                           className={user.status === "BLOCKED" ? "text-[#16a34a]" : "text-[#ef4444]"}
                           aria-label={`${user.status === "BLOCKED" ? "Restore" : "Block"} ${user.name}`}
                         >
@@ -435,7 +435,7 @@ export function UsersManagementUI({
                   type="button"
                   onClick={() => {
                     if (action.label.toLowerCase().includes("block") || action.label.toLowerCase().includes("unblock")) {
-                      persistUserAction(selectedUser.id, "toggleStatus");
+                      persistUserAction(selectedUser.id, selectedUser.status === "BLOCKED" ? "unblock" : "block");
                     }
                     if (action.label.toLowerCase().includes("reset password")) {
                       persistUserAction(selectedUser.id, "resetPassword");

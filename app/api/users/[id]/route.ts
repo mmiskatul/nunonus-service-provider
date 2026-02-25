@@ -13,9 +13,9 @@ async function writeUsersFile(data: unknown) {
   await fs.writeFile(dataPath, JSON.stringify(data, null, 2) + "\n", "utf-8");
 }
 
-export async function PATCH(request: Request, context: { params: { id: string } }) {
+export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = context.params;
+    const { id } = await context.params;
     const body = await request.json();
     const action = body?.action as string | undefined;
 
@@ -29,15 +29,28 @@ export async function PATCH(request: Request, context: { params: { id: string } 
 
     const user = users[index];
 
-    if (action === "toggleStatus") {
-      const nextStatus = user.status === "BLOCKED" ? "ACTIVE" : "BLOCKED";
-      user.status = nextStatus;
+    if (action === "block") {
+      user.status = "BLOCKED";
       user.actions = (user.actions || []).map((actionItem: { label: string; tone: string }) => {
         if (actionItem.label.toLowerCase().includes("block")) {
           return {
             ...actionItem,
-            label: nextStatus === "BLOCKED" ? "Unblock Account" : "Block Account",
-            tone: nextStatus === "BLOCKED" ? "neutral" : "danger"
+            label: "Unblock Account",
+            tone: "neutral"
+          };
+        }
+        return actionItem;
+      });
+    }
+
+    if (action === "unblock") {
+      user.status = "ACTIVE";
+      user.actions = (user.actions || []).map((actionItem: { label: string; tone: string }) => {
+        if (actionItem.label.toLowerCase().includes("block")) {
+          return {
+            ...actionItem,
+            label: "Block Account",
+            tone: "danger"
           };
         }
         return actionItem;

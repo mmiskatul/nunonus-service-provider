@@ -10,7 +10,7 @@ async function fetchUsers(signal?: AbortSignal) {
   return (await response.json()) as { users: UserProfile[] };
 }
 
-async function updateUserAction(id: string, action: "toggleStatus" | "resetPassword") {
+async function updateUserAction(id: string, action: "block" | "unblock" | "resetPassword") {
   const response = await fetch(`/api/users/${encodeURIComponent(id)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -131,10 +131,10 @@ export function useUsersManagement(initialData: { users: UserProfile[]; summaryC
     return () => controller.abort();
   }, []);
 
-  const persistUserAction = async (id: string, action: "toggleStatus" | "resetPassword") => {
+  const persistUserAction = async (id: string, action: "block" | "unblock" | "resetPassword") => {
     const applyLocalUpdate = (current: UserProfile) => {
-      if (action === "toggleStatus") {
-        const nextStatus: UserStatus = current.status === "BLOCKED" ? "ACTIVE" : "BLOCKED";
+      if (action === "block" || action === "unblock") {
+        const nextStatus: UserStatus = action === "block" ? "BLOCKED" : "ACTIVE";
         const nextActions = current.actions.map((actionItem) => {
           if (actionItem.label.toLowerCase().includes("block")) {
             return {
