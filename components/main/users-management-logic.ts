@@ -1,30 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { UserProfile, UserStatus } from "@/components/main/users-management-types";
-import usersData from "@/data/users.json";
+import type { SummaryCard, UserProfile, UserStatus } from "@/components/main/users-management-types";
 import { fetchUsers, updateUserAction } from "@/lib/users-client";
-
-export type SummaryCard = {
-  label: string;
-  value: string;
-  trend: string;
-  tone: string;
-  icon: "users" | "user" | "blocked" | "new";
-  iconWrap: string;
-};
-
-type UsersApiResponse = {
-  summaryCards: SummaryCard[];
-  users: UserProfile[];
-};
-
-const usersApiResponse = usersData as UsersApiResponse;
 
 const pageSize = 10;
 
-export function useUsersManagement() {
-  const [users, setUsers] = useState<UserProfile[]>(usersApiResponse.users);
+export function useUsersManagement(initialData: { users: UserProfile[]; summaryCards: SummaryCard[] }) {
+  const [users, setUsers] = useState<UserProfile[]>(initialData.users);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | UserStatus>("ALL");
@@ -91,7 +74,7 @@ export function useUsersManagement() {
     const totalUsers = users.length;
     const activeUsers = users.filter((user) => user.status === "ACTIVE").length;
     const blockedUsers = users.filter((user) => user.status === "BLOCKED").length;
-    return usersApiResponse.summaryCards.map((card) => {
+    return initialData.summaryCards.map((card) => {
       if (card.label === "TOTAL USERS") {
         return { ...card, value: totalUsers.toLocaleString() };
       }
@@ -103,7 +86,7 @@ export function useUsersManagement() {
       }
       return card;
     });
-  }, [users]);
+  }, [initialData.summaryCards, users]);
 
   useEffect(() => {
     setShowAllBookings(false);

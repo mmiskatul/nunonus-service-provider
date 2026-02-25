@@ -1,5 +1,5 @@
-import { UsersManagementView } from "@/components/main/users-management-view";
+import { UsersServer } from "@/components/users/server";
 
 export default function UsersPage() {
-  return <UsersManagementView />;
+  return <UsersServer />;
 }

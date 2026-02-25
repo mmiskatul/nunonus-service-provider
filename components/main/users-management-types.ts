@@ -36,3 +36,12 @@ export type UserProfile = {
     tone: ActionTone;
   }>;
 };
+
+export type SummaryCard = {
+  label: string;
+  value: string;
+  trend: string;
+  tone: string;
+  icon: "users" | "user" | "blocked" | "new";
+  iconWrap: string;
+};

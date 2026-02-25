@@ -1,11 +1,17 @@
 "use client";
 
-import { useUsersManagement } from "@/components/main/users-management-logic";
-import { UsersManagementUI } from "@/components/main/users-management-ui";
+import { UsersClient } from "@/components/users/client";
+import type { SummaryCard, UserProfile } from "@/components/main/users-management-types";
 
 export { UserProfile } from "@/components/main/users-management-types";
 
-export function UsersManagementView() {
-  const logic = useUsersManagement();
-  return <UsersManagementUI {...logic} />;
+type UsersManagementViewProps = {
+  initialData: {
+    summaryCards: SummaryCard[];
+    users: UserProfile[];
+  };
+};
+
+export function UsersManagementView({ initialData }: UsersManagementViewProps) {
+  return <UsersClient initialData={initialData} />;
 }

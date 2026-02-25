@@ -1,14 +1,7 @@
-import type { UserProfile } from "@/components/main/users-management-types";
+import type { SummaryCard, UserProfile } from "@/components/main/users-management-types";
 
 export type UsersResponse = {
-  summaryCards: Array<{
-    label: string;
-    value: string;
-    trend: string;
-    tone: string;
-    icon: "users" | "user" | "blocked" | "new";
-    iconWrap: string;
-  }>;
+  summaryCards: SummaryCard[];
   users: UserProfile[];
 };
 
