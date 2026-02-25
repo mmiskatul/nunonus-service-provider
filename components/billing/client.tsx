@@ -1,7 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { FiCreditCard, FiDollarSign, FiEye, FiPercent, FiSearch, FiUsers } from "react-icons/fi";
+import {
+  FiChevronLeft,
+  FiChevronRight,
+  FiCreditCard,
+  FiDollarSign,
+  FiEye,
+  FiPercent,
+  FiSearch,
+  FiUsers
+} from "react-icons/fi";
 
 type PaymentStatus = "PAID" | "PENDING";
 
@@ -140,7 +149,7 @@ export function BillingManagementView({
               }`}
               aria-disabled={page === 1}
             >
-              ?
+              <FiChevronLeft size={12} />
             </button>
             <button
               type="button"
@@ -150,7 +159,7 @@ export function BillingManagementView({
               }`}
               aria-disabled={page === totalPages}
             >
-              ?
+              <FiChevronRight size={12} />
             </button>
           </div>
         </footer>
