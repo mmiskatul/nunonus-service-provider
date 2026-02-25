@@ -184,7 +184,24 @@ export function VendorsManagementView({
                     </td>
                     <td className="border-b border-[#edf1fa] px-4 py-4 text-[#2f3f60]">{vendor.bookings.toLocaleString()}</td>
                     <td className="border-b border-[#edf1fa] px-4 py-4 text-[#f59e0b]">
-                      {"?".repeat(5)} <span className="text-[#7d8ba6]">{vendor.rating.toFixed(1)}</span>
+                      <span className="inline-flex items-center gap-1">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.6l1-5.8-4.3-4.1 5.9-.9L12 3.5Z" />
+                        </svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.6l1-5.8-4.3-4.1 5.9-.9L12 3.5Z" />
+                        </svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.6l1-5.8-4.3-4.1 5.9-.9L12 3.5Z" />
+                        </svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.6l1-5.8-4.3-4.1 5.9-.9L12 3.5Z" />
+                        </svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.6l1-5.8-4.3-4.1 5.9-.9L12 3.5Z" />
+                        </svg>
+                      </span>
+                      <span className="ml-2 text-[#7d8ba6]">{vendor.rating.toFixed(1)}</span>
                     </td>
                     <td className="border-b border-[#edf1fa] px-4 py-4">
                       <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold ${vendorStatusClass(vendor.status)}`}>

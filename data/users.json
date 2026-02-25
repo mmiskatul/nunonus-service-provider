@@ -44,11 +44,27 @@
       "joinedDate": "Feb 10, 2026",
       "memberSince": "Oct 2025",
       "age": 29,
-      "stats": { "bookings": 42, "spent": "$4.2K", "rating": "4.9" },
+      "stats": {
+        "bookings": 42,
+        "spent": "$4.2K",
+        "rating": "4.9"
+      },
       "contacts": [
-        { "type": "mail", "label": "Email Address", "value": "sarah.j@example.com" },
-        { "type": "phone", "label": "Phone Number", "value": "+1 (555) 902-3481" },
-        { "type": "pin", "label": "Default Location", "value": "San Francisco, CA" }
+        {
+          "type": "mail",
+          "label": "Email Address",
+          "value": "sarah.j@example.com"
+        },
+        {
+          "type": "phone",
+          "label": "Phone Number",
+          "value": "+1 (555) 902-3481"
+        },
+        {
+          "type": "pin",
+          "label": "Default Location",
+          "value": "San Francisco, CA"
+        }
       ],
       "recentBookings": [
         {
@@ -67,8 +83,14 @@
         }
       ],
       "actions": [
-        { "label": "Block Account", "tone": "danger" },
-        { "label": "Reset Password", "tone": "neutral" }
+        {
+          "label": "Block Account",
+          "tone": "danger"
+        },
+        {
+          "label": "Reset Password",
+          "tone": "neutral"
+        }
       ]
     },
     {
@@ -81,11 +103,27 @@
       "joinedDate": "Feb 11, 2026",
       "memberSince": "Jan 2025",
       "age": 34,
-      "stats": { "bookings": 18, "spent": "$1.6K", "rating": "4.6" },
+      "stats": {
+        "bookings": 18,
+        "spent": "$1.6K",
+        "rating": "4.6"
+      },
       "contacts": [
-        { "type": "mail", "label": "Email Address", "value": "m.ross@corp.com" },
-        { "type": "phone", "label": "Phone Number", "value": "+1 (555) 441-1022" },
-        { "type": "pin", "label": "Default Location", "value": "Chicago, IL" }
+        {
+          "type": "mail",
+          "label": "Email Address",
+          "value": "m.ross@corp.com"
+        },
+        {
+          "type": "phone",
+          "label": "Phone Number",
+          "value": "+1 (555) 441-1022"
+        },
+        {
+          "type": "pin",
+          "label": "Default Location",
+          "value": "Chicago, IL"
+        }
       ],
       "recentBookings": [
         {
@@ -104,8 +142,14 @@
         }
       ],
       "actions": [
-        { "label": "Block Account", "tone": "danger" },
-        { "label": "Reset Password", "tone": "neutral" }
+        {
+          "label": "Block Account",
+          "tone": "danger"
+        },
+        {
+          "label": "Reset Password",
+          "tone": "neutral"
+        }
       ]
     },
     {
@@ -118,11 +162,27 @@
       "joinedDate": "Feb 12, 2026",
       "memberSince": "Aug 2024",
       "age": 26,
-      "stats": { "bookings": 2, "spent": "$220", "rating": "3.9" },
+      "stats": {
+        "bookings": 2,
+        "spent": "$220",
+        "rating": "3.9"
+      },
       "contacts": [
-        { "type": "mail", "label": "Email Address", "value": "david.lee@mail.com" },
-        { "type": "phone", "label": "Phone Number", "value": "+1 (555) 718-2290" },
-        { "type": "pin", "label": "Default Location", "value": "Austin, TX" }
+        {
+          "type": "mail",
+          "label": "Email Address",
+          "value": "david.lee@mail.com"
+        },
+        {
+          "type": "phone",
+          "label": "Phone Number",
+          "value": "+1 (555) 718-2290"
+        },
+        {
+          "type": "pin",
+          "label": "Default Location",
+          "value": "Austin, TX"
+        }
       ],
       "recentBookings": [
         {
@@ -141,8 +201,14 @@
         }
       ],
       "actions": [
-        { "label": "Unblock Account", "tone": "neutral" },
-        { "label": "Reset Password", "tone": "neutral" }
+        {
+          "label": "Unblock Account",
+          "tone": "neutral"
+        },
+        {
+          "label": "Reset Password",
+          "tone": "neutral"
+        }
       ]
     },
     {
@@ -155,11 +221,27 @@
       "joinedDate": "Feb 13, 2026",
       "memberSince": "May 2023",
       "age": 31,
-      "stats": { "bookings": 112, "spent": "$12.8K", "rating": "4.9" },
+      "stats": {
+        "bookings": 112,
+        "spent": "$12.8K",
+        "rating": "4.9"
+      },
       "contacts": [
-        { "type": "mail", "label": "Email Address", "value": "emma.wilson@live.com" },
-        { "type": "phone", "label": "Phone Number", "value": "+1 (555) 223-8855" },
-        { "type": "pin", "label": "Default Location", "value": "Seattle, WA" }
+        {
+          "type": "mail",
+          "label": "Email Address",
+          "value": "emma.wilson@live.com"
+        },
+        {
+          "type": "phone",
+          "label": "Phone Number",
+          "value": "+1 (555) 223-8855"
+        },
+        {
+          "type": "pin",
+          "label": "Default Location",
+          "value": "Seattle, WA"
+        }
       ],
       "recentBookings": [
         {
@@ -178,8 +260,14 @@
         }
       ],
       "actions": [
-        { "label": "Block Account", "tone": "danger" },
-        { "label": "Reset Password", "tone": "neutral" }
+        {
+          "label": "Block Account",
+          "tone": "danger"
+        },
+        {
+          "label": "Reset Password",
+          "tone": "neutral"
+        }
       ]
     }
   ]

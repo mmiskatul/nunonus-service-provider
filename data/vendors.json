@@ -33,7 +33,7 @@
       "category": "HOSPITALITY",
       "bookings": 1240,
       "rating": 4.8,
-      "status": "REJECTED",
+      "status": "APPROVED",
       "avatar": "https://picsum.photos/seed/vendor-azure/80/80",
       "verification": {
         "description": "Luxury 5-star oceanfront resort offering premium suites and private beach access.",
