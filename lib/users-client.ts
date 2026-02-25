@@ -1,4 +1,4 @@
-import type { UserProfile } from "@/components/main/users-management-view";
+import type { UserProfile } from "@/components/main/users-management-types";
 
 export type UsersResponse = {
   summaryCards: Array<{
