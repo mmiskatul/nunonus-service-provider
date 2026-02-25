@@ -599,64 +599,64 @@ export function UsersManagementView() {
       />
 
       <aside
-        className={`absolute right-0 top-0 z-30 h-full w-full max-w-[286px] border-l border-[#dbe2ef] bg-[#f6f8fc] transition-transform duration-300 ${
+        className={`absolute right-0 top-0 z-30 h-full w-full max-w-[320px] border-l border-[#e6ecf7] bg-white shadow-sm transition-transform duration-300 ${
           selectedUser ? "translate-x-0" : "translate-x-full"
         }`}
       >
         {selectedUser && (
           <div className="flex h-full flex-col overflow-hidden">
-            <div className="border-b border-[#dbe2ef] px-4 py-3">
+            <div className="border-b border-[#eef2f9] px-5 py-4">
               <button
                 type="button"
                 onClick={() => setSelectedUserId(null)}
-                className="flex items-center gap-2 text-xs text-[#95a2b8]"
+                className="flex items-center gap-2 text-[12px] text-[#95a2b8]"
               >
-                <span className="grid h-4 w-4 place-items-center rounded-full border border-[#d6deed]">x</span>
+                <span className="grid h-5 w-5 place-items-center rounded-full border border-[#e1e8f5] text-[11px]">x</span>
                 <span>User Details</span>
               </button>
             </div>
 
-            <div className="px-5 py-5">
-              <div className="mx-auto mb-5 flex w-fit flex-col items-center">
+            <div className="px-6 py-6">
+              <div className="mx-auto mb-6 flex w-fit flex-col items-center">
                 <div className="relative">
                   <Image
                     src={selectedUser.avatar}
                     alt={selectedUser.name}
-                    width={86}
-                    height={86}
-                    className="h-[86px] w-[86px] rounded-full border-[3px] border-[#e8edf7]"
+                    width={72}
+                    height={72}
+                    className="h-[72px] w-[72px] rounded-full border-[3px] border-[#eef2f9]"
                   />
-                  <span className="absolute bottom-1 right-1 h-3.5 w-3.5 rounded-full border-2 border-white bg-[#18b67a]" />
+                  <span className="absolute bottom-1 right-1 h-3 w-3 rounded-full border-2 border-white bg-[#18b67a]" />
                 </div>
-                <h3 className="m-0 mt-3 text-[33px] font-semibold leading-none text-[#1d2a43]">{selectedUser.name}</h3>
-                <p className="m-0 mt-2 text-[14px] text-[#7d8ba6]">
+                <h3 className="m-0 mt-3 text-[18px] font-semibold text-[#1d2a43]">{selectedUser.name}</h3>
+                <p className="m-0 mt-1 text-[11px] text-[#7d8ba6]">
                   {selectedUser.id} &bull; Member since {selectedUser.memberSince}
                 </p>
-                <p className="m-0 mt-1 text-[12px] text-[#8fa0bf]">Age {selectedUser.age}</p>
+                <p className="m-0 mt-1 text-[11px] text-[#8fa0bf]">Age {selectedUser.age}</p>
               </div>
 
               <div className="mb-6 grid grid-cols-3 gap-2.5">
-                <div className="rounded-lg bg-white px-2 py-3 text-center">
+                <div className="rounded-lg bg-[#f5f7fb] px-2 py-3 text-center">
                   <p className="m-0 text-[9px] tracking-[0.12em] text-[#8b96ad]">BOOKINGS</p>
-                  <p className="m-0 mt-1 text-[29px] font-semibold leading-none text-[#1f3d8f]">{selectedUser.stats.bookings}</p>
+                  <p className="m-0 mt-1 text-[16px] font-semibold text-[#1f3d8f]">{selectedUser.stats.bookings}</p>
                 </div>
-                <div className="rounded-lg bg-white px-2 py-3 text-center">
+                <div className="rounded-lg bg-[#f5f7fb] px-2 py-3 text-center">
                   <p className="m-0 text-[9px] tracking-[0.12em] text-[#8b96ad]">SPENT</p>
-                  <p className="m-0 mt-1 text-[29px] font-semibold leading-none text-[#1f3d8f]">{selectedUser.stats.spent}</p>
+                  <p className="m-0 mt-1 text-[16px] font-semibold text-[#1f3d8f]">{selectedUser.stats.spent}</p>
                 </div>
-                <div className="rounded-lg bg-white px-2 py-3 text-center">
+                <div className="rounded-lg bg-[#f5f7fb] px-2 py-3 text-center">
                   <p className="m-0 text-[9px] tracking-[0.12em] text-[#8b96ad]">RATING</p>
-                  <p className="m-0 mt-1 text-[29px] font-semibold leading-none text-[#1f3d8f]">{selectedUser.stats.rating}</p>
+                  <p className="m-0 mt-1 text-[16px] font-semibold text-[#1f3d8f]">{selectedUser.stats.rating}</p>
                 </div>
               </div>
 
               <div className="mb-6">
-                <h4 className="m-0 mb-3 text-xs tracking-[0.11em] text-[#8b96ad] uppercase">Contact Information</h4>
+                <h4 className="m-0 mb-3 text-[11px] tracking-[0.12em] text-[#8b96ad] uppercase">Contact Information</h4>
                 <div className="space-y-3">
                   {selectedUser.contacts.map((contact) => (
                     <div key={contact.label} className="flex items-start gap-2">
                       <SectionIcon type={contact.type} />
-                      <p className="m-0 text-sm text-[#1f2d46]">
+                      <p className="m-0 text-[12px] text-[#1f2d46]">
                         <span className="block text-[10px] text-[#8b96ad]">{contact.label}</span>
                         {contact.value}
                       </p>
@@ -667,14 +667,14 @@ export function UsersManagementView() {
 
               <div className="mb-5">
                 <div className="mb-3 flex items-center justify-between">
-                  <h4 className="m-0 text-xs tracking-[0.11em] text-[#8b96ad] uppercase">Recent Bookings</h4>
-                  <button type="button" className="text-sm text-[#1f3d8f]">
+                  <h4 className="m-0 text-[11px] tracking-[0.12em] text-[#8b96ad] uppercase">Recent Bookings</h4>
+                  <button type="button" className="text-[11px] font-semibold text-[#1f3d8f]">
                     View All
                   </button>
                 </div>
                 <div className="space-y-2">
                   {selectedUser.recentBookings.map((booking) => (
-                    <div key={booking.hotel} className="flex items-center gap-2 rounded-lg border border-[#e6ecf7] bg-white p-2">
+                    <div key={booking.hotel} className="flex items-center gap-2 rounded-lg border border-[#eef2f9] bg-white p-2">
                       <Image
                         src={booking.image}
                         alt={booking.hotel}
@@ -696,15 +696,15 @@ export function UsersManagementView() {
               </div>
             </div>
 
-            <div className="space-y-2 border-t border-[#e6ecf7] px-5 py-4">
+            <div className="space-y-2 border-t border-[#eef2f9] px-6 py-4">
               {selectedUser.actions.map((action) => (
                 <button
                   key={action.label}
                   type="button"
-                  className={`flex h-11 w-full items-center justify-between rounded-xl border px-3 text-left text-[15px] ${
+                  className={`flex h-10 w-full items-center justify-between rounded-xl border px-3 text-left text-[13px] ${
                     action.tone === "danger"
-                      ? "border-[#f5c8c8] bg-white text-[#eb3b3b]"
-                      : "border-[#dbe2ef] bg-white text-[#4e5f83]"
+                      ? "border-[#fde1e1] bg-white text-[#eb3b3b]"
+                      : "border-[#e6ecf7] bg-white text-[#4e5f83]"
                   }`}
                 >
                   <span>{action.label}</span>
