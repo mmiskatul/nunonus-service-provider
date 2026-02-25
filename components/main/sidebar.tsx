@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { GoGift, GoPeople } from "react-icons/go";
 import { LiaHeadsetSolid } from "react-icons/lia";
@@ -28,6 +28,15 @@ const navItems: NavItem[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      router.push("/login");
+    }
+  };
 
   return (
     <aside className="flex flex-col border-r border-white/10 bg-[var(--bg-sidebar)] text-[#f7f9ff]">
@@ -57,15 +66,16 @@ export function Sidebar() {
         })}
       </nav>
       <div className="border-t border-white/10 px-[10px] py-[14px]">
-        <Link
-          href="/"
-          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#e9efff] transition-colors hover:bg-white/15"
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#e9efff] transition-colors hover:bg-white/15"
         >
           <span className="flex h-[22px] w-[22px] items-center justify-center text-[22px] leading-none">
             <FiLogOut />
           </span>
           <span>Logout</span>
-        </Link>
+        </button>
       </div>
     </aside>
   );
