@@ -299,11 +299,64 @@ function SectionIcon({ type }: { type: ContactType }) {
 
 export function UsersManagementView() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | UserStatus>("ALL");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const filteredUsers = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return usersApiResponse.users.filter((user) => {
+      const matchesQuery =
+        normalizedQuery.length === 0 ||
+        user.name.toLowerCase().includes(normalizedQuery) ||
+        user.email.toLowerCase().includes(normalizedQuery) ||
+        user.id.toLowerCase().includes(normalizedQuery);
+      const matchesStatus = statusFilter === "ALL" || user.status === statusFilter;
+      return matchesQuery && matchesStatus;
+    });
+  }, [query, statusFilter]);
 
   const selectedUser = useMemo(
     () => usersApiResponse.users.find((user) => user.id === selectedUserId) ?? null,
     [selectedUserId]
   );
+
+  function exportCsv() {
+    const headers = ["User ID", "Name", "Email", "Status", "Total Bookings", "Joined Date"];
+    const rows = filteredUsers.map((user) => [
+      user.id,
+      user.name,
+      user.email,
+      user.status,
+      user.totalBookings.toString(),
+      user.joinedDate
+    ]);
+
+    const csv = [headers, ...rows]
+      .map((row) =>
+        row
+          .map((value) => {
+            const safe = value.replace(/"/g, "\"\"");
+            return `"${safe}"`;
+          })
+          .join(",")
+      )
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const now = new Date();
+    const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
+      now.getDate()
+    ).padStart(2, "0")}`;
+    link.href = url;
+    link.download = `users-${stamp}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <section className="relative space-y-4">
@@ -332,12 +385,15 @@ export function UsersManagementView() {
               <input
                 type="text"
                 placeholder="Search by name, email, or ID..."
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
                 className="w-full border-0 bg-transparent text-[12px] text-[#2b3a59] outline-none placeholder:text-[#9aa6c0]"
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="relative flex items-center gap-2">
               <button
                 type="button"
+                onClick={() => setFiltersOpen((prev) => !prev)}
                 className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe2ef] bg-white px-4 text-[13px] text-[#3a4b70]"
               >
                 <FiFilter size={12} />
@@ -345,22 +401,63 @@ export function UsersManagementView() {
               </button>
               <button
                 type="button"
+                onClick={exportCsv}
                 className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#dbe2ef] bg-white px-4 text-[13px] text-[#3a4b70]"
               >
                 <FiDownload size={12} />
                 Export CSV
               </button>
+              {filtersOpen && (
+                <div className="absolute right-0 top-11 z-10 w-40 rounded-lg border border-[#e6ecf7] bg-white p-2 text-[12px] text-[#3a4b70] shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter("ALL");
+                      setFiltersOpen(false);
+                    }}
+                    className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left ${
+                      statusFilter === "ALL" ? "bg-[#f3f6fd] font-semibold text-[#1f3d8f]" : ""
+                    }`}
+                  >
+                    All users
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter("ACTIVE");
+                      setFiltersOpen(false);
+                    }}
+                    className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left ${
+                      statusFilter === "ACTIVE" ? "bg-[#f3f6fd] font-semibold text-[#1f3d8f]" : ""
+                    }`}
+                  >
+                    Active
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter("BLOCKED");
+                      setFiltersOpen(false);
+                    }}
+                    className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left ${
+                      statusFilter === "BLOCKED" ? "bg-[#f3f6fd] font-semibold text-[#1f3d8f]" : ""
+                    }`}
+                  >
+                    Blocked
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto px-4">
             <table className="w-full min-w-[900px] border-collapse text-[12px]">
               <thead>
                 <tr>
                   {["USER ID", "NAME", "STATUS", "TOTAL BOOKINGS", "JOINED DATE", "ACTIONS"].map((head) => (
                     <th
                       key={head}
-                      className="border-b border-[#edf1fa] px-6 py-3 text-left text-[11px] tracking-[0.04em] text-[#6e7f9b]"
+                      className="border-b border-[#edf1fa] px-4 py-3 text-left text-[11px] tracking-[0.04em] text-[#6e7f9b]"
                     >
                       {head}
                     </th>
@@ -368,10 +465,10 @@ export function UsersManagementView() {
                 </tr>
               </thead>
               <tbody>
-                {usersApiResponse.users.map((user, index) => (
+                {filteredUsers.map((user, index) => (
                   <tr key={user.id} className={index % 2 === 1 ? "bg-[#fbfcff]" : ""}>
-                    <td className="border-b border-[#edf1fa] px-6 py-4 text-[12px] text-[#9aa6c0]">{user.id}</td>
-                    <td className="border-b border-[#edf1fa] px-6 py-4">
+                    <td className="border-b border-[#edf1fa] px-4 py-4 text-[12px] text-[#9aa6c0] ">{user.id}</td>
+                    <td className="border-b border-[#edf1fa] px-4 py-4">
                       <div className="flex items-center gap-2.5">
                         <Image src={user.avatar} alt={user.name} width={28} height={28} className="h-7 w-7 rounded-full" />
                         <div>
@@ -380,12 +477,12 @@ export function UsersManagementView() {
                         </div>
                       </div>
                     </td>
-                    <td className="border-b border-[#edf1fa] px-6 py-4">
+                    <td className="border-b border-[#edf1fa] px-4 py-4">
                       <span className={statusClass(user.status)}>{user.status}</span>
                     </td>
-                    <td className="border-b border-[#edf1fa] px-6 py-4 font-semibold text-[#2f3f60]">{user.totalBookings}</td>
-                    <td className="border-b border-[#edf1fa] px-6 py-4 text-[13px] text-[#6e7f9b]">{user.joinedDate}</td>
-                    <td className="border-b border-[#edf1fa] px-6 py-4 text-[#60749d]">
+                    <td className="border-b border-[#edf1fa] px-4 py-4 font-semibold text-[#2f3f60]">{user.totalBookings}</td>
+                    <td className="border-b border-[#edf1fa] px-4 py-4 text-[13px] text-[#6e7f9b]">{user.joinedDate}</td>
+                    <td className="border-b border-[#edf1fa] px-4 py-4 text-[#60749d]">
                       <div className="flex items-center gap-4 text-sm">
                         <button
                           type="button"
@@ -410,8 +507,10 @@ export function UsersManagementView() {
             </table>
           </div>
 
-          <footer className="flex items-center justify-between px-6 py-4 text-[11px] text-[#7f8ea9]">
-            <span>Showing 1 to {usersApiResponse.users.length} of 12,845 entries</span>
+          <footer className="flex items-center justify-between px-4 py-4 text-[11px] text-[#7f8ea9]">
+            <span>
+              Showing 1 to {filteredUsers.length} of {usersApiResponse.users.length} entries
+            </span>
             <div className="flex items-center gap-3">
               <button type="button" className="text-[#b0bacd]">‹</button>
               <button type="button" className="grid h-7 w-7 place-items-center rounded bg-[#1f3d8f] text-white">
