@@ -114,16 +114,18 @@ function SectionIcon({ type }: { type: ContactType }) {
 }
 
 export function UsersManagementView() {
+  const [users, setUsers] = useState<UserProfile[]>(usersApiResponse.users);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | UserStatus>("ALL");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
   const pageSize = 10;
+  const [showAllBookings, setShowAllBookings] = useState(false);
 
   const filteredUsers = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    return usersApiResponse.users.filter((user) => {
+    return users.filter((user) => {
       const matchesQuery =
         normalizedQuery.length === 0 ||
         user.name.toLowerCase().includes(normalizedQuery) ||
@@ -172,9 +174,66 @@ export function UsersManagementView() {
   }, [page, totalPages]);
 
   const selectedUser = useMemo(
-    () => usersApiResponse.users.find((user) => user.id === selectedUserId) ?? null,
-    [selectedUserId]
+    () => users.find((user) => user.id === selectedUserId) ?? null,
+    [selectedUserId, users]
   );
+
+  const summaryCards = useMemo(() => {
+    const totalUsers = users.length;
+    const activeUsers = users.filter((user) => user.status === "ACTIVE").length;
+    const blockedUsers = users.filter((user) => user.status === "BLOCKED").length;
+    return usersApiResponse.summaryCards.map((card) => {
+      if (card.label === "TOTAL USERS") {
+        return { ...card, value: totalUsers.toLocaleString() };
+      }
+      if (card.label === "ACTIVE USERS") {
+        return { ...card, value: activeUsers.toLocaleString() };
+      }
+      if (card.label === "BLOCKED USERS") {
+        return { ...card, value: blockedUsers.toLocaleString() };
+      }
+      return card;
+    });
+  }, [users]);
+
+  useEffect(() => {
+    setShowAllBookings(false);
+  }, [selectedUserId]);
+
+  const toggleUserStatus = (id: string) => {
+    setUsers((prev) =>
+      prev.map((user) => {
+        if (user.id !== id) return user;
+        const nextStatus: UserStatus = user.status === "BLOCKED" ? "ACTIVE" : "BLOCKED";
+        const nextActions = user.actions.map((action) => {
+          if (action.label.toLowerCase().includes("block")) {
+            return {
+              ...action,
+              label: nextStatus === "BLOCKED" ? "Unblock Account" : "Block Account",
+              tone: nextStatus === "BLOCKED" ? "neutral" : "danger"
+            };
+          }
+          return action;
+        });
+        return { ...user, status: nextStatus, actions: nextActions };
+      })
+    );
+  };
+
+  const markPasswordReset = (id: string) => {
+    setUsers((prev) =>
+      prev.map((user) => {
+        if (user.id !== id) return user;
+        const nextActions = user.actions.map((action) => {
+          if (action.label.toLowerCase().includes("reset password")) {
+            return { ...action, label: "Password Reset Sent", tone: "neutral" };
+          }
+          return action;
+        });
+        return { ...user, actions: nextActions };
+      })
+    );
+  };
 
   function exportCsv() {
     const headers = ["User ID", "Name", "Email", "Status", "Total Bookings", "Joined Date"];
@@ -217,7 +276,7 @@ export function UsersManagementView() {
     <section className="relative space-y-4">
       <div className="space-y-4">
         <section className="grid grid-cols-1 gap-3 lg:grid-cols-4">
-          {usersApiResponse.summaryCards.map((item) => (
+          {summaryCards.map((item) => (
             <article key={item.label} className="rounded-xl border border-[#dbe2ef] bg-white p-4">
               <div className="mb-3 flex items-center justify-between">
                 <div className={`grid h-10 w-10 place-items-center rounded-lg ${item.iconWrap}`}>
@@ -349,7 +408,8 @@ export function UsersManagementView() {
                         </button>
                         <button
                           type="button"
-                          className={user.status === "BLOCKED" ? "text-[#c2cad8]" : "text-[#ef4444]"}
+                          onClick={() => toggleUserStatus(user.id)}
+                          className={user.status === "BLOCKED" ? "text-[#16a34a]" : "text-[#ef4444]"}
                           aria-label={`${user.status === "BLOCKED" ? "Restore" : "Block"} ${user.name}`}
                         >
                           <FiSlash size={14} />
@@ -484,12 +544,17 @@ export function UsersManagementView() {
               <div className="mb-5">
                 <div className="mb-3 flex items-center justify-between">
                   <h4 className="m-0 text-[11px] tracking-[0.12em] text-[#8b96ad] uppercase">Recent Bookings</h4>
-                  <button type="button" className="text-[11px] font-semibold text-[#1f3d8f]">
-                    View All
+                  <button
+                    type="button"
+                    onClick={() => setShowAllBookings((prev) => !prev)}
+                    className="text-[11px] font-semibold text-[#1f3d8f]"
+                  >
+                    {showAllBookings ? "Hide" : "View All"}
                   </button>
                 </div>
                 <div className="space-y-2">
-                  {selectedUser.recentBookings.map((booking) => (
+                  {(showAllBookings ? selectedUser.recentBookings : selectedUser.recentBookings.slice(0, 2)).map(
+                    (booking) => (
                     <div key={booking.hotel} className="flex items-center gap-2 rounded-lg border border-[#eef2f9] bg-white p-2">
                       <Image
                         src={booking.image}
@@ -507,7 +572,8 @@ export function UsersManagementView() {
                         <p className="m-0 text-[9px] font-semibold text-[#18b67a]">{booking.status}</p>
                       </div>
                     </div>
-                  ))}
+                    )
+                  )}
                 </div>
               </div>
             </div>
@@ -517,6 +583,14 @@ export function UsersManagementView() {
                 <button
                   key={action.label}
                   type="button"
+                  onClick={() => {
+                    if (action.label.toLowerCase().includes("block") || action.label.toLowerCase().includes("unblock")) {
+                      toggleUserStatus(selectedUser.id);
+                    }
+                    if (action.label.toLowerCase().includes("reset password")) {
+                      markPasswordReset(selectedUser.id);
+                    }
+                  }}
                   className={`flex h-10 w-full items-center justify-between rounded-xl border px-3 text-left text-[13px] ${
                     action.tone === "danger"
                       ? "border-[#fde1e1] bg-white text-[#eb3b3b]"
