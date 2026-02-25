@@ -99,7 +99,7 @@ export function VendorsManagementView({
           </div>
 
           <div className="overflow-x-auto px-4">
-            <table className="w-full min-w-[880px] border-collapse text-[12px]">
+            <table className="w-full min-w-[880px] border-collapse text-[15px]">
               <thead>
                 <tr>
                   {[

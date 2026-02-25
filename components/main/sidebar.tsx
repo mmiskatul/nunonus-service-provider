@@ -31,7 +31,7 @@ export function Sidebar() {
 
   return (
     <aside className="flex flex-col border-r border-white/10 bg-[var(--bg-sidebar)] text-[#f7f9ff]">
-      <div className="border-b border-white/10 px-[22px] py-[20px] text-[30px] font-bold">
+      <div onClick={() => window.location.href = "/"} className="border-b border-white/10 px-[22px] py-[20px] text-[30px] font-bold">
         Logo
       </div>
       <nav className="flex flex-1 flex-col gap-1 px-[10px] py-[14px]">
