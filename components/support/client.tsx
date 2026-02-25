@@ -10,8 +10,10 @@ import {
   FiEye,
   FiFilter,
   FiInbox,
+  FiPaperclip,
   FiSearch,
-  FiSliders
+  FiSliders,
+  FiSmile
 } from "react-icons/fi";
 
 type TicketStatus = "In Progress" | "Open" | "Resolved";
@@ -59,6 +61,7 @@ export function SupportDashboardView({
 }: {
   data: { summaryCards: Array<{ label: string; value: string; note: string; tone: string }>; tickets: SupportTicket[] };
 }) {
+  const [tickets, setTickets] = useState<SupportTicket[]>(data.tickets);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | TicketStatus>("ALL");
@@ -66,15 +69,16 @@ export function SupportDashboardView({
   const [page, setPage] = useState(1);
   const [statusOpen, setStatusOpen] = useState(false);
   const [priorityOpen, setPriorityOpen] = useState(false);
+  const [reply, setReply] = useState("");
 
   const selectedTicket = useMemo(
-    () => data.tickets.find((ticket) => ticket.id === selectedTicketId) ?? null,
-    [selectedTicketId, data.tickets]
+    () => tickets.find((ticket) => ticket.id === selectedTicketId) ?? null,
+    [selectedTicketId, tickets]
   );
 
   const filteredTickets = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    return data.tickets.filter((ticket) => {
+    return tickets.filter((ticket) => {
       const matchesQuery =
         normalizedQuery.length === 0 ||
         ticket.id.toLowerCase().includes(normalizedQuery) ||
@@ -84,7 +88,7 @@ export function SupportDashboardView({
       const matchesPriority = priorityFilter === "ALL" || ticket.priority === priorityFilter;
       return matchesQuery && matchesStatus && matchesPriority;
     });
-  }, [data.tickets, query, statusFilter, priorityFilter]);
+  }, [tickets, query, statusFilter, priorityFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredTickets.length / pageSize));
   const pagedTickets = useMemo(() => {
@@ -112,6 +116,33 @@ export function SupportDashboardView({
     items.push("ellipsis", page - 1, page, page + 1, "ellipsis", totalPages);
     return items;
   }, [page, totalPages]);
+
+  const formatTime = (date: Date) => {
+    const hours = date.getHours();
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const suffix = hours >= 12 ? "PM" : "AM";
+    const normalized = hours % 12 || 12;
+    return `${normalized}:${minutes} ${suffix}`;
+  };
+
+  const handleSendReply = () => {
+    if (!selectedTicketId || !reply.trim()) return;
+    const now = new Date();
+    const nextMessage: ConversationMessage = {
+      sender: "agent",
+      text: reply.trim(),
+      time: formatTime(now),
+      name: "You"
+    };
+    setTickets((prev) =>
+      prev.map((ticket) =>
+        ticket.id === selectedTicketId
+          ? { ...ticket, conversation: [...ticket.conversation, nextMessage] }
+          : ticket
+      )
+    );
+    setReply("");
+  };
 
   return (
     <section className="relative space-y-4">
@@ -324,35 +355,39 @@ export function SupportDashboardView({
 
       {selectedTicket && (
         <div className="fixed inset-0 z-30 grid place-items-center px-4">
-          <aside className="w-full max-w-[520px] overflow-hidden rounded-2xl border border-[#e6ecf7] bg-white shadow-[0_18px_40px_rgba(15,23,42,0.2)]">
-            <header className="flex items-start justify-between border-b border-[#e6ecf7] px-6 py-5">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="m-0 text-[18px] font-semibold text-[#1d2a43]">{selectedTicket.id}</h3>
-                  {selectedTicket.priority === "High" && (
-                    <span className="rounded-full bg-[#fee2e2] px-2 py-0.5 text-[9px] font-semibold text-[#dc2626]">HIGH PRIORITY</span>
-                  )}
+          <aside className="w-full max-w-[360px] overflow-hidden rounded-2xl border border-[#e6ecf7] bg-white shadow-[0_18px_40px_rgba(15,23,42,0.2)]">
+            <header className="border-b border-[#e6ecf7] px-5 py-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="m-0 text-[13px] font-semibold text-[#1d2a43]">{selectedTicket.id}</h3>
+                    {selectedTicket.priority === "High" && (
+                      <span className="rounded-full bg-[#fee2e2] px-2 py-0.5 text-[9px] font-semibold text-[#dc2626]">HIGH PRIORITY</span>
+                    )}
+                  </div>
+                  <p className="m-0 mt-1 text-[10px] text-[#8b96ad]">Opened {selectedTicket.openedAt}</p>
                 </div>
-                <p className="m-0 mt-1 text-[11px] text-[#7d8ba6]">Opened {selectedTicket.openedAt}</p>
+                <button type="button" onClick={() => setSelectedTicketId(null)} className="text-[#95a2b8]">
+                  x
+                </button>
               </div>
-              <button type="button" onClick={() => setSelectedTicketId(null)} className="text-[#95a2b8]">x</button>
             </header>
 
-            <div className="px-6 py-5">
-              <section className="mb-6">
-                <h4 className="m-0 text-[10px] tracking-[0.09em] text-[#8b96ad] uppercase">Issue Details</h4>
-                <p className="m-0 mt-2 rounded-2xl bg-[#f1f5f9] px-4 py-3 text-[12px] leading-[1.45] text-[#475569]">
+            <div className="space-y-5 px-5 py-5">
+              <section>
+                <h4 className="m-0 text-[9px] tracking-[0.12em] text-[#8b96ad] uppercase">Issue Details</h4>
+                <p className="m-0 mt-2 rounded-2xl bg-[#f1f5f9] px-4 py-3 text-[11px] leading-[1.45] text-[#475569]">
                   {selectedTicket.issueDetails}
                 </p>
               </section>
 
               <section>
-                <h4 className="m-0 text-[10px] tracking-[0.09em] text-[#8b96ad] uppercase">Conversation</h4>
+                <h4 className="m-0 text-[9px] tracking-[0.12em] text-[#8b96ad] uppercase">Conversation</h4>
                 <div className="mt-3 space-y-3">
                   {selectedTicket.conversation.map((message, i) => (
                     <div key={`${message.time}-${i}`}>
                       <p
-                        className={`m-0 max-w-[360px] rounded-2xl p-3 text-[12px] leading-[1.35] ${
+                        className={`m-0 max-w-[300px] rounded-2xl p-3 text-[11px] leading-[1.35] ${
                           message.sender === "agent"
                             ? "ml-auto rounded-tr-md bg-[#3b1e8a] text-white"
                             : "rounded-tl-md bg-[#f1f5f9] text-[#475569]"
@@ -361,7 +396,7 @@ export function SupportDashboardView({
                         {message.text}
                       </p>
                       <p className={`m-0 mt-1 text-[9px] text-[#9aa6c0] ${message.sender === "agent" ? "text-right" : ""}`}>
-                        {message.name} ? {message.time}
+                        {message.name} • {message.time}
                       </p>
                     </div>
                   ))}
@@ -370,12 +405,28 @@ export function SupportDashboardView({
               </section>
             </div>
 
-            <div className="mt-auto border-t border-[#e6ecf7] bg-[#f8fafc] px-6 py-4">
-              <textarea
-                placeholder="Type your reply here..."
-                className="h-20 w-full rounded-2xl border border-[#dbe2ef] bg-white px-4 py-3 text-[12px] text-[#475569] outline-none"
-              />
-              <button type="button" className="mt-3 h-11 w-full rounded-full bg-[#3b1e8a] text-[13px] font-semibold text-white">
+            <div className="mt-auto border-t border-[#e6ecf7] bg-white px-5 py-4">
+              <div className="relative">
+                <textarea
+                  placeholder="Type your reply here..."
+                  value={reply}
+                  onChange={(event) => setReply(event.target.value)}
+                  className="h-20 w-full rounded-2xl border border-[#dbe2ef] bg-white px-4 py-3 text-[11px] text-[#475569] outline-none"
+                />
+                <div className="absolute bottom-3 right-3 flex items-center gap-2 text-[#9aa6c0]">
+                  <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] bg-white">
+                    <FiPaperclip size={12} />
+                  </button>
+                  <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] bg-white">
+                    <FiSmile size={12} />
+                  </button>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleSendReply}
+                className="mt-3 h-10 w-full rounded-full bg-[#3b1e8a] text-[12px] font-semibold text-white"
+              >
                 Update Ticket & Send Reply
               </button>
             </div>
