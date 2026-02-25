@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import {
   FiAlertCircle,
@@ -15,6 +15,7 @@ import {
   FiSliders,
   FiSmile
 } from "react-icons/fi";
+import { io, type Socket } from "socket.io-client";
 
 type TicketStatus = "In Progress" | "Open" | "Resolved";
 type TicketType = "Account" | "Technical" | "Billing" | "Compliance";
@@ -70,6 +71,8 @@ export function SupportDashboardView({
   const [statusOpen, setStatusOpen] = useState(false);
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [reply, setReply] = useState("");
+  const socketRef = useRef<Socket | null>(null);
+  const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL ?? "http://localhost:3001";
 
   const selectedTicket = useMemo(
     () => tickets.find((ticket) => ticket.id === selectedTicketId) ?? null,
@@ -127,6 +130,18 @@ export function SupportDashboardView({
 
   const handleSendReply = () => {
     if (!selectedTicketId || !reply.trim()) return;
+    const socket = socketRef.current;
+    if (socket?.connected) {
+      socket.emit("support:message", {
+        ticketId: selectedTicketId,
+        sender: "agent",
+        name: "You",
+        message: reply.trim()
+      });
+      setReply("");
+      return;
+    }
+
     const now = new Date();
     const nextMessage: ConversationMessage = {
       sender: "agent",
@@ -143,6 +158,33 @@ export function SupportDashboardView({
     );
     setReply("");
   };
+
+  useEffect(() => {
+    const socket = io(socketUrl, { transports: ["websocket"] });
+    socketRef.current = socket;
+
+    socket.on("support:message", (payload: { ticketId?: string; sender?: "agent" | "user"; name?: string; message?: string; time?: string }) => {
+      if (!payload?.ticketId || !payload?.message) return;
+      const nextMessage: ConversationMessage = {
+        sender: payload.sender ?? "user",
+        text: payload.message,
+        time: payload.time ?? formatTime(new Date()),
+        name: payload.name
+      };
+      setTickets((prev) =>
+        prev.map((ticket) =>
+          ticket.id === payload.ticketId
+            ? { ...ticket, conversation: [...ticket.conversation, nextMessage] }
+            : ticket
+        )
+      );
+    });
+
+    return () => {
+      socket.off("support:message");
+      socket.disconnect();
+    };
+  }, [socketUrl]);
 
   return (
     <section className="relative space-y-4">
