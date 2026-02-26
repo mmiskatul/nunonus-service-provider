@@ -1,16 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { FaCheckCircle, FaRegCreditCard, FaShoppingCart } from "react-icons/fa";
 import {
   FiChevronLeft,
   FiChevronRight,
   FiClock,
-  FiEye,
+  FiEdit2,
   FiFilter,
+  FiMoreVertical,
+  FiPauseCircle,
+  FiTrash2,
   FiSearch,
   FiTag,
-  FiX,
+  FiEye,
   FiZap,
   FiGift
 } from "react-icons/fi";
@@ -49,6 +53,61 @@ export function OffersManagementView({
 }) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPlacement, setMenuPlacement] = useState<"top" | "bottom">("bottom");
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const menuPanelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[data-offer-menu]") || target?.closest("[data-offer-menu-panel]")) return;
+      setOpenMenuId(null);
+    };
+
+    document.addEventListener("mousedown", handleClick);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!openMenuId) return;
+
+    const updatePlacement = () => {
+      const root = document.querySelector(
+        `[data-offer-menu-id="${openMenuId}"]`
+      ) as HTMLElement | null;
+      const button = root?.querySelector("[data-offer-menu-button]") as HTMLElement | null;
+      if (!button) return;
+
+      const rect = button.getBoundingClientRect();
+      const panelRect = menuPanelRef.current?.getBoundingClientRect();
+      const panelHeight = panelRect?.height ?? 0;
+      const panelWidth = 160;
+      const offset = 8;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const placeTop = spaceBelow < panelHeight + offset && spaceAbove > spaceBelow;
+      const top = placeTop ? rect.top - panelHeight - offset : rect.bottom + offset;
+      const left = Math.min(
+        window.innerWidth - offset - panelWidth,
+        Math.max(offset, rect.right - panelWidth)
+      );
+
+      setMenuPlacement(placeTop ? "top" : "bottom");
+      setMenuPosition({ top, left });
+    };
+
+    const raf = window.requestAnimationFrame(updatePlacement);
+    window.addEventListener("resize", updatePlacement);
+    window.addEventListener("scroll", updatePlacement, true);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener("resize", updatePlacement);
+      window.removeEventListener("scroll", updatePlacement, true);
+    };
+  }, [openMenuId]);
 
   const filteredOffers = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -176,12 +235,17 @@ export function OffersManagementView({
                   </td>
                   <td className="border-b border-[#edf1fa] px-4 py-3 text-[#2f3f60]">{offer.redemptions.toLocaleString()}</td>
                   <td className="border-b border-[#edf1fa] px-4 py-3">
-                    <div className="flex items-center gap-3 text-sm">
-                      <button type="button" className="text-[#294f99]" aria-label={`View ${offer.name}`}>
-                        <FiEye size={14} />
-                      </button>
-                      <button type="button" className="text-[#ef4444]" aria-label={`Disable ${offer.name}`}>
-                        <FiX size={14} />
+                    <div className="relative" data-offer-menu data-offer-menu-id={offer.id}>
+                      <button
+                        type="button"
+                        className="grid h-7 w-7 place-items-center rounded-full bg-[#eef2ff] text-[#1f3d8f]"
+                        aria-label={`Open actions for ${offer.name}`}
+                        onClick={() =>
+                          setOpenMenuId((current) => (current === offer.id ? null : offer.id))
+                        }
+                        data-offer-menu-button
+                      >
+                        <FiMoreVertical size={14} />
                       </button>
                     </div>
                   </td>
@@ -190,6 +254,45 @@ export function OffersManagementView({
             </tbody>
           </table>
         </div>
+        {openMenuId && menuPosition &&
+          createPortal(
+            <div
+              ref={menuPanelRef}
+              data-offer-menu-panel
+              style={{ top: menuPosition.top, left: menuPosition.left }}
+              className="fixed z-50 w-40 overflow-hidden rounded-lg border border-[#e6ecf7] bg-white shadow-lg"
+            >
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] text-[#475569] hover:bg-[#f8fafc]"
+              >
+                <FiEye size={13} />
+                View Details
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] text-[#475569] hover:bg-[#f8fafc]"
+              >
+                <FiEdit2 size={13} />
+                Edit Offer
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] text-[#1f3d8f] hover:bg-[#f8fafc]"
+              >
+                <FiPauseCircle size={13} />
+                Pause Campaign
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] text-[#ef4444] hover:bg-[#fef2f2]"
+              >
+                <FiTrash2 size={13} />
+                Delete
+              </button>
+            </div>,
+            document.body
+          )}
 
         <footer className="flex items-center justify-between px-4 py-3 text-[10px] text-[#8b96ad]">
           <span>
