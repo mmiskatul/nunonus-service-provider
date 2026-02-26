@@ -49,21 +49,12 @@ export function useUsersManagement(initialData: { users: UserProfile[]; summaryC
     });
   }, [query, statusFilter, users]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [query, statusFilter]);
-
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
   const pagedUsers = useMemo(() => {
-    const start = (page - 1) * pageSize;
+    const start = (currentPage - 1) * pageSize;
     return filteredUsers.slice(start, start + pageSize);
-  }, [filteredUsers, page]);
-
-  useEffect(() => {
-    if (page > totalPages) {
-      setPage(totalPages);
-    }
-  }, [page, totalPages]);
+  }, [currentPage, filteredUsers]);
 
   const paginationItems = useMemo(() => {
     if (totalPages <= 4) {
@@ -72,19 +63,19 @@ export function useUsersManagement(initialData: { users: UserProfile[]; summaryC
 
     const items: Array<number | "ellipsis"> = [1];
 
-    if (page <= 3) {
+    if (currentPage <= 3) {
       items.push(2, 3, "ellipsis", totalPages);
       return items;
     }
 
-    if (page >= totalPages - 2) {
+    if (currentPage >= totalPages - 2) {
       items.push("ellipsis", totalPages - 2, totalPages - 1, totalPages);
       return items;
     }
 
-    items.push("ellipsis", page - 1, page, page + 1, "ellipsis", totalPages);
+    items.push("ellipsis", currentPage - 1, currentPage, currentPage + 1, "ellipsis", totalPages);
     return items;
-  }, [page, totalPages]);
+  }, [currentPage, totalPages]);
 
   const selectedUser = useMemo(
     () => users.find((user) => user.id === selectedUserId) ?? null,
@@ -108,10 +99,6 @@ export function useUsersManagement(initialData: { users: UserProfile[]; summaryC
       return card;
     });
   }, [initialData.summaryCards, users]);
-
-  useEffect(() => {
-    setShowAllBookings(false);
-  }, [selectedUserId]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -167,7 +154,7 @@ export function useUsersManagement(initialData: { users: UserProfile[]; summaryC
     try {
       const updated = await updateUserAction(id, action);
       setUsers((prev) => prev.map((user) => (user.id === id ? updated : user)));
-    } catch (error) {
+    } catch {
       const controller = new AbortController();
       try {
         const data = await fetchUsers(controller.signal);
@@ -180,6 +167,21 @@ export function useUsersManagement(initialData: { users: UserProfile[]; summaryC
     }
   };
 
+  const handleSetSelectedUserId = (value: string | null) => {
+    setSelectedUserId(value);
+    setShowAllBookings(false);
+  };
+
+  const handleSetQuery = (value: string) => {
+    setQuery(value);
+    setPage(1);
+  };
+
+  const handleSetStatusFilter = (value: "ALL" | UserStatus) => {
+    setStatusFilter(value);
+    setPage(1);
+  };
+
   return {
     users,
     filteredUsers,
@@ -189,14 +191,14 @@ export function useUsersManagement(initialData: { users: UserProfile[]; summaryC
     query,
     statusFilter,
     filtersOpen,
-    page,
+    page: currentPage,
     totalPages,
     paginationItems,
     pageSize,
     showAllBookings,
-    setSelectedUserId,
-    setQuery,
-    setStatusFilter,
+    setSelectedUserId: handleSetSelectedUserId,
+    setQuery: handleSetQuery,
+    setStatusFilter: handleSetStatusFilter,
     setFiltersOpen,
     setPage,
     setShowAllBookings,

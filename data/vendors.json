@@ -526,13 +526,13 @@
       "owner": "Isabella Adams",
       "category": "DINING",
       "bookings": 230,
-      "rating": 5.0,
+      "rating": 5,
       "status": "PENDING",
       "avatar": "https://picsum.photos/seed/vendor-89331/80/80",
       "verification": {
         "description": "Updated listing awaiting verification for new assets and compliance documents.",
         "address": "938 Broadway, Seattle, CA 94633",
-        "reviewScore": 5.0,
+        "reviewScore": 5,
         "reviewCount": 230,
         "docs": [
           {
@@ -1046,13 +1046,13 @@
       "owner": "Isabella Adams",
       "category": "DINING",
       "bookings": 230,
-      "rating": 5.0,
+      "rating": 5,
       "status": "PENDING",
       "avatar": "https://picsum.photos/seed/vendor-89351/80/80",
       "verification": {
         "description": "Updated listing awaiting verification for new assets and compliance documents.",
         "address": "938 Broadway, Seattle, CA 94633",
-        "reviewScore": 5.0,
+        "reviewScore": 5,
         "reviewCount": 230,
         "docs": [
           {

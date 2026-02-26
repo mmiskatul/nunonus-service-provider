@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import path from "path";
 
 const dataPath = path.join(process.cwd(), "data", "users.json");
+type JsonObject = Record<string, unknown>;
 
 async function readUsersFile() {
   const raw = await fs.readFile(dataPath, "utf-8");
@@ -16,11 +17,11 @@ async function writeUsersFile(data: unknown) {
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params;
-    const body = await request.json();
-    const action = body?.action as string | undefined;
+    const body = (await request.json()) as JsonObject;
+    const action = body.action as string | undefined;
 
-    const data = await readUsersFile();
-    const users = data.users as Array<Record<string, any>>;
+    const data = (await readUsersFile()) as JsonObject;
+    const users = Array.isArray(data.users) ? (data.users as JsonObject[]) : [];
     const index = users.findIndex((user) => user.id === id);
 
     if (index === -1) {
@@ -67,7 +68,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     }
 
     if (action === "updateUser") {
-      const update = body?.data ?? {};
+      const update = (body.data as JsonObject | undefined) ?? {};
       users[index] = { ...user, ...update };
     }
 

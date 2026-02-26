@@ -14,7 +14,11 @@ const titleByRoute: Record<string, string> = {
   "/settings": "Settings"
 };
 
-export function Topbar() {
+export function Topbar({
+  onOpenPanel
+}: {
+  onOpenPanel: (panel: "notifications" | "profile") => void;
+}) {
   const pathname = usePathname();
   const title = titleByRoute[pathname] ?? "Platform Overview";
 
@@ -22,11 +26,16 @@ export function Topbar() {
     <header className="topbar">
       <h1 className="title">{title}</h1>
       <div className="topbar-right">
-        <span className="relative inline-flex text-[#4d5f82]">
+        <button
+          type="button"
+          onClick={() => onOpenPanel("notifications")}
+          className="relative inline-flex text-[#4d5f82]"
+          aria-label="Notifications"
+        >
           <FiBell size={18} />
           <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-[#ef4444]" />
-        </span>
-        <div className="avatar" />
+        </button>
+        <button type="button" onClick={() => onOpenPanel("profile")} className="avatar" aria-label="User Profile" />
       </div>
     </header>
   );

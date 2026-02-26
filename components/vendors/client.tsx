@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
-import { IoAlertCircle, IoPeople, IoShieldCheckmark, IoTimeOutline } from "react-icons/io5";
+import { IoAlertCircle, IoShieldCheckmark, IoTimeOutline } from "react-icons/io5";
 import { FaUsers } from "react-icons/fa";
 import { BsPatchCheckFill } from "react-icons/bs";
 
@@ -82,16 +82,11 @@ export function VendorsManagementView({
   }, [statusFilter, vendors]);
 
   const totalPages = Math.max(1, Math.ceil(filteredVendors.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
   const pagedVendors = useMemo(() => {
-    const start = (page - 1) * pageSize;
+    const start = (currentPage - 1) * pageSize;
     return filteredVendors.slice(start, start + pageSize);
-  }, [filteredVendors, page]);
-
-  useEffect(() => {
-    if (page > totalPages) {
-      setPage(totalPages);
-    }
-  }, [page, totalPages]);
+  }, [currentPage, filteredVendors]);
 
   const paginationItems = useMemo(() => {
     if (totalPages <= 4) {
@@ -100,19 +95,19 @@ export function VendorsManagementView({
 
     const items: Array<number | "ellipsis"> = [1];
 
-    if (page <= 3) {
+    if (currentPage <= 3) {
       items.push(2, 3, "ellipsis", totalPages);
       return items;
     }
 
-    if (page >= totalPages - 2) {
+    if (currentPage >= totalPages - 2) {
       items.push("ellipsis", totalPages - 2, totalPages - 1, totalPages);
       return items;
     }
 
-    items.push("ellipsis", page - 1, page, page + 1, "ellipsis", totalPages);
+    items.push("ellipsis", currentPage - 1, currentPage, currentPage + 1, "ellipsis", totalPages);
     return items;
-  }, [page, totalPages]);
+  }, [currentPage, totalPages]);
 
   async function updateVendorStatus(id: string, action: "approve" | "reject") {
     try {
@@ -315,17 +310,17 @@ export function VendorsManagementView({
 
           <footer className="flex items-center justify-between px-5 py-4 text-[11px] text-[#8b96ad]">
             <span>
-              Showing {filteredVendors.length === 0 ? 0 : (page - 1) * pageSize + 1} to{" "}
-              {Math.min(page * pageSize, filteredVendors.length)} of {filteredVendors.length} vendors
+              Showing {filteredVendors.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} to{" "}
+              {Math.min(currentPage * pageSize, filteredVendors.length)} of {filteredVendors.length} vendors
             </span>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                 className={`rounded border border-[#e6ecf7] px-2 py-0.5 text-[10px] ${
-                  page === 1 ? "text-[#94a3b8] opacity-60" : "text-[#64748b]"
+                  currentPage === 1 ? "text-[#94a3b8] opacity-60" : "text-[#64748b]"
                 }`}
-                aria-disabled={page === 1}
+                aria-disabled={currentPage === 1}
               >
                 Previous
               </button>
@@ -344,7 +339,7 @@ export function VendorsManagementView({
                     type="button"
                     onClick={() => setPage(item)}
                     className={`h-6 w-6 rounded text-[11px] ${
-                      item === page ? "bg-[#1f3d8f] text-white" : "border border-[#e6ecf7] text-[#64748b]"
+                      item === currentPage ? "bg-[#1f3d8f] text-white" : "border border-[#e6ecf7] text-[#64748b]"
                     }`}
                   >
                     {item}
@@ -355,9 +350,9 @@ export function VendorsManagementView({
                 type="button"
                 onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
                 className={`rounded border border-[#e6ecf7] px-2 py-0.5 text-[10px] ${
-                  page === totalPages ? "text-[#94a3b8] opacity-60" : "text-[#64748b]"
+                  currentPage === totalPages ? "text-[#94a3b8] opacity-60" : "text-[#64748b]"
                 }`}
-                aria-disabled={page === totalPages}
+                aria-disabled={currentPage === totalPages}
               >
                 Next
               </button>

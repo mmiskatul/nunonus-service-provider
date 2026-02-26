@@ -442,7 +442,9 @@ export function SupportDashboardView({
                       </p>
                     </div>
                   ))}
-                  <p className="m-0 text-center text-[9px] text-[#9aa6c0] uppercase">Status changed to "In Progress"</p>
+                  <p className="m-0 text-center text-[9px] text-[#9aa6c0] uppercase">
+                    Status changed to &quot;In Progress&quot;
+                  </p>
                 </div>
               </section>
             </div>

@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import path from "path";
 
 const dataPath = path.join(process.cwd(), "data", "content-moderation.json");
+type JsonObject = Record<string, unknown>;
 
 async function readModerationFile() {
   const raw = await fs.readFile(dataPath, "utf-8");
@@ -17,11 +18,11 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   try {
     const { id } = await context.params;
     const decodedId = decodeURIComponent(id);
-    const body = await request.json();
-    const action = body?.action as "approved" | "rejected" | "pending" | undefined;
+    const body = (await request.json()) as JsonObject;
+    const action = body.action as "approved" | "rejected" | "pending" | undefined;
 
-    const data = await readModerationFile();
-    const items = data.items as Array<Record<string, any>>;
+    const data = (await readModerationFile()) as JsonObject;
+    const items = Array.isArray(data.items) ? (data.items as JsonObject[]) : [];
     const index = items.findIndex((item) => item.id === decodedId);
 
     if (index === -1) {

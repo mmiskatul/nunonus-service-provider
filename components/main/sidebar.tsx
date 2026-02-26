@@ -9,24 +9,40 @@ import { LuLayoutDashboard } from "react-icons/lu";
 import { TbBuildingStore, TbNotebook } from "react-icons/tb";
 import { FiCreditCard, FiLogOut, FiSettings } from "react-icons/fi";
 
-type NavItem = {
+type RouteNavItem = {
+  type: "route";
   href: string;
   label: string;
   icon: ReactNode;
 };
 
+type PanelNavItem = {
+  type: "panel";
+  panel: "notifications" | "profile";
+  label: string;
+  icon: ReactNode;
+};
+
+type NavItem = RouteNavItem | PanelNavItem;
+
 const navItems: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: <LuLayoutDashboard /> },
-  { href: "/users", label: "Users", icon: <GoPeople /> },
-  { href: "/vendors", label: "Vendors", icon: <TbBuildingStore /> },
-  { href: "/content-moderation", label: "Content Moderation", icon: <TbNotebook /> },
-  { href: "/offers", label: "Offers", icon: <GoGift /> },
-  { href: "/billing", label: "Billing", icon: <FiCreditCard /> },
-  { href: "/support", label: "Support", icon: <LiaHeadsetSolid /> },
-  { href: "/settings", label: "Settings", icon: <FiSettings /> }
+  { type: "route", href: "/dashboard", label: "Dashboard", icon: <LuLayoutDashboard /> },
+  { type: "route", href: "/users", label: "Users", icon: <GoPeople /> },
+  { type: "route", href: "/vendors", label: "Vendors", icon: <TbBuildingStore /> },
+  { type: "route", href: "/content-moderation", label: "Content Moderation", icon: <TbNotebook /> },
+  { type: "route", href: "/offers", label: "Offers", icon: <GoGift /> },
+  { type: "route", href: "/billing", label: "Billing", icon: <FiCreditCard /> },
+  { type: "route", href: "/support", label: "Support", icon: <LiaHeadsetSolid /> },
+  { type: "route", href: "/settings", label: "Settings", icon: <FiSettings /> }
 ];
 
-export function Sidebar() {
+export function Sidebar({
+  activePanel,
+  onOpenPanel
+}: {
+  activePanel: "notifications" | "profile" | null;
+  onOpenPanel: (panel: "notifications" | "profile") => void;
+}) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -45,9 +61,26 @@ export function Sidebar() {
       </Link>
       <nav className="flex flex-1 flex-col gap-1 px-[10px] py-[14px]">
         {navItems.map((item) => {
-          const isActive =
-            pathname === item.href ||
-            (pathname === "/" && item.href === "/dashboard");
+          if (item.type === "panel") {
+            const isActive = activePanel === item.panel;
+            return (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => onOpenPanel(item.panel)}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-[#e9efff] transition-colors hover:bg-white/15 ${
+                  isActive ? "bg-[var(--bg-sidebar-accent)] text-[#0f2b55] font-semibold" : ""
+                }`}
+              >
+                <span className="flex h-[22px] w-[22px] items-center justify-center text-[22px] leading-none">
+                  {item.icon}
+                </span>
+                <span>{item.label}</span>
+              </button>
+            );
+          }
+
+          const isActive = pathname === item.href || (pathname === "/" && item.href === "/dashboard");
 
           return (
             <Link
