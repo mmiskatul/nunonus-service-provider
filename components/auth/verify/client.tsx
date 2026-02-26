@@ -71,7 +71,9 @@ export function VerifyCodeView() {
         {values.map((value, index) => (
           <input
             key={index}
-            ref={(el) => (inputsRef.current[index] = el)}
+            ref={(el) => {
+              inputsRef.current[index] = el;
+            }}
             value={value}
             onChange={(event) => handleChange(index, event.target.value)}
             onKeyDown={(event) => handleKeyDown(index, event)}

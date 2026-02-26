@@ -135,12 +135,13 @@ export function useUsersManagement(initialData: { users: UserProfile[]; summaryC
     const applyLocalUpdate = (current: UserProfile) => {
       if (action === "block" || action === "unblock") {
         const nextStatus: UserStatus = action === "block" ? "BLOCKED" : "ACTIVE";
-        const nextActions = current.actions.map((actionItem) => {
+        const nextActions: UserProfile["actions"] = current.actions.map((actionItem) => {
           if (actionItem.label.toLowerCase().includes("block")) {
+            const nextTone: UserProfile["actions"][number]["tone"] = nextStatus === "BLOCKED" ? "neutral" : "danger";
             return {
               ...actionItem,
               label: nextStatus === "BLOCKED" ? "Unblock Account" : "Block Account",
-              tone: nextStatus === "BLOCKED" ? "neutral" : "danger"
+              tone: nextTone
             };
           }
           return actionItem;
@@ -149,9 +150,9 @@ export function useUsersManagement(initialData: { users: UserProfile[]; summaryC
       }
 
       if (action === "resetPassword") {
-        const nextActions = current.actions.map((actionItem) => {
+        const nextActions: UserProfile["actions"] = current.actions.map((actionItem) => {
           if (actionItem.label.toLowerCase().includes("reset password")) {
-            return { ...actionItem, label: "Password Reset Sent", tone: "neutral" };
+            return { ...actionItem, label: "Password Reset Sent", tone: "neutral" as const };
           }
           return actionItem;
         });
