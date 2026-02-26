@@ -4,11 +4,16 @@ function trimTrailingSlash(value: string) {
   return value.replace(/\/+$/, "");
 }
 
+function firstHeaderValue(value: string | null) {
+  if (!value) return null;
+  return value.split(",")[0]?.trim() || null;
+}
+
 async function resolveBaseUrl() {
   const headerList = await headers();
-  const forwardedHost = headerList.get("x-forwarded-host");
-  const host = forwardedHost ?? headerList.get("host");
-  const forwardedProto = headerList.get("x-forwarded-proto");
+  const forwardedHost = firstHeaderValue(headerList.get("x-forwarded-host"));
+  const host = forwardedHost ?? firstHeaderValue(headerList.get("host"));
+  const forwardedProto = firstHeaderValue(headerList.get("x-forwarded-proto"));
   const protocol = forwardedProto ?? (process.env.NODE_ENV === "development" ? "http" : "https");
 
   if (host) {
@@ -24,7 +29,12 @@ async function resolveBaseUrl() {
     return `https://${process.env.VERCEL_URL}`;
   }
 
-  return "http://localhost:3000";
+  if (process.env.RENDER_EXTERNAL_URL) {
+    return trimTrailingSlash(process.env.RENDER_EXTERNAL_URL);
+  }
+
+  const port = process.env.PORT || "3000";
+  return `http://127.0.0.1:${port}`;
 }
 
 export async function fetchApiData<T>(path: string, fallback: T): Promise<T> {
