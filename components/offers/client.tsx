@@ -6,12 +6,15 @@ import { FaCheckCircle, FaRegCreditCard, FaShoppingCart } from "react-icons/fa";
 import {
   FiChevronLeft,
   FiChevronRight,
+  FiChevronDown,
+  FiCalendar,
   FiClock,
   FiEdit2,
   FiFilter,
   FiMoreVertical,
   FiPauseCircle,
   FiPlus,
+  FiX,
   FiTrash2,
   FiSearch,
   FiTag,
@@ -54,20 +57,32 @@ export function OffersManagementView({
 }) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [offers, setOffers] = useState<Offer[]>(data.offers);
   const [discountFilter, setDiscountFilter] = useState<"ALL" | "PERCENT" | "FLAT" | "BOGO">("ALL");
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [applyMenuOpen, setApplyMenuOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [menuPlacement, setMenuPlacement] = useState<"top" | "bottom">("bottom");
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const menuPanelRef = useRef<HTMLDivElement | null>(null);
+  const [formName, setFormName] = useState("");
+  const [formDiscountType, setFormDiscountType] = useState<"PERCENT" | "FLAT">("PERCENT");
+  const [formDiscountValue, setFormDiscountValue] = useState(0);
+  const [formStartDate, setFormStartDate] = useState("");
+  const [formEndDate, setFormEndDate] = useState("");
+  const [formApplyTo, setFormApplyTo] = useState("All Vendors");
+  const [formActive, setFormActive] = useState(true);
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.closest("[data-offer-menu]") || target?.closest("[data-offer-menu-panel]")) return;
       if (target?.closest("[data-offer-filter]")) return;
+      if (target?.closest("[data-offer-create]")) return;
+      if (target?.closest("[data-offer-apply]")) return;
       setOpenMenuId(null);
       setFilterMenuOpen(false);
+      setApplyMenuOpen(false);
     };
 
     document.addEventListener("mousedown", handleClick);
@@ -100,7 +115,6 @@ export function OffersManagementView({
         Math.max(offset, rect.right - panelWidth)
       );
 
-      setMenuPlacement(placeTop ? "top" : "bottom");
       setMenuPosition({ top, left });
     };
 
@@ -117,11 +131,11 @@ export function OffersManagementView({
   const filteredOffers = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     const base = normalizedQuery
-      ? data.offers.filter((offer) => offer.name.toLowerCase().includes(normalizedQuery))
-      : data.offers;
+      ? offers.filter((offer) => offer.name.toLowerCase().includes(normalizedQuery))
+      : offers;
     if (discountFilter === "ALL") return base;
     return base.filter((offer) => offer.kind === discountFilter);
-  }, [data.offers, query, discountFilter]);
+  }, [offers, query, discountFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredOffers.length / pageSize));
   const pagedOffers = useMemo(() => {
@@ -150,6 +164,41 @@ export function OffersManagementView({
     return items;
   }, [page, totalPages]);
 
+  const resetCreateForm = () => {
+    setFormName("");
+    setFormDiscountType("PERCENT");
+    setFormDiscountValue(0);
+    setFormStartDate("");
+    setFormEndDate("");
+    setFormApplyTo("All Vendors");
+    setFormActive(true);
+    setApplyMenuOpen(false);
+  };
+
+  const handleCreateOffer = () => {
+    if (!formName.trim()) return;
+    const discount =
+      formDiscountType === "PERCENT"
+        ? `${formDiscountValue}% OFF`
+        : `$${Number(formDiscountValue || 0).toFixed(2)} Flat`;
+    const validity =
+      formStartDate && formEndDate ? `${formStartDate} - ${formEndDate}` : "Ongoing";
+    const nextOffer: Offer = {
+      id: `offer-${Date.now()}`,
+      name: formName.trim(),
+      discount,
+      validity,
+      appliedTo: formApplyTo,
+      status: formActive ? "Active" : "Inactive",
+      redemptions: 0,
+      kind: formDiscountType === "PERCENT" ? "PERCENT" : "FLAT"
+    };
+    setOffers((prev) => [nextOffer, ...prev]);
+    setCreateOpen(false);
+    resetCreateForm();
+    setPage(1);
+  };
+
   return (
     <section className="space-y-4">
       <section className="flex flex-col gap-3 rounded-2xl border border-[#e6ecf7] bg-gray-200 px-4 py-4 md:flex-row md:items-center md:justify-between">
@@ -161,9 +210,10 @@ export function OffersManagementView({
         </div>
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-full bg-[#1f3d8f] px-4 py-2 text-[12px] font-semibold text-white shadow-md shadow-[#1f3d8f]/20"
+          onClick={() => setCreateOpen(true)}
+          className="inline-flex items-center gap-2 rounded-full bg-[#1f3d8f] px-4 py-3 text-[12px] font-semibold text-white shadow-md shadow-[#1f3d8f]/20"
         >
-          <span className="grid h-4 w-4 place-items-center rounded-full bg-white/15">
+          <span className="grid size-5  place-items-center rounded-full bg-white/15">
             <FiPlus size={10} />
           </span>
           Create Offer
@@ -354,6 +404,199 @@ export function OffersManagementView({
                 Delete
               </button>
             </div>,
+            document.body
+          )}
+        {createOpen &&
+          createPortal(
+            <>
+              <div
+                className="fixed inset-0 z-40 bg-[#0f172a]/30"
+                onClick={() => {
+                  setCreateOpen(false);
+                  resetCreateForm();
+                }}
+              />
+              <aside
+                className="fixed inset-y-0 right-0 z-50 w-full max-w-[420px] overflow-y-auto bg-white shadow-2xl"
+                data-offer-create
+              >
+                <header className="flex items-center justify-between border-b border-[#edf1fa] px-5 py-4">
+                  <h3 className="m-0 text-[16px] font-semibold text-[#1d2a43]">Create New Offer</h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCreateOpen(false);
+                      resetCreateForm();
+                    }}
+                    className="text-[#94a3b8]"
+                    aria-label="Close create offer"
+                  >
+                    <FiX size={16} />
+                  </button>
+                </header>
+                <form
+                  className="space-y-4 px-5 py-4 text-[11px] text-[#475569]"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    handleCreateOffer();
+                  }}
+                >
+                  <div>
+                    <label className="text-[11px] font-semibold text-[#334155]">Offer Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Winter Holiday Special"
+                      value={formName}
+                      onChange={(event) => setFormName(event.target.value)}
+                      className="mt-2 w-full rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2 text-[11px] text-[#1f2d46] placeholder:text-[#94a3b8] outline-none"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[11px] font-semibold text-[#334155]">Discount Type</label>
+                      <div className="mt-2 flex items-center rounded-xl border border-[#e6ecf7] bg-[#f8fafc] p-1">
+                        <button
+                          type="button"
+                          onClick={() => setFormDiscountType("PERCENT")}
+                          className={`flex-1 rounded-lg px-3 py-2 text-[10px] font-semibold ${
+                            formDiscountType === "PERCENT"
+                              ? "bg-white text-[#1f3d8f] shadow-sm"
+                              : "text-[#64748b]"
+                          }`}
+                        >
+                          Percentage
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormDiscountType("FLAT")}
+                          className={`flex-1 rounded-lg px-3 py-2 text-[10px] font-semibold ${
+                            formDiscountType === "FLAT"
+                              ? "bg-white text-[#1f3d8f] shadow-sm"
+                              : "text-[#64748b]"
+                          }`}
+                        >
+                          Flat Amount
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-[#334155]">Discount Value</label>
+                      <div className="mt-2 flex items-center justify-between rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2">
+                        <input
+                          type="number"
+                          value={formDiscountValue}
+                          onChange={(event) => setFormDiscountValue(Number(event.target.value))}
+                          className="w-full border-0 bg-transparent text-[11px] text-[#1f2d46] outline-none"
+                        />
+                        <span className="text-[11px] text-[#94a3b8]">
+                          {formDiscountType === "PERCENT" ? "%" : "$"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[11px] font-semibold text-[#334155]">Start Date</label>
+                      <div className="mt-2 flex items-center justify-between rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2">
+                        <input
+                          type="date"
+                          value={formStartDate}
+                          onChange={(event) => setFormStartDate(event.target.value)}
+                          className="w-full border-0 bg-transparent text-[11px] text-[#1f2d46] outline-none"
+                        />
+                        <FiCalendar size={12} className="text-[#94a3b8]" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-[#334155]">End Date</label>
+                      <div className="mt-2 flex items-center justify-between rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2">
+                        <input
+                          type="date"
+                          value={formEndDate}
+                          onChange={(event) => setFormEndDate(event.target.value)}
+                          className="w-full border-0 bg-transparent text-[11px] text-[#1f2d46] outline-none"
+                        />
+                        <FiCalendar size={12} className="text-[#94a3b8]" />
+                      </div>
+                    </div>
+                  </div>
+                  <div data-offer-apply>
+                    <label className="text-[11px] font-semibold text-[#334155]">Apply To</label>
+                    <button
+                      type="button"
+                      onClick={() => setApplyMenuOpen((current) => !current)}
+                      className="mt-2 flex w-full items-center justify-between rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2"
+                    >
+                      <span className="text-[11px] text-[#1f2d46]">{formApplyTo}</span>
+                      <FiChevronDown size={12} className="text-[#94a3b8]" />
+                    </button>
+                    {applyMenuOpen && (
+                      <div className="mt-2 overflow-hidden rounded-xl border border-[#e6ecf7] bg-white shadow-sm">
+                        {["All Vendors", "Selected Vendors", "Platform Wide"].map((option) => (
+                          <button
+                            key={option}
+                            type="button"
+                            onClick={() => {
+                              setFormApplyTo(option);
+                              setApplyMenuOpen(false);
+                            }}
+                            className={`flex w-full items-center justify-between px-3 py-2 text-left text-[11px] hover:bg-[#f8fafc] ${
+                              formApplyTo === option ? "text-[#1f3d8f]" : "text-[#475569]"
+                            }`}
+                          >
+                            {option}
+                            {formApplyTo === option && <span className="text-[10px]">Active</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="rounded-2xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="m-0 text-[11px] font-semibold text-[#1f2d46]">Active Status</p>
+                        <p className="m-0 mt-1 text-[10px] text-[#94a3b8]">
+                          Enable this offer immediately upon creation
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setFormActive((current) => !current)}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full ${
+                          formActive ? "bg-[#1f3d8f]" : "bg-[#cbd5f5]"
+                        }`}
+                        aria-pressed={formActive}
+                      >
+                        <span
+                          className={`h-4 w-4 rounded-full bg-white transition-transform ${
+                            formActive ? "translate-x-4" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCreateOpen(false);
+                        resetCreateForm();
+                      }}
+                      className="flex-1 rounded-full border border-[#e6ecf7] bg-white px-4 py-2 text-[11px] font-semibold text-[#1f2d46]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={!formName.trim()}
+                      className="flex-[1.2] rounded-full bg-[#1f3d8f] px-4 py-2 text-[11px] font-semibold text-white shadow-md shadow-[#1f3d8f]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Create Offer
+                    </button>
+                  </div>
+                </form>
+              </aside>
+            </>,
             document.body
           )}
 
