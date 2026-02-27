@@ -11,6 +11,7 @@ import {
   FiFilter,
   FiMoreVertical,
   FiPauseCircle,
+  FiPlus,
   FiTrash2,
   FiSearch,
   FiTag,
@@ -53,6 +54,8 @@ export function OffersManagementView({
 }) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [discountFilter, setDiscountFilter] = useState<"ALL" | "PERCENT" | "FLAT" | "BOGO">("ALL");
+  const [filterMenuOpen, setFilterMenuOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPlacement, setMenuPlacement] = useState<"top" | "bottom">("bottom");
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
@@ -62,7 +65,9 @@ export function OffersManagementView({
     const handleClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.closest("[data-offer-menu]") || target?.closest("[data-offer-menu-panel]")) return;
+      if (target?.closest("[data-offer-filter]")) return;
       setOpenMenuId(null);
+      setFilterMenuOpen(false);
     };
 
     document.addEventListener("mousedown", handleClick);
@@ -111,9 +116,12 @@ export function OffersManagementView({
 
   const filteredOffers = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery) return data.offers;
-    return data.offers.filter((offer) => offer.name.toLowerCase().includes(normalizedQuery));
-  }, [data.offers, query]);
+    const base = normalizedQuery
+      ? data.offers.filter((offer) => offer.name.toLowerCase().includes(normalizedQuery))
+      : data.offers;
+    if (discountFilter === "ALL") return base;
+    return base.filter((offer) => offer.kind === discountFilter);
+  }, [data.offers, query, discountFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredOffers.length / pageSize));
   const pagedOffers = useMemo(() => {
@@ -144,6 +152,23 @@ export function OffersManagementView({
 
   return (
     <section className="space-y-4">
+      <section className="flex flex-col gap-3 rounded-2xl border border-[#e6ecf7] bg-gray-200 px-4 py-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="m-0 text-xl font-semibold text-[#1d2a43]">Offers</h2>
+          <p className="m-0 mt-1 text-base text-[#2b3a59]">
+            Manage and monitor promotional campaign performance across all regions.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-full bg-[#1f3d8f] px-4 py-2 text-[12px] font-semibold text-white shadow-md shadow-[#1f3d8f]/20"
+        >
+          <span className="grid h-4 w-4 place-items-center rounded-full bg-white/15">
+            <FiPlus size={10} />
+          </span>
+          Create Offer
+        </button>
+      </section>
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-4">
         {data.summaryCards.map((card, index) => (
           <article key={card.label} className="rounded-2xl border border-[#e6ecf7] bg-white p-4 shadow-sm">
@@ -179,13 +204,51 @@ export function OffersManagementView({
                 className="w-full border-0 bg-transparent text-[11px] text-[#2b3a59] outline-none placeholder:text-[#9aa6c0]"
               />
             </div>
-            <button
-              type="button"
-              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-[#e6ecf7] bg-white px-3 text-[11px] text-[#3a4b70]"
-            >
-              <FiFilter size={12} />
-              Filter
-            </button>
+            <div className="relative" data-offer-filter>
+              <button
+                type="button"
+                onClick={() => setFilterMenuOpen((current) => !current)}
+                className={`relative inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[11px] ${
+                  discountFilter !== "ALL"
+                    ? "border-[#c7d2fe] bg-[#eef2ff] text-[#1f3d8f]"
+                    : "border-[#e6ecf7] bg-white text-[#3a4b70]"
+                }`}
+              >
+                <FiFilter size={12} />
+                Filter
+                {discountFilter !== "ALL" && (
+                  <span className="ml-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#1f3d8f] px-1 text-[9px] font-semibold text-white">
+                    1
+                  </span>
+                )}
+              </button>
+              {filterMenuOpen && (
+                <div className="absolute right-0 z-20 mt-2 w-40 overflow-hidden rounded-lg border border-[#e6ecf7] bg-white shadow-lg">
+                  {[
+                    { value: "ALL", label: "All Discounts" },
+                    { value: "PERCENT", label: "Percent" },
+                    { value: "FLAT", label: "Flat" },
+                    { value: "BOGO", label: "BOGO" }
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        setDiscountFilter(option.value as typeof discountFilter);
+                        setPage(1);
+                        setFilterMenuOpen(false);
+                      }}
+                      className={`flex w-full items-center justify-between px-3 py-2 text-left text-[11px] hover:bg-[#f8fafc] ${
+                        discountFilter === option.value ? "text-[#1f3d8f]" : "text-[#475569]"
+                      }`}
+                    >
+                      {option.label}
+                      {discountFilter === option.value && <span className="text-[10px]">Active</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
