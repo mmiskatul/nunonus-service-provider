@@ -8,6 +8,11 @@ export async function readJson(file: string) {
   return JSON.parse(raw);
 }
 
+export async function writeJson(file: string, data: unknown) {
+  const filePath = path.join(process.cwd(), "data", file);
+  await fs.writeFile(filePath, JSON.stringify(data, null, 2), "utf-8");
+}
+
 export function jsonOk(data: unknown) {
   return NextResponse.json(data, { status: 200 });
 }

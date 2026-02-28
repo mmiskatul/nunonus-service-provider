@@ -72,6 +72,7 @@ export function OffersManagementView({
   const [formEndDate, setFormEndDate] = useState("");
   const [formApplyTo, setFormApplyTo] = useState("All Vendors");
   const [formActive, setFormActive] = useState(true);
+  const [createSaving, setCreateSaving] = useState(false);
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
@@ -175,28 +176,36 @@ export function OffersManagementView({
     setApplyMenuOpen(false);
   };
 
-  const handleCreateOffer = () => {
-    if (!formName.trim()) return;
-    const discount =
-      formDiscountType === "PERCENT"
-        ? `${formDiscountValue}% OFF`
-        : `$${Number(formDiscountValue || 0).toFixed(2)} Flat`;
-    const validity =
-      formStartDate && formEndDate ? `${formStartDate} - ${formEndDate}` : "Ongoing";
-    const nextOffer: Offer = {
-      id: `offer-${Date.now()}`,
-      name: formName.trim(),
-      discount,
-      validity,
-      appliedTo: formApplyTo,
-      status: formActive ? "Active" : "Inactive",
-      redemptions: 0,
-      kind: formDiscountType === "PERCENT" ? "PERCENT" : "FLAT"
-    };
-    setOffers((prev) => [nextOffer, ...prev]);
-    setCreateOpen(false);
-    resetCreateForm();
-    setPage(1);
+  const handleCreateOffer = async () => {
+    if (!formName.trim() || createSaving) return;
+    setCreateSaving(true);
+    try {
+      const response = await fetch("/api/offers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formName.trim(),
+          discountType: formDiscountType,
+          discountValue: formDiscountValue,
+          startDate: formStartDate,
+          endDate: formEndDate,
+          appliedTo: formApplyTo,
+          active: formActive
+        })
+      });
+      if (!response.ok) throw new Error("Failed to create offer");
+      const payload = (await response.json()) as { offer: Offer; offers: Offer[] };
+      if (payload?.offers?.length) {
+        setOffers(payload.offers);
+      } else if (payload?.offer) {
+        setOffers((prev) => [payload.offer, ...prev]);
+      }
+      setCreateOpen(false);
+      resetCreateForm();
+      setPage(1);
+    } finally {
+      setCreateSaving(false);
+    }
   };
 
   return (
@@ -588,10 +597,10 @@ export function OffersManagementView({
                     </button>
                     <button
                       type="submit"
-                      disabled={!formName.trim()}
+                      disabled={!formName.trim() || createSaving}
                       className="flex-[1.2] rounded-full bg-[#1f3d8f] px-4 py-2 text-[11px] font-semibold text-white shadow-md shadow-[#1f3d8f]/20 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      Create Offer
+                      {createSaving ? "Creating..." : "Create Offer"}
                     </button>
                   </div>
                 </form>
