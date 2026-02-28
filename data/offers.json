@@ -2,7 +2,7 @@
   "summaryCards": [
     {
       "label": "ACTIVE OFFERS",
-      "value": "124",
+      "value": "123",
       "note": "+12%",
       "tone": "text-[#16a34a]"
     },
@@ -32,7 +32,7 @@
       "discount": "20% OFF",
       "validity": "Jun 01 - Aug 31",
       "appliedTo": "All Vendors",
-      "status": "Active",
+      "status": "Inactive",
       "redemptions": 1450,
       "kind": "PERCENT"
     },

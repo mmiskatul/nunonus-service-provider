@@ -19,6 +19,9 @@ import {
   FiSearch,
   FiTag,
   FiEye,
+  FiUsers,
+  FiRepeat,
+  FiUserCheck,
   FiZap,
   FiGift
 } from "react-icons/fi";
@@ -61,18 +64,21 @@ export function OffersManagementView({
   const [discountFilter, setDiscountFilter] = useState<"ALL" | "PERCENT" | "FLAT" | "BOGO">("ALL");
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsOffer, setDetailsOffer] = useState<Offer | null>(null);
   const [applyMenuOpen, setApplyMenuOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const menuPanelRef = useRef<HTMLDivElement | null>(null);
   const [formName, setFormName] = useState("");
-  const [formDiscountType, setFormDiscountType] = useState<"PERCENT" | "FLAT">("PERCENT");
+  const [formDiscountType, setFormDiscountType] = useState<"PERCENT" | "FLAT" | "BOGO">("PERCENT");
   const [formDiscountValue, setFormDiscountValue] = useState(0);
   const [formStartDate, setFormStartDate] = useState("");
   const [formEndDate, setFormEndDate] = useState("");
   const [formApplyTo, setFormApplyTo] = useState("All Vendors");
   const [formActive, setFormActive] = useState(true);
   const [createSaving, setCreateSaving] = useState(false);
+  const [editOfferId, setEditOfferId] = useState<string | null>(null);
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
@@ -81,9 +87,11 @@ export function OffersManagementView({
       if (target?.closest("[data-offer-filter]")) return;
       if (target?.closest("[data-offer-create]")) return;
       if (target?.closest("[data-offer-apply]")) return;
+      if (target?.closest("[data-offer-details]")) return;
       setOpenMenuId(null);
       setFilterMenuOpen(false);
       setApplyMenuOpen(false);
+      setDetailsOpen(false);
     };
 
     document.addEventListener("mousedown", handleClick);
@@ -174,6 +182,31 @@ export function OffersManagementView({
     setFormApplyTo("All Vendors");
     setFormActive(true);
     setApplyMenuOpen(false);
+    setEditOfferId(null);
+  };
+
+  const openEditOffer = (offer: Offer) => {
+    setFormName(offer.name);
+    setFormDiscountType(offer.kind);
+    if (offer.kind === "PERCENT" || offer.kind === "FLAT") {
+      const numeric = Number(offer.discount.replace(/[^\d.]/g, ""));
+      setFormDiscountValue(Number.isNaN(numeric) ? 0 : numeric);
+    } else {
+      setFormDiscountValue(0);
+    }
+    setFormStartDate("");
+    setFormEndDate("");
+    setFormApplyTo(offer.appliedTo);
+    setFormActive(offer.status === "Active");
+    setEditOfferId(offer.id);
+    setCreateOpen(true);
+  };
+
+  const openDetails = (offerId: string | null) => {
+    if (!offerId) return;
+    const found = offers.find((offer) => offer.id === offerId) ?? null;
+    setDetailsOffer(found);
+    setDetailsOpen(true);
   };
 
   const handleCreateOffer = async () => {
@@ -181,9 +214,10 @@ export function OffersManagementView({
     setCreateSaving(true);
     try {
       const response = await fetch("/api/offers", {
-        method: "POST",
+        method: editOfferId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          id: editOfferId,
           name: formName.trim(),
           discountType: formDiscountType,
           discountValue: formDiscountValue,
@@ -206,6 +240,30 @@ export function OffersManagementView({
     } finally {
       setCreateSaving(false);
     }
+  };
+
+  const handleToggleStatus = async (offer: Offer) => {
+    const nextActive = offer.status !== "Active";
+    const response = await fetch("/api/offers", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: offer.id, active: nextActive })
+    });
+    if (!response.ok) return;
+    const payload = (await response.json()) as { offers: Offer[] };
+    if (payload?.offers?.length) setOffers(payload.offers);
+  };
+
+  const handleDeleteOffer = async (offer: Offer) => {
+    const response = await fetch("/api/offers", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: offer.id })
+    });
+    if (!response.ok) return;
+    const payload = (await response.json()) as { offers: Offer[] };
+    if (payload?.offers?.length) setOffers(payload.offers);
+    if (detailsOffer?.id === offer.id) setDetailsOpen(false);
   };
 
   return (
@@ -387,6 +445,10 @@ export function OffersManagementView({
               <button
                 type="button"
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] text-[#475569] hover:bg-[#f8fafc]"
+                onClick={() => {
+                  openDetails(openMenuId);
+                  setOpenMenuId(null);
+                }}
               >
                 <FiEye size={13} />
                 View Details
@@ -394,6 +456,11 @@ export function OffersManagementView({
               <button
                 type="button"
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] text-[#475569] hover:bg-[#f8fafc]"
+                onClick={() => {
+                  const offer = offers.find((item) => item.id === openMenuId);
+                  if (offer) openEditOffer(offer);
+                  setOpenMenuId(null);
+                }}
               >
                 <FiEdit2 size={13} />
                 Edit Offer
@@ -401,13 +468,25 @@ export function OffersManagementView({
               <button
                 type="button"
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] text-[#1f3d8f] hover:bg-[#f8fafc]"
+                onClick={() => {
+                  const offer = offers.find((item) => item.id === openMenuId);
+                  if (offer) handleToggleStatus(offer);
+                  setOpenMenuId(null);
+                }}
               >
                 <FiPauseCircle size={13} />
-                Pause Campaign
+                {offers.find((item) => item.id === openMenuId)?.status === "Active"
+                  ? "Pause Campaign"
+                  : "Resume Campaign"}
               </button>
               <button
                 type="button"
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] text-[#ef4444] hover:bg-[#fef2f2]"
+                onClick={() => {
+                  const offer = offers.find((item) => item.id === openMenuId);
+                  if (offer) handleDeleteOffer(offer);
+                  setOpenMenuId(null);
+                }}
               >
                 <FiTrash2 size={13} />
                 Delete
@@ -430,7 +509,9 @@ export function OffersManagementView({
                 data-offer-create
               >
                 <header className="flex items-center justify-between border-b border-[#edf1fa] px-5 py-4">
-                  <h3 className="m-0 text-[16px] font-semibold text-[#1d2a43]">Create New Offer</h3>
+                  <h3 className="m-0 text-[16px] font-semibold text-[#1d2a43]">
+                    {editOfferId ? "Edit Offer" : "Create New Offer"}
+                  </h3>
                   <button
                     type="button"
                     onClick={() => {
@@ -486,6 +567,17 @@ export function OffersManagementView({
                         >
                           Flat Amount
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormDiscountType("BOGO")}
+                          className={`flex-1 rounded-lg px-3 py-2 text-[10px] font-semibold ${
+                            formDiscountType === "BOGO"
+                              ? "bg-white text-[#1f3d8f] shadow-sm"
+                              : "text-[#64748b]"
+                          }`}
+                        >
+                          BOGO
+                        </button>
                       </div>
                     </div>
                     <div>
@@ -495,10 +587,11 @@ export function OffersManagementView({
                           type="number"
                           value={formDiscountValue}
                           onChange={(event) => setFormDiscountValue(Number(event.target.value))}
+                          disabled={formDiscountType === "BOGO"}
                           className="w-full border-0 bg-transparent text-[11px] text-[#1f2d46] outline-none"
                         />
                         <span className="text-[11px] text-[#94a3b8]">
-                          {formDiscountType === "PERCENT" ? "%" : "$"}
+                          {formDiscountType === "PERCENT" ? "%" : formDiscountType === "FLAT" ? "$" : "BOGO"}
                         </span>
                       </div>
                     </div>
@@ -600,11 +693,173 @@ export function OffersManagementView({
                       disabled={!formName.trim() || createSaving}
                       className="flex-[1.2] rounded-full bg-[#1f3d8f] px-4 py-2 text-[11px] font-semibold text-white shadow-md shadow-[#1f3d8f]/20 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {createSaving ? "Creating..." : "Create Offer"}
+                      {createSaving ? "Saving..." : editOfferId ? "Update Offer" : "Create Offer"}
                     </button>
                   </div>
                 </form>
               </aside>
+            </>,
+            document.body
+          )}
+        {detailsOpen && detailsOffer &&
+          createPortal(
+            <>
+              <div
+                className="fixed inset-0 z-40 bg-[#0f172a]/30"
+                onClick={() => setDetailsOpen(false)}
+              />
+              <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
+                <div
+                  className="w-full max-w-[920px] overflow-y-auto rounded-3xl border border-[#e6ecf7] bg-[#f8fafc] shadow-2xl"
+                  data-offer-details
+                >
+                  <header className="border-b border-[#e6ecf7] bg-white px-6 py-5">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="m-0 text-[10px] text-[#94a3b8]">
+                          Offers / {detailsOffer.name}
+                        </p>
+                        <h3 className="m-0 mt-1 text-[18px] font-semibold text-[#1d2a43]">
+                          Offer Details
+                        </h3>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEditOffer(detailsOffer)}
+                          className="inline-flex items-center gap-2 rounded-full bg-[#1f3d8f] px-3 py-1.5 text-[10px] font-semibold text-white"
+                        >
+                          <FiEdit2 size={12} />
+                          Edit Offer
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleStatus(detailsOffer)}
+                          className="inline-flex items-center gap-2 rounded-full border border-[#e6ecf7] bg-white px-3 py-1.5 text-[10px] font-semibold text-[#1f3d8f]"
+                        >
+                          <FiPauseCircle size={12} />
+                          {detailsOffer.status === "Active" ? "Pause" : "Resume"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteOffer(detailsOffer)}
+                          className="inline-flex items-center justify-center rounded-full border border-[#fee2e2] bg-[#fef2f2] px-3 py-1.5 text-[10px] font-semibold text-[#ef4444]"
+                          aria-label="Delete offer"
+                        >
+                          <FiTrash2 size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDetailsOpen(false)}
+                          className="text-[#94a3b8]"
+                          aria-label="Close offer details"
+                        >
+                          <FiX size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </header>
+                  <div className="space-y-4 px-6 py-5">
+                    <section className="flex gap-4 rounded-2xl border border-[#e6ecf7] bg-white p-4">
+                      <div className="grid h-16 w-20 place-items-center rounded-xl bg-[#f1f5f9] text-[18px] font-semibold text-[#1f3d8f]">
+                        {detailsOffer.discount.replace(" OFF", "")}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="m-0 text-[14px] font-semibold text-[#1f2d46]">
+                            {detailsOffer.name}
+                          </h4>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${
+                              detailsOffer.status === "Active"
+                                ? "bg-[#dcfce7] text-[#15803d]"
+                                : "bg-[#e2e8f0] text-[#64748b]"
+                            }`}
+                          >
+                            {detailsOffer.status}
+                          </span>
+                        </div>
+                        <p className="m-0 mt-1 text-[11px] text-[#64748b]">
+                          {detailsOffer.validity}
+                        </p>
+                        <p className="m-0 mt-1 text-[10px] text-[#94a3b8]">
+                          Applied to: {detailsOffer.appliedTo}
+                        </p>
+                      </div>
+                    </section>
+
+                    <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                      {[
+                        { label: "Providers", value: "150", note: "+12%", icon: <FiUsers size={14} /> },
+                        { label: "Redemptions", value: "4.2k", note: "+8%", icon: <FiRepeat size={14} /> },
+                        { label: "Engaged Users", value: "12k", note: "Unique", icon: <FiUserCheck size={14} /> }
+                      ].map((item) => (
+                        <div
+                          key={item.label}
+                          className="rounded-2xl border border-[#e6ecf7] bg-white p-3"
+                        >
+                          <div className="flex items-center justify-between">
+                            <p className="m-0 text-[10px] text-[#8b96ad]">{item.label}</p>
+                            <span className="grid h-7 w-7 place-items-center rounded-full bg-[#eef2ff] text-[#1f3d8f]">
+                              {item.icon}
+                            </span>
+                          </div>
+                          <div className="mt-2 flex items-baseline gap-2">
+                            <span className="text-[16px] font-semibold text-[#1f2d46]">
+                              {item.value}
+                            </span>
+                            <span className="text-[9px] text-[#16a34a]">{item.note}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </section>
+
+                    <section className="rounded-2xl border border-[#e6ecf7] bg-white p-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="m-0 text-[12px] font-semibold text-[#1f2d46]">
+                          Applied Providers
+                        </h4>
+                        <div className="flex items-center gap-2 text-[10px] text-[#64748b]">
+                          <span className="rounded-full border border-[#e6ecf7] bg-[#f8fafc] px-2 py-1">
+                            All Categories
+                          </span>
+                          <span className="rounded-full border border-[#e6ecf7] bg-[#f8fafc] px-2 py-1">
+                            Search providers...
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mt-3 rounded-xl border border-[#edf1fa]">
+                        {[
+                          { category: "Electronics", redemptions: "1,204", active: true },
+                          { category: "Retail", redemptions: "852", active: true },
+                          { category: "Home", redemptions: "412", active: false }
+                        ].map((row) => (
+                          <div
+                            key={row.category}
+                            className="flex items-center justify-between border-b border-[#edf1fa] px-3 py-2 text-[10px] text-[#64748b] last:border-b-0"
+                          >
+                            <span className="rounded-full bg-[#f1f5f9] px-2 py-0.5 text-[9px] text-[#475569]">
+                              {row.category}
+                            </span>
+                            <span>{row.redemptions}</span>
+                            <span
+                              className={`inline-flex h-4 w-8 items-center rounded-full ${
+                                row.active ? "bg-[#1f3d8f]" : "bg-[#e2e8f0]"
+                              }`}
+                            >
+                              <span
+                                className={`h-3 w-3 rounded-full bg-white ${
+                                  row.active ? "translate-x-4" : "translate-x-1"
+                                }`}
+                              />
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  </div>
+                </div>
+              </div>
             </>,
             document.body
           )}

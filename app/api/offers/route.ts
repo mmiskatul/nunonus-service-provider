@@ -75,3 +75,101 @@ export async function POST(request: Request) {
     return jsonError("Failed to create offer");
   }
 }
+
+type UpdateOfferPayload = CreateOfferPayload & { id: string };
+
+export async function PUT(request: Request) {
+  try {
+    const payload = (await request.json()) as UpdateOfferPayload;
+    if (!payload?.id) return jsonError("Offer id is required");
+    const data = await readJson("offers.json");
+    const index = (data.offers || []).findIndex((offer: { id: string }) => offer.id === payload.id);
+    if (index === -1) return jsonError("Offer not found");
+
+    const current = data.offers[index];
+    const discount =
+      payload.discountType === "PERCENT"
+        ? `${payload.discountValue}% OFF`
+        : payload.discountType === "FLAT"
+          ? `$${Number(payload.discountValue || 0).toFixed(2)} Flat`
+          : "BOGO Free";
+    const start = payload.startDate ? formatDate(payload.startDate) : "";
+    const end = payload.endDate ? formatDate(payload.endDate) : "";
+    const validity = start && end ? `${start} - ${end}` : current.validity;
+    const next = {
+      ...current,
+      name: payload.name,
+      discount,
+      validity,
+      appliedTo: payload.appliedTo,
+      status: payload.active ? "Active" : "Inactive",
+      kind: payload.discountType
+    };
+
+    data.offers[index] = next;
+    const activeCard = (data.summaryCards || []).find(
+      (card: { label: string }) => card.label === "ACTIVE OFFERS"
+    );
+    if (activeCard && current.status !== next.status) {
+      const delta = next.status === "Active" ? 1 : -1;
+      const nextValue = Math.max(0, parseCount(activeCard.value) + delta);
+      activeCard.value = nextValue.toLocaleString();
+    }
+
+    await writeJson("offers.json", data);
+    return jsonOk({ offer: next, offers: data.offers });
+  } catch {
+    return jsonError("Failed to update offer");
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const payload = (await request.json()) as { id: string; active: boolean };
+    if (!payload?.id) return jsonError("Offer id is required");
+    const data = await readJson("offers.json");
+    const index = (data.offers || []).findIndex((offer: { id: string }) => offer.id === payload.id);
+    if (index === -1) return jsonError("Offer not found");
+    const current = data.offers[index];
+    const nextStatus = payload.active ? "Active" : "Inactive";
+    data.offers[index] = { ...current, status: nextStatus };
+
+    const activeCard = (data.summaryCards || []).find(
+      (card: { label: string }) => card.label === "ACTIVE OFFERS"
+    );
+    if (activeCard && current.status !== nextStatus) {
+      const delta = nextStatus === "Active" ? 1 : -1;
+      const nextValue = Math.max(0, parseCount(activeCard.value) + delta);
+      activeCard.value = nextValue.toLocaleString();
+    }
+
+    await writeJson("offers.json", data);
+    return jsonOk({ offers: data.offers });
+  } catch {
+    return jsonError("Failed to update offer status");
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const payload = (await request.json()) as { id: string };
+    if (!payload?.id) return jsonError("Offer id is required");
+    const data = await readJson("offers.json");
+    const index = (data.offers || []).findIndex((offer: { id: string }) => offer.id === payload.id);
+    if (index === -1) return jsonError("Offer not found");
+    const [removed] = data.offers.splice(index, 1);
+
+    const activeCard = (data.summaryCards || []).find(
+      (card: { label: string }) => card.label === "ACTIVE OFFERS"
+    );
+    if (activeCard && removed?.status === "Active") {
+      const nextValue = Math.max(0, parseCount(activeCard.value) - 1);
+      activeCard.value = nextValue.toLocaleString();
+    }
+
+    await writeJson("offers.json", data);
+    return jsonOk({ offers: data.offers });
+  } catch {
+    return jsonError("Failed to delete offer");
+  }
+}
