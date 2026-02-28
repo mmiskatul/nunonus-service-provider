@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import Image from "next/image";
 import {
   FiChevronLeft,
   FiChevronRight,
@@ -26,6 +27,28 @@ type PaymentRow = {
   commission: string;
   netPayout: string;
   status: PaymentStatus;
+  details?: {
+    profile?: {
+      vendorTitle?: string;
+      location?: string;
+      category?: string;
+      joinedDate?: string;
+      lastBillingDate?: string;
+      image?: string;
+    };
+    netPayable?: {
+      amount?: string;
+      dueDate?: string;
+      invoiceStatus?: string;
+    };
+    financialBreakdown?: {
+      totalRevenue?: string;
+      commissionRate?: string;
+      commissionAmount?: string;
+      cycle?: string;
+    };
+    history?: Array<{ id: string; date: string; amount: string; status: PaymentStatus }>;
+  };
 };
 
 function payoutStatusClass(status: PaymentStatus) {
@@ -42,12 +65,14 @@ export function BillingManagementView({
 }) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [payments, setPayments] = useState<PaymentRow[]>(data.recentPayments);
   const [detailsPayment, setDetailsPayment] = useState<PaymentRow | null>(null);
+  const [billingActionLoading, setBillingActionLoading] = useState<"download" | "reminder" | "paid" | null>(null);
 
   const filteredPayments = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery) return data.recentPayments;
-    return data.recentPayments.filter((payment) => {
+    if (!normalizedQuery) return payments;
+    return payments.filter((payment) => {
       return (
         payment.vendorName.toLowerCase().includes(normalizedQuery) ||
         payment.vendorCode.toLowerCase().includes(normalizedQuery) ||
@@ -55,13 +80,96 @@ export function BillingManagementView({
         payment.netPayout.toLowerCase().includes(normalizedQuery)
       );
     });
-  }, [data.recentPayments, query]);
+  }, [payments, query]);
 
   const totalPages = Math.max(1, Math.ceil(filteredPayments.length / pageSize));
   const pagedPayments = useMemo(() => {
     const start = (page - 1) * pageSize;
     return filteredPayments.slice(start, start + pageSize);
   }, [filteredPayments, page]);
+
+  const handleBillingAction = async (action: "markPaid" | "sendReminder") => {
+    if (!detailsPayment) return;
+    setBillingActionLoading(action === "markPaid" ? "paid" : "reminder");
+    try {
+      const response = await fetch("/api/billing", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          vendorCode: detailsPayment.vendorCode,
+          vendorName: detailsPayment.vendorName,
+          action
+        })
+      });
+      if (!response.ok) throw new Error("Billing action failed");
+      const payload = (await response.json()) as { payments: PaymentRow[]; updated: PaymentRow };
+      if (payload?.payments?.length) {
+        setPayments(payload.payments);
+        setDetailsPayment(payload.updated);
+      }
+    } finally {
+      setBillingActionLoading(null);
+    }
+  };
+
+  const handleDownloadInvoice = () => {
+    if (!detailsPayment) return;
+    setBillingActionLoading("download");
+    const lines = [
+      "Invoice",
+      `Vendor: ${detailsPayment.vendorName}`,
+      `Vendor Code: ${detailsPayment.vendorCode}`,
+      `Total Earnings: ${detailsPayment.totalEarnings}`,
+      `Commission: ${detailsPayment.commission}`,
+      `Net Payout: ${detailsPayment.netPayout}`,
+      `Status: ${detailsPayment.status}`
+    ];
+    const pdf = buildSimplePdf(lines);
+    const blob = new Blob([pdf], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${detailsPayment.vendorCode}-invoice.pdf`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setBillingActionLoading(null);
+  };
+
+  const buildSimplePdf = (lines: string[]) => {
+    const escape = (value: string) =>
+      value.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+    const contentLines = [
+      "BT",
+      "/F1 12 Tf",
+      "50 750 Td",
+      ...lines.map((line, index) => `${index === 0 ? "" : "T* " }(${escape(line)}) Tj`),
+      "ET"
+    ];
+    const stream = contentLines.join("\n");
+    const objects: string[] = [];
+    objects.push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj");
+    objects.push("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj");
+    objects.push(
+      "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj"
+    );
+    objects.push(`4 0 obj\n<< /Length ${stream.length} >>\nstream\n${stream}\nendstream\nendobj`);
+    objects.push("5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj");
+
+    let pdf = "%PDF-1.4\n";
+    const offsets: number[] = [0];
+    objects.forEach((obj) => {
+      offsets.push(pdf.length);
+      pdf += `${obj}\n`;
+    });
+    const xrefOffset = pdf.length;
+    pdf += "xref\n0 6\n0000000000 65535 f \n";
+    offsets.slice(1).forEach((offset) => {
+      pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
+    });
+    pdf += "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n";
+    pdf += `${xrefOffset}\n%%EOF`;
+    return pdf;
+  };
 
   return (
     <section className="space-y-4">
@@ -192,17 +300,32 @@ export function BillingManagementView({
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button className="inline-flex items-center gap-2 rounded-full border border-[#e6ecf7] bg-white px-3 py-1.5 text-[10px] font-semibold text-[#1f3d8f]">
+                    <button
+                      type="button"
+                      onClick={handleDownloadInvoice}
+                      disabled={billingActionLoading === "download"}
+                      className="inline-flex items-center gap-2 rounded-full border border-[#e6ecf7] bg-white px-3 py-1.5 text-[10px] font-semibold text-[#1f3d8f] disabled:opacity-60"
+                    >
                       <FiDownload size={12} />
-                      Download Invoice
+                      {billingActionLoading === "download" ? "Downloading..." : "Download Invoice"}
                     </button>
-                    <button className="inline-flex items-center gap-2 rounded-full border border-[#fde68a] bg-[#fffbeb] px-3 py-1.5 text-[10px] font-semibold text-[#b45309]">
+                    <button
+                      type="button"
+                      onClick={() => handleBillingAction("sendReminder")}
+                      disabled={billingActionLoading === "reminder"}
+                      className="inline-flex items-center gap-2 rounded-full border border-[#fde68a] bg-[#fffbeb] px-3 py-1.5 text-[10px] font-semibold text-[#b45309] disabled:opacity-60"
+                    >
                       <FiSend size={12} />
-                      Send Reminder
+                      {billingActionLoading === "reminder" ? "Sending..." : "Send Reminder"}
                     </button>
-                    <button className="inline-flex items-center gap-2 rounded-full bg-[#1f3d8f] px-3 py-1.5 text-[10px] font-semibold text-white">
+                    <button
+                      type="button"
+                      onClick={() => handleBillingAction("markPaid")}
+                      disabled={billingActionLoading === "paid"}
+                      className="inline-flex items-center gap-2 rounded-full bg-[#1f3d8f] px-3 py-1.5 text-[10px] font-semibold text-white disabled:opacity-60"
+                    >
                       <FiCheckCircle size={12} />
-                      Mark as Paid
+                      {billingActionLoading === "paid" ? "Marking..." : "Mark as Paid"}
                     </button>
                     <button
                       type="button"
@@ -219,32 +342,47 @@ export function BillingManagementView({
                   <section className="grid grid-cols-1 gap-4 lg:grid-cols-[1.3fr_0.7fr]">
                     <div className="rounded-2xl border border-[#e6ecf7] bg-white p-4">
                       <div className="flex items-start gap-3">
-                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-[#1f3d8f] to-[#60a5fa]" />
+                        <div className="relative h-16 w-16 overflow-hidden rounded-2xl bg-gradient-to-br from-[#1f3d8f] to-[#60a5fa]">
+                          {detailsPayment.details?.profile?.image && (
+                            <Image
+                              src={detailsPayment.details.profile.image}
+                              alt={detailsPayment.vendorName}
+                              fill
+                              className="object-cover"
+                            />
+                          )}
+                        </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="m-0 text-[9px] font-semibold text-[#ef4444]">OVERDUE</p>
                               <h4 className="m-0 text-[14px] font-semibold text-[#1f2d46]">
-                                {detailsPayment.vendorName}
+                                {detailsPayment.details?.profile?.vendorTitle ?? detailsPayment.vendorName}
                               </h4>
                             </div>
                             <button className="text-[10px] text-[#1f3d8f]">View Provider Profile</button>
                           </div>
                           <p className="m-0 mt-1 text-[10px] text-[#94a3b8]">
-                            Main Branch | Florida
+                            {detailsPayment.details?.profile?.location ?? "Main Branch | Florida"}
                           </p>
                           <div className="mt-2 grid grid-cols-3 gap-2 text-[9px] text-[#64748b]">
                             <div>
                               <p className="m-0 text-[8px] text-[#94a3b8]">CATEGORY</p>
-                              <p className="m-0 font-semibold text-[#1f2d46]">Hotel & Resort</p>
+                              <p className="m-0 font-semibold text-[#1f2d46]">
+                                {detailsPayment.details?.profile?.category ?? "Hotel & Resort"}
+                              </p>
                             </div>
                             <div>
                               <p className="m-0 text-[8px] text-[#94a3b8]">JOINED DATE</p>
-                              <p className="m-0 font-semibold text-[#1f2d46]">Jan 12, 2026</p>
+                              <p className="m-0 font-semibold text-[#1f2d46]">
+                                {detailsPayment.details?.profile?.joinedDate ?? "Jan 12, 2026"}
+                              </p>
                             </div>
                             <div>
                               <p className="m-0 text-[8px] text-[#94a3b8]">LAST BILLING</p>
-                              <p className="m-0 font-semibold text-[#1f2d46]">Feb 01, 2026</p>
+                              <p className="m-0 font-semibold text-[#1f2d46]">
+                                {detailsPayment.details?.profile?.lastBillingDate ?? "Feb 01, 2026"}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -253,11 +391,15 @@ export function BillingManagementView({
                     <div className="rounded-2xl border border-[#1f3d8f] bg-[#1f3d8f] p-4 text-white">
                       <p className="m-0 text-[10px] text-white/70">Net Payable Amount</p>
                       <p className="m-0 mt-2 text-[20px] font-semibold">
-                        {detailsPayment.netPayout}
+                        {detailsPayment.details?.netPayable?.amount ?? detailsPayment.netPayout}
                       </p>
                       <div className="mt-3 text-[9px] text-white/70">
-                        <p className="m-0">Due Date: Jun 15, 2026</p>
-                        <p className="m-0">Invoice Status: {detailsPayment.status}</p>
+                        <p className="m-0">
+                          Due Date: {detailsPayment.details?.netPayable?.dueDate ?? "Jun 15, 2026"}
+                        </p>
+                        <p className="m-0">
+                          Invoice Status: {detailsPayment.details?.netPayable?.invoiceStatus ?? detailsPayment.status}
+                        </p>
                       </div>
                     </div>
                   </section>
@@ -267,27 +409,29 @@ export function BillingManagementView({
                       <h4 className="m-0 text-[12px] font-semibold text-[#1f2d46]">
                         Financial Breakdown
                       </h4>
-                      <span className="text-[9px] text-[#94a3b8]">Cycle: Oct 01 - Oct 31, 2025</span>
+                      <span className="text-[9px] text-[#94a3b8]">
+                        Cycle: {detailsPayment.details?.financialBreakdown?.cycle ?? "Oct 01 - Oct 31, 2025"}
+                      </span>
                     </div>
                     <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
                       <div>
                         <p className="m-0 text-[9px] text-[#94a3b8]">Total Booking Revenue</p>
                         <p className="m-0 mt-1 text-[12px] font-semibold text-[#1f2d46]">
-                          {detailsPayment.totalEarnings}
+                          {detailsPayment.details?.financialBreakdown?.totalRevenue ?? detailsPayment.totalEarnings}
                         </p>
                         <div className="mt-2 h-0.5 w-full bg-[#1f3d8f]" />
                       </div>
                       <div>
                         <p className="m-0 text-[9px] text-[#94a3b8]">Commission Rate</p>
                         <p className="m-0 mt-1 text-[12px] font-semibold text-[#1f2d46]">
-                          10.0%
+                          {detailsPayment.details?.financialBreakdown?.commissionRate ?? "10.0%"}
                         </p>
                         <div className="mt-2 h-0.5 w-full bg-[#f59e0b]" />
                       </div>
                       <div>
                         <p className="m-0 text-[9px] text-[#94a3b8]">Commission Amount</p>
                         <p className="m-0 mt-1 text-[12px] font-semibold text-[#ef4444]">
-                          {detailsPayment.commission}
+                          {detailsPayment.details?.financialBreakdown?.commissionAmount ?? detailsPayment.commission}
                         </p>
                         <div className="mt-2 h-0.5 w-full bg-[#ef4444]" />
                       </div>
@@ -297,7 +441,7 @@ export function BillingManagementView({
                       <div className="mt-2 flex items-center justify-between">
                         <span>Net Payable = (Total Revenue - Commission)</span>
                         <span className="text-[16px] font-semibold text-[#1f3d8f]">
-                          {detailsPayment.netPayout}
+                          {detailsPayment.details?.netPayable?.amount ?? detailsPayment.netPayout}
                         </span>
                       </div>
                     </div>
@@ -309,11 +453,11 @@ export function BillingManagementView({
                       <button className="text-[10px] text-[#1f3d8f]">View All History</button>
                     </div>
                     <div className="mt-3 rounded-xl border border-[#edf1fa]">
-                      {[
+                      {(detailsPayment.details?.history ?? [
                         { id: "TXN-9021-X9", date: "Sep 01, 2026", amount: "$4,210.00", status: "PAID" },
                         { id: "TXN-8842-M2", date: "Aug 01, 2026", amount: "$3,950.00", status: "PAID" },
                         { id: "TXN-7731-L1", date: "Jul 01, 2026", amount: "$5,120.00", status: "PENDING" }
-                      ].map((row) => (
+                      ]).map((row) => (
                         <div
                           key={row.id}
                           className="flex items-center justify-between border-b border-[#edf1fa] px-3 py-2 text-[10px] text-[#64748b] last:border-b-0"
