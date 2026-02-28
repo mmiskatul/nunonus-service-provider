@@ -66,6 +66,18 @@ export function OffersManagementView({
   const [createOpen, setCreateOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsOffer, setDetailsOffer] = useState<Offer | null>(null);
+  const [deleteConfirmOffer, setDeleteConfirmOffer] = useState<Offer | null>(null);
+  const [pauseConfirmOffer, setPauseConfirmOffer] = useState<Offer | null>(null);
+  const [providerCategory, setProviderCategory] = useState("All Categories");
+  const [providerSearch, setProviderSearch] = useState("");
+  const [providerMenuOpen, setProviderMenuOpen] = useState(false);
+  const [providerRows, setProviderRows] = useState<
+    Array<{ category: string; redemptions: number; active: boolean }>
+  >([
+    { category: "Electronics", redemptions: 1204, active: true },
+    { category: "Retail", redemptions: 852, active: true },
+    { category: "Home", redemptions: 412, active: false }
+  ]);
   const [applyMenuOpen, setApplyMenuOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
@@ -88,10 +100,16 @@ export function OffersManagementView({
       if (target?.closest("[data-offer-create]")) return;
       if (target?.closest("[data-offer-apply]")) return;
       if (target?.closest("[data-offer-details]")) return;
+      if (target?.closest("[data-offer-delete]")) return;
+      if (target?.closest("[data-offer-pause]")) return;
+      if (target?.closest("[data-offer-provider]")) return;
       setOpenMenuId(null);
       setFilterMenuOpen(false);
       setApplyMenuOpen(false);
       setDetailsOpen(false);
+      setDeleteConfirmOffer(null);
+      setPauseConfirmOffer(null);
+      setProviderMenuOpen(false);
     };
 
     document.addEventListener("mousedown", handleClick);
@@ -207,6 +225,9 @@ export function OffersManagementView({
     const found = offers.find((offer) => offer.id === offerId) ?? null;
     setDetailsOffer(found);
     setDetailsOpen(true);
+    setProviderCategory("All Categories");
+    setProviderSearch("");
+    setProviderMenuOpen(false);
   };
 
   const handleCreateOffer = async () => {
@@ -264,6 +285,7 @@ export function OffersManagementView({
     const payload = (await response.json()) as { offers: Offer[] };
     if (payload?.offers?.length) setOffers(payload.offers);
     if (detailsOffer?.id === offer.id) setDetailsOpen(false);
+    setDeleteConfirmOffer(null);
   };
 
   return (
@@ -484,7 +506,7 @@ export function OffersManagementView({
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] text-[#ef4444] hover:bg-[#fef2f2]"
                 onClick={() => {
                   const offer = offers.find((item) => item.id === openMenuId);
-                  if (offer) handleDeleteOffer(offer);
+                  if (offer) setDeleteConfirmOffer(offer);
                   setOpenMenuId(null);
                 }}
               >
@@ -732,21 +754,21 @@ export function OffersManagementView({
                           <FiEdit2 size={12} />
                           Edit Offer
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleStatus(detailsOffer)}
-                          className="inline-flex items-center gap-2 rounded-full border border-[#e6ecf7] bg-white px-3 py-1.5 text-[10px] font-semibold text-[#1f3d8f]"
-                        >
-                          <FiPauseCircle size={12} />
-                          {detailsOffer.status === "Active" ? "Pause" : "Resume"}
+                      <button
+                        type="button"
+                        onClick={() => setPauseConfirmOffer(detailsOffer)}
+                        className="inline-flex items-center gap-2 rounded-full border border-[#e6ecf7] bg-white px-3 py-1.5 text-[10px] font-semibold text-[#1f3d8f]"
+                      >
+                        <FiPauseCircle size={12} />
+                        {detailsOffer.status === "Active" ? "Pause" : "Resume"}
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteOffer(detailsOffer)}
-                          className="inline-flex items-center justify-center rounded-full border border-[#fee2e2] bg-[#fef2f2] px-3 py-1.5 text-[10px] font-semibold text-[#ef4444]"
-                          aria-label="Delete offer"
-                        >
-                          <FiTrash2 size={12} />
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmOffer(detailsOffer)}
+                        className="inline-flex items-center justify-center rounded-full border border-[#fee2e2] bg-[#fef2f2] px-3 py-1.5 text-[10px] font-semibold text-[#ef4444]"
+                        aria-label="Delete offer"
+                      >
+                        <FiTrash2 size={12} />
                         </button>
                         <button
                           type="button"
@@ -815,48 +837,203 @@ export function OffersManagementView({
                     </section>
 
                     <section className="rounded-2xl border border-[#e6ecf7] bg-white p-4">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <h4 className="m-0 text-[12px] font-semibold text-[#1f2d46]">
                           Applied Providers
                         </h4>
                         <div className="flex items-center gap-2 text-[10px] text-[#64748b]">
-                          <span className="rounded-full border border-[#e6ecf7] bg-[#f8fafc] px-2 py-1">
-                            All Categories
-                          </span>
-                          <span className="rounded-full border border-[#e6ecf7] bg-[#f8fafc] px-2 py-1">
-                            Search providers...
-                          </span>
+                          <div className="relative" data-offer-provider>
+                            <button
+                              type="button"
+                              onClick={() => setProviderMenuOpen((current) => !current)}
+                              className="rounded-full border border-[#e6ecf7] bg-[#f8fafc] px-2 py-1"
+                            >
+                              {providerCategory}
+                            </button>
+                            {providerMenuOpen && (
+                              <div className="absolute right-0 mt-2 w-40 overflow-hidden rounded-xl border border-[#e6ecf7] bg-white text-[10px] shadow-lg">
+                                {["All Categories", "Electronics", "Retail", "Home"].map((option) => (
+                                  <button
+                                    key={option}
+                                    type="button"
+                                    onClick={() => {
+                                      setProviderCategory(option);
+                                      setProviderMenuOpen(false);
+                                    }}
+                                    className={`flex w-full items-center justify-between px-3 py-2 text-left hover:bg-[#f8fafc] ${
+                                      providerCategory === option ? "text-[#1f3d8f]" : "text-[#475569]"
+                                    }`}
+                                  >
+                                    {option}
+                                    {providerCategory === option && <span className="text-[9px]">Active</span>}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            value={providerSearch}
+                            onChange={(event) => setProviderSearch(event.target.value)}
+                            placeholder="Search providers..."
+                            className="rounded-full border border-[#e6ecf7] bg-[#f8fafc] px-2 py-1 text-[10px] text-[#475569] outline-none placeholder:text-[#94a3b8]"
+                          />
                         </div>
                       </div>
                       <div className="mt-3 rounded-xl border border-[#edf1fa]">
-                        {[
-                          { category: "Electronics", redemptions: "1,204", active: true },
-                          { category: "Retail", redemptions: "852", active: true },
-                          { category: "Home", redemptions: "412", active: false }
-                        ].map((row) => (
-                          <div
-                            key={row.category}
-                            className="flex items-center justify-between border-b border-[#edf1fa] px-3 py-2 text-[10px] text-[#64748b] last:border-b-0"
-                          >
-                            <span className="rounded-full bg-[#f1f5f9] px-2 py-0.5 text-[9px] text-[#475569]">
-                              {row.category}
-                            </span>
-                            <span>{row.redemptions}</span>
-                            <span
-                              className={`inline-flex h-4 w-8 items-center rounded-full ${
-                                row.active ? "bg-[#1f3d8f]" : "bg-[#e2e8f0]"
-                              }`}
+                        {providerRows
+                          .filter((row) => {
+                            const matchesCategory =
+                              providerCategory === "All Categories" ||
+                              row.category === providerCategory;
+                            const matchesSearch = row.category
+                              .toLowerCase()
+                              .includes(providerSearch.trim().toLowerCase());
+                            return matchesCategory && matchesSearch;
+                          })
+                          .map((row) => (
+                            <div
+                              key={row.category}
+                              className="flex items-center justify-between border-b border-[#edf1fa] px-3 py-2 text-[10px] text-[#64748b] last:border-b-0"
                             >
-                              <span
-                                className={`h-3 w-3 rounded-full bg-white ${
-                                  row.active ? "translate-x-4" : "translate-x-1"
+                              <span className="rounded-full bg-[#f1f5f9] px-2 py-0.5 text-[9px] text-[#475569]">
+                                {row.category}
+                              </span>
+                              <span>{row.redemptions.toLocaleString()}</span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setProviderRows((prev) =>
+                                    prev.map((item) =>
+                                      item.category === row.category
+                                        ? { ...item, active: !item.active }
+                                        : item
+                                    )
+                                  )
+                                }
+                                className={`inline-flex h-4 w-8 items-center rounded-full ${
+                                  row.active ? "bg-[#1f3d8f]" : "bg-[#e2e8f0]"
                                 }`}
-                              />
-                            </span>
-                          </div>
-                        ))}
+                                aria-pressed={row.active}
+                              >
+                                <span
+                                  className={`h-3 w-3 rounded-full bg-white ${
+                                    row.active ? "translate-x-4" : "translate-x-1"
+                                  }`}
+                                />
+                              </button>
+                            </div>
+                          ))}
                       </div>
                     </section>
+                  </div>
+                </div>
+              </div>
+            </>,
+            document.body
+          )}
+        {deleteConfirmOffer &&
+          createPortal(
+            <>
+              <div
+                className="fixed inset-0 z-50 bg-[#0f172a]/40"
+                onClick={() => setDeleteConfirmOffer(null)}
+              />
+              <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+                <div
+                  className="w-full max-w-[420px] rounded-2xl border border-[#e6ecf7] bg-white p-5 shadow-2xl"
+                  data-offer-delete
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="m-0 text-[14px] font-semibold text-[#1f2d46]">
+                        Delete Offer
+                      </h4>
+                      <p className="m-0 mt-2 text-[11px] text-[#64748b]">
+                        Are you sure you want to delete "{deleteConfirmOffer.name}"? This action
+                        cannot be undone.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirmOffer(null)}
+                      className="text-[#94a3b8]"
+                      aria-label="Close delete dialog"
+                    >
+                      <FiX size={16} />
+                    </button>
+                  </div>
+                  <div className="mt-4 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirmOffer(null)}
+                      className="rounded-full border border-[#e6ecf7] bg-white px-4 py-2 text-[11px] font-semibold text-[#1f2d46]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteOffer(deleteConfirmOffer)}
+                      className="rounded-full bg-[#ef4444] px-4 py-2 text-[11px] font-semibold text-white shadow-md shadow-[#ef4444]/30"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>,
+            document.body
+          )}
+        {pauseConfirmOffer &&
+          createPortal(
+            <>
+              <div
+                className="fixed inset-0 z-50 bg-[#0f172a]/40"
+                onClick={() => setPauseConfirmOffer(null)}
+              />
+              <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+                <div
+                  className="w-full max-w-[420px] rounded-2xl border border-[#e6ecf7] bg-white p-5 shadow-2xl"
+                  data-offer-pause
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="m-0 text-[14px] font-semibold text-[#1f2d46]">
+                        {pauseConfirmOffer.status === "Active" ? "Pause Offer" : "Resume Offer"}
+                      </h4>
+                      <p className="m-0 mt-2 text-[11px] text-[#64748b]">
+                        {pauseConfirmOffer.status === "Active"
+                          ? `Pause "${pauseConfirmOffer.name}"? Users won't be able to redeem it.`
+                          : `Resume "${pauseConfirmOffer.name}" and make it active again?`}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPauseConfirmOffer(null)}
+                      className="text-[#94a3b8]"
+                      aria-label="Close pause dialog"
+                    >
+                      <FiX size={16} />
+                    </button>
+                  </div>
+                  <div className="mt-4 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPauseConfirmOffer(null)}
+                      className="rounded-full border border-[#e6ecf7] bg-white px-4 py-2 text-[11px] font-semibold text-[#1f2d46]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleToggleStatus(pauseConfirmOffer);
+                        setPauseConfirmOffer(null);
+                      }}
+                      className="rounded-full bg-[#1f3d8f] px-4 py-2 text-[11px] font-semibold text-white shadow-md shadow-[#1f3d8f]/20"
+                    >
+                      {pauseConfirmOffer.status === "Active" ? "Pause" : "Resume"}
+                    </button>
                   </div>
                 </div>
               </div>

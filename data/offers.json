@@ -2,7 +2,7 @@
   "summaryCards": [
     {
       "label": "ACTIVE OFFERS",
-      "value": "123",
+      "value": "124",
       "note": "+12%",
       "tone": "text-[#16a34a]"
     },
@@ -27,22 +27,12 @@
   ],
   "offers": [
     {
-      "id": "#OFR-2401",
-      "name": "Summer Sale 2024",
-      "discount": "20% OFF",
-      "validity": "Jun 01 - Aug 31",
-      "appliedTo": "All Vendors",
-      "status": "Inactive",
-      "redemptions": 1450,
-      "kind": "PERCENT"
-    },
-    {
       "id": "#OFR-2402",
       "name": "Flash Friday Deal",
       "discount": "$15.00 Flat",
       "validity": "May 10 - May 11",
       "appliedTo": "All Vendors",
-      "status": "Inactive",
+      "status": "Active",
       "redemptions": 890,
       "kind": "FLAT"
     },
@@ -52,7 +42,7 @@
       "discount": "BOGO Free",
       "validity": "Ongoing",
       "appliedTo": "Platform Wide",
-      "status": "Active",
+      "status": "Inactive",
       "redemptions": 5122,
       "kind": "BOGO"
     },
@@ -72,7 +62,7 @@
       "discount": "$25.00 Flat",
       "validity": "Mar 01 - Apr 01",
       "appliedTo": "Selected Vendors",
-      "status": "Inactive",
+      "status": "Active",
       "redemptions": 5777,
       "kind": "FLAT"
     },
