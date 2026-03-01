@@ -450,8 +450,23 @@ export function SettingsView({ data }: { data: SettingsData }) {
               </button>
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   setPasswordConfirmOpen(false);
+                  setPasswordStatus(null);
+                  const response = await fetch("/api/auth/update", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      email: adminEmail,
+                      currentPassword,
+                      newPassword
+                    })
+                  });
+                  if (!response.ok) {
+                    setPasswordError("Current password is incorrect.");
+                    return;
+                  }
+                  setPasswordError(null);
                   setPasswordStatus("Password updated");
                   setCurrentPassword("");
                   setNewPassword("");
