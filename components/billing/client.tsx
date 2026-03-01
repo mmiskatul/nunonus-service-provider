@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import {
@@ -68,6 +68,13 @@ export function BillingManagementView({
   const [payments, setPayments] = useState<PaymentRow[]>(data.recentPayments);
   const [detailsPayment, setDetailsPayment] = useState<PaymentRow | null>(null);
   const [billingActionLoading, setBillingActionLoading] = useState<"download" | "reminder" | "paid" | null>(null);
+  const [paidConfirmPayment, setPaidConfirmPayment] = useState<PaymentRow | null>(null);
+  const [profileOpen, setProfileOpen] = useState<PaymentRow | null>(null);
+  const [historyOpen, setHistoryOpen] = useState<PaymentRow | null>(null);
+  const [breakdownRevenue, setBreakdownRevenue] = useState<string>("");
+  const [breakdownRate, setBreakdownRate] = useState<string>("");
+  const [breakdownCommission, setBreakdownCommission] = useState<string>("");
+  const [breakdownSaving, setBreakdownSaving] = useState(false);
 
   const filteredPayments = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -87,6 +94,36 @@ export function BillingManagementView({
     const start = (page - 1) * pageSize;
     return filteredPayments.slice(start, start + pageSize);
   }, [filteredPayments, page]);
+
+  useEffect(() => {
+    if (!detailsPayment) return;
+    const parseMoney = (value?: string) =>
+      Number((value ?? "0").replace(/[^\d.-]/g, "")) || 0;
+    const parseRate = (value?: string) =>
+      Number((value ?? "0").replace(/[^\d.-]/g, "")) || 0;
+    const revenue =
+      parseMoney(detailsPayment.details?.financialBreakdown?.totalRevenue) ||
+      parseMoney(detailsPayment.totalEarnings);
+    const commission =
+      parseMoney(detailsPayment.details?.financialBreakdown?.commissionAmount) ||
+      parseMoney(detailsPayment.commission);
+    const rate = parseRate(detailsPayment.details?.financialBreakdown?.commissionRate) || 10;
+    setBreakdownRevenue(revenue ? String(revenue) : "");
+    setBreakdownCommission(commission ? String(Math.abs(commission)) : "");
+    setBreakdownRate(rate ? String(rate) : "");
+  }, [detailsPayment]);
+
+  useEffect(() => {
+    if (breakdownRevenue === "" || breakdownRate === "") {
+      setBreakdownCommission("");
+      return;
+    }
+    const revenue = Number(breakdownRevenue);
+    const rate = Number(breakdownRate);
+    if (!Number.isFinite(revenue) || !Number.isFinite(rate)) return;
+    const nextCommission = (revenue * rate) / 100;
+    setBreakdownCommission(Number.isNaN(nextCommission) ? "" : String(nextCommission));
+  }, [breakdownRevenue, breakdownRate]);
 
   const handleBillingAction = async (action: "markPaid" | "sendReminder") => {
     if (!detailsPayment) return;
@@ -115,16 +152,7 @@ export function BillingManagementView({
   const handleDownloadInvoice = () => {
     if (!detailsPayment) return;
     setBillingActionLoading("download");
-    const lines = [
-      "Invoice",
-      `Vendor: ${detailsPayment.vendorName}`,
-      `Vendor Code: ${detailsPayment.vendorCode}`,
-      `Total Earnings: ${detailsPayment.totalEarnings}`,
-      `Commission: ${detailsPayment.commission}`,
-      `Net Payout: ${detailsPayment.netPayout}`,
-      `Status: ${detailsPayment.status}`
-    ];
-    const pdf = buildSimplePdf(lines);
+    const pdf = buildInvoicePdf(detailsPayment);
     const blob = new Blob([pdf], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -135,25 +163,135 @@ export function BillingManagementView({
     setBillingActionLoading(null);
   };
 
-  const buildSimplePdf = (lines: string[]) => {
+  const handleSaveBreakdown = async () => {
+    if (!detailsPayment) return;
+    setBreakdownSaving(true);
+    try {
+      const response = await fetch("/api/billing", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          vendorCode: detailsPayment.vendorCode,
+          vendorName: detailsPayment.vendorName,
+          action: "updateBreakdown",
+          totalRevenue: Number(breakdownRevenue || 0),
+          commissionRate: Number(breakdownRate || 0),
+          commissionAmount: Number(breakdownCommission || 0)
+        })
+      });
+      if (!response.ok) throw new Error("Failed to update breakdown");
+      const payload = (await response.json()) as { payments: PaymentRow[]; updated: PaymentRow };
+      if (payload?.payments?.length) {
+        setPayments(payload.payments);
+        setDetailsPayment(payload.updated);
+      }
+    } finally {
+      setBreakdownSaving(false);
+    }
+  };
+
+  const buildInvoicePdf = (payment: PaymentRow) => {
     const escape = (value: string) =>
       value.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
-    const contentLines = [
-      "BT",
-      "/F1 12 Tf",
-      "50 750 Td",
-      ...lines.map((line, index) => `${index === 0 ? "" : "T* " }(${escape(line)}) Tj`),
-      "ET"
+    const line = (x1: number, y1: number, x2: number, y2: number) =>
+      `${x1} ${y1} m ${x2} ${y2} l S`;
+    const rect = (x: number, y: number, w: number, h: number) =>
+      `${x} ${y} ${w} ${h} re S`;
+    const fillColor = (r: number, g: number, b: number) => `${r} ${g} ${b} rg`;
+    const resetTextColor = () => fillColor(0, 0, 0);
+    const text = (x: number, y: number, size: number, value: string, bold = false) =>
+      `BT /${bold ? "F2" : "F1"} ${size} Tf ${x} ${y} Td (${escape(value)}) Tj ET`;
+
+    const fromBlock = [
+      "Your details:",
+      "FROM",
+      payment.vendorName,
+      "123 Sell Street",
+      "Orange Country"
     ];
-    const stream = contentLines.join("\n");
+    const toBlock = [
+      "Client's details:",
+      "TO",
+      "XYZ Buyer",
+      "123 Buy Lane",
+      "Blue Country"
+    ];
+
+    const lines: string[] = [];
+    lines.push(rect(40, 740, 80, 28));
+    lines.push(fillColor(0.12, 0.36, 0.95));
+    lines.push(text(50, 750, 11, "Your Logo", true));
+    lines.push(resetTextColor());
+
+    lines.push(rect(40, 640, 240, 80));
+    lines.push(rect(300, 640, 240, 80));
+    lines.push(fillColor(0.12, 0.36, 0.95));
+    lines.push(text(50, 705, 10, fromBlock[0], true));
+    lines.push(resetTextColor());
+    lines.push(text(50, 690, 8, fromBlock[1], true));
+    lines.push(text(50, 675, 9, fromBlock[2], true));
+    lines.push(text(50, 662, 8, fromBlock[3]));
+    lines.push(text(50, 650, 8, fromBlock[4]));
+
+    lines.push(fillColor(0.12, 0.36, 0.95));
+    lines.push(text(310, 705, 10, toBlock[0], true));
+    lines.push(resetTextColor());
+    lines.push(text(310, 690, 8, toBlock[1], true));
+    lines.push(text(310, 675, 9, toBlock[2], true));
+    lines.push(text(310, 662, 8, toBlock[3]));
+    lines.push(text(310, 650, 8, toBlock[4]));
+
+    lines.push(text(40, 615, 9, `Invoice No : ${payment.vendorCode}-201000`, true));
+    lines.push(text(40, 600, 9, `Invoice Date : ${new Date().toLocaleDateString("en-US")}`));
+
+    lines.push(rect(40, 545, 500, 24));
+    lines.push(fillColor(0.12, 0.36, 0.95));
+    lines.push(text(50, 553, 9, "Item", true));
+    lines.push(text(280, 553, 9, "HRS/QTY", true));
+    lines.push(text(370, 553, 9, "Rate", true));
+    lines.push(text(470, 553, 9, "Subtotal", true));
+    lines.push(resetTextColor());
+
+    const item1Y = 520;
+    lines.push(line(40, 535, 540, 535));
+    lines.push(text(50, item1Y, 9, "Booking Revenue"));
+    lines.push(text(300, item1Y, 9, "1"));
+    lines.push(text(370, item1Y, 9, payment.totalEarnings));
+    lines.push(text(470, item1Y, 9, payment.totalEarnings));
+
+    const item2Y = 500;
+    lines.push(line(40, 510, 540, 510));
+    lines.push(text(50, item2Y, 9, "Platform Commission"));
+    lines.push(text(300, item2Y, 9, "1"));
+    lines.push(text(370, item2Y, 9, payment.commission));
+    lines.push(text(470, item2Y, 9, payment.commission));
+
+    lines.push(line(40, 485, 540, 485));
+
+    lines.push(rect(330, 380, 210, 90));
+    lines.push(fillColor(0.12, 0.36, 0.95));
+    lines.push(text(380, 455, 9, "Invoice Summary", true));
+    lines.push(resetTextColor());
+    lines.push(line(330, 445, 540, 445));
+    lines.push(text(340, 430, 9, "Subtotal"));
+    lines.push(text(500, 430, 9, payment.totalEarnings));
+    lines.push(text(340, 415, 9, "Tax (16.25%)"));
+    lines.push(text(500, 415, 9, "$0.00"));
+    lines.push(text(340, 398, 9, "Total", true));
+    lines.push(text(500, 398, 9, payment.netPayout, true));
+
+    lines.push(text(40, 340, 8, "Note: 2/10, NET 30. Please pay within 10 days and save 2%"));
+
+    const stream = lines.join("\n");
     const objects: string[] = [];
     objects.push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj");
     objects.push("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj");
     objects.push(
-      "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj"
+      "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>\nendobj"
     );
     objects.push(`4 0 obj\n<< /Length ${stream.length} >>\nstream\n${stream}\nendstream\nendobj`);
     objects.push("5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj");
+    objects.push("6 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\nendobj");
 
     let pdf = "%PDF-1.4\n";
     const offsets: number[] = [0];
@@ -162,11 +300,11 @@ export function BillingManagementView({
       pdf += `${obj}\n`;
     });
     const xrefOffset = pdf.length;
-    pdf += "xref\n0 6\n0000000000 65535 f \n";
+    pdf += "xref\n0 7\n0000000000 65535 f \n";
     offsets.slice(1).forEach((offset) => {
       pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
     });
-    pdf += "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n";
+    pdf += "trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n";
     pdf += `${xrefOffset}\n%%EOF`;
     return pdf;
   };
@@ -283,8 +421,8 @@ export function BillingManagementView({
           </div>
         </footer>
       </section>
-      {detailsPayment &&
-        createPortal(
+        {detailsPayment &&
+          createPortal(
           <>
             <div
               className="fixed inset-0 z-40 bg-[#0f172a]/35"
@@ -320,7 +458,7 @@ export function BillingManagementView({
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleBillingAction("markPaid")}
+                      onClick={() => setPaidConfirmPayment(detailsPayment)}
                       disabled={billingActionLoading === "paid"}
                       className="inline-flex items-center gap-2 rounded-full bg-[#1f3d8f] px-3 py-1.5 text-[10px] font-semibold text-white disabled:opacity-60"
                     >
@@ -360,7 +498,13 @@ export function BillingManagementView({
                                 {detailsPayment.details?.profile?.vendorTitle ?? detailsPayment.vendorName}
                               </h4>
                             </div>
-                            <button className="text-[10px] text-[#1f3d8f]">View Provider Profile</button>
+                            <button
+                              type="button"
+                              onClick={() => setProfileOpen(detailsPayment)}
+                              className="text-[10px] text-[#1f3d8f]"
+                            >
+                              View Provider Profile
+                            </button>
                           </div>
                           <p className="m-0 mt-1 text-[10px] text-[#94a3b8]">
                             {detailsPayment.details?.profile?.location ?? "Main Branch | Florida"}
@@ -409,30 +553,52 @@ export function BillingManagementView({
                       <h4 className="m-0 text-[12px] font-semibold text-[#1f2d46]">
                         Financial Breakdown
                       </h4>
-                      <span className="text-[9px] text-[#94a3b8]">
-                        Cycle: {detailsPayment.details?.financialBreakdown?.cycle ?? "Oct 01 - Oct 31, 2025"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] text-[#94a3b8]">
+                          Cycle: {detailsPayment.details?.financialBreakdown?.cycle ?? "Oct 01 - Oct 31, 2025"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleSaveBreakdown}
+                          disabled={breakdownSaving}
+                          className="rounded-full border border-[#e6ecf7] bg-white px-2 py-1 text-[9px] font-semibold text-[#1f3d8f] disabled:opacity-60"
+                        >
+                          {breakdownSaving ? "Saving..." : "Save"}
+                        </button>
+                      </div>
                     </div>
                     <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
                       <div>
                         <p className="m-0 text-[9px] text-[#94a3b8]">Total Booking Revenue</p>
-                        <p className="m-0 mt-1 text-[12px] font-semibold text-[#1f2d46]">
-                          {detailsPayment.details?.financialBreakdown?.totalRevenue ?? detailsPayment.totalEarnings}
-                        </p>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={breakdownRevenue}
+                          onChange={(event) => setBreakdownRevenue(event.target.value)}
+                          className="mt-1 w-full rounded-lg border border-[#e6ecf7] bg-[#f8fafc] px-2 py-1 text-[11px] text-[#1f2d46] outline-none"
+                        />
                         <div className="mt-2 h-0.5 w-full bg-[#1f3d8f]" />
                       </div>
                       <div>
                         <p className="m-0 text-[9px] text-[#94a3b8]">Commission Rate</p>
-                        <p className="m-0 mt-1 text-[12px] font-semibold text-[#1f2d46]">
-                          {detailsPayment.details?.financialBreakdown?.commissionRate ?? "10.0%"}
-                        </p>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={breakdownRate}
+                          onChange={(event) => setBreakdownRate(event.target.value)}
+                          className="mt-1 w-full rounded-lg border border-[#e6ecf7] bg-[#f8fafc] px-2 py-1 text-[11px] text-[#1f2d46] outline-none"
+                        />
                         <div className="mt-2 h-0.5 w-full bg-[#f59e0b]" />
                       </div>
                       <div>
                         <p className="m-0 text-[9px] text-[#94a3b8]">Commission Amount</p>
-                        <p className="m-0 mt-1 text-[12px] font-semibold text-[#ef4444]">
-                          {detailsPayment.details?.financialBreakdown?.commissionAmount ?? detailsPayment.commission}
-                        </p>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={breakdownCommission}
+                          readOnly
+                          className="mt-1 w-full rounded-lg border border-[#e6ecf7] bg-[#f8fafc] px-2 py-1 text-[11px] text-[#ef4444] outline-none"
+                        />
                         <div className="mt-2 h-0.5 w-full bg-[#ef4444]" />
                       </div>
                     </div>
@@ -441,7 +607,13 @@ export function BillingManagementView({
                       <div className="mt-2 flex items-center justify-between">
                         <span>Net Payable = (Total Revenue - Commission)</span>
                         <span className="text-[16px] font-semibold text-[#1f3d8f]">
-                          {detailsPayment.details?.netPayable?.amount ?? detailsPayment.netPayout}
+                          {`$${Math.max(
+                            0,
+                            (Number(breakdownRevenue || 0) - Number(breakdownCommission || 0)) || 0
+                          ).toLocaleString("en-US", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })}`}
                         </span>
                       </div>
                     </div>
@@ -450,14 +622,20 @@ export function BillingManagementView({
                   <section className="rounded-2xl border border-[#e6ecf7] bg-white p-4">
                     <div className="flex items-center justify-between">
                       <h4 className="m-0 text-[12px] font-semibold text-[#1f2d46]">Payment History</h4>
-                      <button className="text-[10px] text-[#1f3d8f]">View All History</button>
+                      <button
+                        type="button"
+                        onClick={() => setHistoryOpen(detailsPayment)}
+                        className="text-[10px] text-[#1f3d8f]"
+                      >
+                        View All History
+                      </button>
                     </div>
                     <div className="mt-3 rounded-xl border border-[#edf1fa]">
                       {(detailsPayment.details?.history ?? [
                         { id: "TXN-9021-X9", date: "Sep 01, 2026", amount: "$4,210.00", status: "PAID" },
                         { id: "TXN-8842-M2", date: "Aug 01, 2026", amount: "$3,950.00", status: "PAID" },
                         { id: "TXN-7731-L1", date: "Jul 01, 2026", amount: "$5,120.00", status: "PENDING" }
-                      ]).map((row) => (
+                      ]).slice(0, 3).map((row) => (
                         <div
                           key={row.id}
                           className="flex items-center justify-between border-b border-[#edf1fa] px-3 py-2 text-[10px] text-[#64748b] last:border-b-0"
@@ -478,6 +656,188 @@ export function BillingManagementView({
                       ))}
                     </div>
                   </section>
+                </div>
+              </div>
+            </div>
+          </>,
+          document.body
+          )}
+      {paidConfirmPayment &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-50 bg-[#0f172a]/40"
+              onClick={() => setPaidConfirmPayment(null)}
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+              <div className="w-full max-w-[420px] rounded-2xl border border-[#e6ecf7] bg-white p-5 shadow-2xl">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h4 className="m-0 text-[14px] font-semibold text-[#1f2d46]">
+                      Mark as Paid
+                    </h4>
+                    <p className="m-0 mt-2 text-[11px] text-[#64748b]">
+                      Confirm payment for "{paidConfirmPayment.vendorName}"?
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPaidConfirmPayment(null)}
+                    className="text-[#94a3b8]"
+                    aria-label="Close paid dialog"
+                  >
+                    <FiX size={16} />
+                  </button>
+                </div>
+                <div className="mt-4 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaidConfirmPayment(null)}
+                    className="rounded-full border border-[#e6ecf7] bg-white px-4 py-2 text-[11px] font-semibold text-[#1f2d46]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDetailsPayment(paidConfirmPayment);
+                      handleBillingAction("markPaid");
+                      setPaidConfirmPayment(null);
+                    }}
+                    className="rounded-full bg-[#1f3d8f] px-4 py-2 text-[11px] font-semibold text-white shadow-md shadow-[#1f3d8f]/20"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>,
+          document.body
+        )}
+      {profileOpen &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-50 bg-[#0f172a]/40"
+              onClick={() => setProfileOpen(null)}
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+              <div className="w-full max-w-[520px] rounded-2xl border border-[#e6ecf7] bg-white p-5 shadow-2xl">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h4 className="m-0 text-[14px] font-semibold text-[#1f2d46]">
+                      Provider Profile
+                    </h4>
+                    <p className="m-0 mt-1 text-[11px] text-[#64748b]">
+                      {profileOpen.details?.profile?.vendorTitle ?? profileOpen.vendorName}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setProfileOpen(null)}
+                    className="text-[#94a3b8]"
+                    aria-label="Close provider profile"
+                  >
+                    <FiX size={16} />
+                  </button>
+                </div>
+                <div className="mt-4 flex items-center gap-3">
+                  <div className="relative h-16 w-16 overflow-hidden rounded-2xl bg-gradient-to-br from-[#1f3d8f] to-[#60a5fa]">
+                    {profileOpen.details?.profile?.image && (
+                      <Image
+                        src={profileOpen.details.profile.image}
+                        alt={profileOpen.vendorName}
+                        fill
+                        className="object-cover"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <p className="m-0 text-[12px] font-semibold text-[#1f2d46]">
+                      {profileOpen.details?.profile?.vendorTitle ?? profileOpen.vendorName}
+                    </p>
+                    <p className="m-0 mt-1 text-[10px] text-[#94a3b8]">
+                      {profileOpen.details?.profile?.location ?? "Main Branch | Florida"}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 grid grid-cols-3 gap-3 text-[10px] text-[#64748b]">
+                  <div className="rounded-xl border border-[#e6ecf7] bg-[#f8fafc] p-3">
+                    <p className="m-0 text-[8px] text-[#94a3b8]">CATEGORY</p>
+                    <p className="m-0 mt-1 text-[11px] font-semibold text-[#1f2d46]">
+                      {profileOpen.details?.profile?.category ?? "Hotel & Resort"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-[#e6ecf7] bg-[#f8fafc] p-3">
+                    <p className="m-0 text-[8px] text-[#94a3b8]">JOINED DATE</p>
+                    <p className="m-0 mt-1 text-[11px] font-semibold text-[#1f2d46]">
+                      {profileOpen.details?.profile?.joinedDate ?? "Jan 12, 2026"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-[#e6ecf7] bg-[#f8fafc] p-3">
+                    <p className="m-0 text-[8px] text-[#94a3b8]">LAST BILLING</p>
+                    <p className="m-0 mt-1 text-[11px] font-semibold text-[#1f2d46]">
+                      {profileOpen.details?.profile?.lastBillingDate ?? "Feb 01, 2026"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>,
+          document.body
+        )}
+      {historyOpen &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-50 bg-[#0f172a]/40"
+              onClick={() => setHistoryOpen(null)}
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+              <div className="w-full max-w-[640px] rounded-2xl border border-[#e6ecf7] bg-white p-5 shadow-2xl">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h4 className="m-0 text-[14px] font-semibold text-[#1f2d46]">
+                      Payment History
+                    </h4>
+                    <p className="m-0 mt-1 text-[11px] text-[#64748b]">
+                      {historyOpen.vendorName}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryOpen(null)}
+                    className="text-[#94a3b8]"
+                    aria-label="Close history"
+                  >
+                    <FiX size={16} />
+                  </button>
+                </div>
+                <div className="mt-4 rounded-xl border border-[#edf1fa]">
+                  {(historyOpen.details?.history ?? []).length === 0 && (
+                    <p className="m-0 px-3 py-4 text-[11px] text-[#94a3b8]">
+                      No history available.
+                    </p>
+                  )}
+                  {(historyOpen.details?.history ?? []).map((row) => (
+                    <div
+                      key={row.id}
+                      className="flex items-center justify-between border-b border-[#edf1fa] px-3 py-2 text-[10px] text-[#64748b] last:border-b-0"
+                    >
+                      <span className="font-semibold text-[#1f2d46]">{row.id}</span>
+                      <span>{row.date}</span>
+                      <span>{row.amount}</span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${
+                          row.status === "PAID"
+                            ? "bg-[#dcfce7] text-[#15803d]"
+                            : "bg-[#fef3c7] text-[#b45309]"
+                        }`}
+                      >
+                        {row.status}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

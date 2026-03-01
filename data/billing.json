@@ -166,6 +166,12 @@
         },
         "history": [
           {
+            "id": "TXN-7963-PD",
+            "date": "Mar 01, 2026",
+            "amount": "$6,885.00",
+            "status": "PAID"
+          },
+          {
             "id": "TXN-9002-X9",
             "date": "Sep 01, 2026",
             "amount": "$6,885.00",

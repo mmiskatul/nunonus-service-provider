@@ -15,7 +15,10 @@ export async function GET() {
 type BillingActionPayload = {
   vendorCode: string;
   vendorName: string;
-  action: "markPaid" | "sendReminder";
+  action: "markPaid" | "sendReminder" | "updateBreakdown";
+  totalRevenue?: number;
+  commissionRate?: number;
+  commissionAmount?: number;
 };
 
 export async function PATCH(request: Request) {
@@ -57,6 +60,31 @@ export async function PATCH(request: Request) {
     if (payload.action === "sendReminder") {
       next.details = next.details || {};
       next.details.reminderSentAt = new Date().toISOString();
+    }
+
+    if (payload.action === "updateBreakdown") {
+      const totalRevenue = Number(payload.totalRevenue ?? 0);
+      const commissionRate = Number(payload.commissionRate ?? 0);
+      const commissionAmount = Number(payload.commissionAmount ?? 0);
+      const netPayable = Math.max(0, totalRevenue - commissionAmount);
+      const formatMoney = (value: number) =>
+        `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+      next.totalEarnings = formatMoney(totalRevenue);
+      next.commission = `-${formatMoney(commissionAmount).replace("$", "")}`;
+      next.netPayout = formatMoney(netPayable);
+      next.details = next.details || {};
+      next.details.financialBreakdown = {
+        totalRevenue: next.totalEarnings,
+        commissionRate: `${commissionRate.toFixed(1)}%`,
+        commissionAmount: next.commission,
+        cycle: next.details.financialBreakdown?.cycle ?? "Oct 01 - Oct 31, 2025"
+      };
+      next.details.netPayable = {
+        amount: next.netPayout,
+        dueDate: next.details.netPayable?.dueDate ?? "Jun 15, 2026",
+        invoiceStatus: next.status
+      };
     }
 
     data.recentPayments[index] = next;
