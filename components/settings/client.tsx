@@ -53,6 +53,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
     description: string;
     onConfirm: () => void;
   } | null>(null);
+  const [passwordConfirmOpen, setPasswordConfirmOpen] = useState(false);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
 
   const persistSettings = async (payload: Partial<SettingsData>) => {
@@ -336,11 +337,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
                   return;
                 }
                 setPasswordError(null);
-                setPasswordStatus("Password updated");
-                setCurrentPassword("");
-                setNewPassword("");
-                setConfirmPassword("");
-                setTimeout(() => setPasswordStatus(null), 1500);
+                setPasswordConfirmOpen(true);
               }}
               className="mt-3 w-full rounded-full bg-[#1f3d8f] px-4 py-2 text-[11px] font-semibold text-white"
             >
@@ -409,6 +406,57 @@ export function SettingsView({ data }: { data: SettingsData }) {
                   const run = confirmAction.onConfirm;
                   setConfirmAction(null);
                   run();
+                }}
+                className="rounded-full bg-[#1f3d8f] px-4 py-2 text-[11px] font-semibold text-white shadow-md shadow-[#1f3d8f]/20"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {passwordConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div
+            className="fixed inset-0 bg-[#0f172a]/40"
+            onClick={() => setPasswordConfirmOpen(false)}
+          />
+          <div className="relative z-10 w-full max-w-[420px] rounded-2xl border border-[#e6ecf7] bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between">
+              <div>
+                <h4 className="m-0 text-[14px] font-semibold text-[#1f2d46]">
+                  Update Password
+                </h4>
+                <p className="m-0 mt-2 text-[11px] text-[#64748b]">
+                  Confirm updating the admin password?
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPasswordConfirmOpen(false)}
+                className="text-[#94a3b8]"
+                aria-label="Close password confirmation"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPasswordConfirmOpen(false)}
+                className="rounded-full border border-[#e6ecf7] bg-white px-4 py-2 text-[11px] font-semibold text-[#1f2d46]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPasswordConfirmOpen(false);
+                  setPasswordStatus("Password updated");
+                  setCurrentPassword("");
+                  setNewPassword("");
+                  setConfirmPassword("");
+                  setTimeout(() => setPasswordStatus(null), 1500);
                 }}
                 className="rounded-full bg-[#1f3d8f] px-4 py-2 text-[11px] font-semibold text-white shadow-md shadow-[#1f3d8f]/20"
               >
