@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRef, useState } from "react";
 import { FiEdit2, FiShield, FiUpload } from "react-icons/fi";
 
 type SettingsData = {
@@ -10,6 +11,7 @@ type SettingsData = {
     platformName: string;
     supportEmail: string;
     brandIdentity: {
+      logoData?: string;
       note: string;
       cta: string;
     };
@@ -33,11 +35,58 @@ type SettingsData = {
 };
 
 export function SettingsView({ data }: { data: SettingsData }) {
+  const [platformName, setPlatformName] = useState(data.general.platformName);
+  const [supportEmail, setSupportEmail] = useState(data.general.supportEmail);
+  const [brandLogoData, setBrandLogoData] = useState(data.general.brandIdentity.logoData ?? "");
+  const [globalRate, setGlobalRate] = useState(data.commission.globalRate);
+  const [categoryRate, setCategoryRate] = useState(data.commission.categoryRate);
+  const [adminName, setAdminName] = useState(data.admin.name);
+  const [adminEmail, setAdminEmail] = useState(data.admin.email);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const [passwordStatus, setPasswordStatus] = useState<string | null>(null);
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
+
+  const persistSettings = async (payload: Partial<SettingsData>) => {
+    setSaveStatus("Saving...");
+    const response = await fetch("/api/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+      setSaveStatus("Save failed");
+      return;
+    }
+    setSaveStatus("Saved");
+    setTimeout(() => setSaveStatus(null), 1500);
+  };
+
+  const handleLogoUpload = async (file?: File) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      setBrandLogoData(result);
+      persistSettings({
+        general: {
+          platformName,
+          supportEmail,
+          brandIdentity: {
+            logoData: result,
+            note: data.general.brandIdentity.note,
+            cta: data.general.brandIdentity.cta
+          }
+        }
+      });
+    };
+    reader.readAsDataURL(file);
+  };
   return (
     <section className="space-y-4">
       <header className="rounded-2xl border border-[#e6ecf7] bg-white px-5 py-4">
         <h2 className="m-0 text-[18px] font-semibold text-[#1d2a43]">{data.title}</h2>
         <p className="m-0 mt-1 text-[11px] text-[#7d8ba6]">{data.description}</p>
+        {saveStatus && <p className="m-0 mt-2 text-[10px] text-[#1f3d8f]">{saveStatus}</p>}
       </header>
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_0.7fr]">
@@ -54,7 +103,8 @@ export function SettingsView({ data }: { data: SettingsData }) {
                 <label className="text-[10px] text-[#7d8ba6]">Platform Name</label>
                 <input
                   type="text"
-                  defaultValue={data.general.platformName}
+                  value={platformName}
+                  onChange={(event) => setPlatformName(event.target.value)}
                   className="mt-2 w-full rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2 text-[11px] text-[#1f2d46] outline-none"
                 />
               </div>
@@ -62,14 +112,40 @@ export function SettingsView({ data }: { data: SettingsData }) {
                 <label className="text-[10px] text-[#7d8ba6]">Support Email</label>
                 <input
                   type="email"
-                  defaultValue={data.general.supportEmail}
+                  value={supportEmail}
+                  onChange={(event) => setSupportEmail(event.target.value)}
                   className="mt-2 w-full rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2 text-[11px] text-[#1f2d46] outline-none"
                 />
               </div>
             </div>
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                onClick={() =>
+                  persistSettings({
+                    general: {
+                      platformName,
+                      supportEmail,
+                      brandIdentity: {
+                        logoData: brandLogoData,
+                        note: data.general.brandIdentity.note,
+                        cta: data.general.brandIdentity.cta
+                      }
+                    }
+                  })
+                }
+                className="rounded-full border border-[#e6ecf7] bg-white px-3 py-1.5 text-[10px] font-semibold text-[#1f3d8f]"
+              >
+                Save Changes
+              </button>
+            </div>
             <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-[#dbe2ef] bg-[#f8fafc] px-3 py-3">
-              <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-[#1f3d8f] shadow-sm">
-                <FiUpload size={16} />
+              <div className="grid h-10 w-10 place-items-center overflow-hidden rounded-2xl bg-white text-[#1f3d8f] shadow-sm">
+                {brandLogoData ? (
+                  <Image src={brandLogoData} alt="Brand Logo" width={40} height={40} />
+                ) : (
+                  <FiUpload size={16} />
+                )}
               </div>
               <div className="flex-1 text-[10px] text-[#7d8ba6]">
                 <p className="m-0 text-[11px] font-semibold text-[#1f2d46]">Brand Identity</p>
@@ -77,10 +153,18 @@ export function SettingsView({ data }: { data: SettingsData }) {
               </div>
               <button
                 type="button"
+                onClick={() => logoInputRef.current?.click()}
                 className="rounded-full border border-[#e6ecf7] bg-white px-3 py-1.5 text-[10px] font-semibold text-[#1f3d8f]"
               >
                 {data.general.brandIdentity.cta}
               </button>
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) => handleLogoUpload(event.target.files?.[0])}
+              />
             </div>
           </section>
 
@@ -97,7 +181,8 @@ export function SettingsView({ data }: { data: SettingsData }) {
                 <div className="mt-2 flex items-center rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2">
                   <input
                     type="number"
-                    defaultValue={data.commission.globalRate}
+                    value={globalRate}
+                    onChange={(event) => setGlobalRate(event.target.value)}
                     className="w-full border-0 bg-transparent text-[11px] text-[#1f2d46] outline-none"
                   />
                   <span className="text-[10px] text-[#94a3b8]">%</span>
@@ -113,12 +198,30 @@ export function SettingsView({ data }: { data: SettingsData }) {
                 <div className="mt-2 flex items-center rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2">
                   <input
                     type="number"
-                    defaultValue={data.commission.categoryRate}
+                    value={categoryRate}
+                    onChange={(event) => setCategoryRate(event.target.value)}
                     className="w-full border-0 bg-transparent text-[11px] text-[#1f2d46] outline-none"
                   />
                   <span className="text-[10px] text-[#94a3b8]">%</span>
                 </div>
               </div>
+            </div>
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                onClick={() =>
+                  persistSettings({
+                    commission: {
+                      globalRate,
+                      categoryRate,
+                      categoryLabel: data.commission.categoryLabel
+                    }
+                  })
+                }
+                className="rounded-full border border-[#e6ecf7] bg-white px-3 py-1.5 text-[10px] font-semibold text-[#1f3d8f]"
+              >
+                Save Rates
+              </button>
             </div>
           </section>
 
@@ -156,8 +259,18 @@ export function SettingsView({ data }: { data: SettingsData }) {
                 <Image src={data.admin.avatar} alt={data.admin.name} fill className="object-cover" />
               )}
             </div>
-            <p className="m-0 mt-3 text-[12px] font-semibold text-[#1f2d46]">{data.admin.name}</p>
-            <p className="m-0 mt-1 text-[10px] text-[#94a3b8]">{data.admin.email}</p>
+            <input
+              type="text"
+              value={adminName}
+              onChange={(event) => setAdminName(event.target.value)}
+              className="mt-3 w-full rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2 text-center text-[11px] text-[#1f2d46] outline-none"
+            />
+            <input
+              type="email"
+              value={adminEmail}
+              onChange={(event) => setAdminEmail(event.target.value)}
+              className="mt-2 w-full rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2 text-center text-[11px] text-[#1f2d46] outline-none"
+            />
           </div>
           <div className="mt-4 space-y-3 text-[10px] text-[#7d8ba6]">
             <div>
@@ -183,9 +296,31 @@ export function SettingsView({ data }: { data: SettingsData }) {
             </div>
             <button
               type="button"
+              onClick={() => {
+                setPasswordStatus("Password updated");
+                setTimeout(() => setPasswordStatus(null), 1500);
+              }}
               className="mt-3 w-full rounded-full bg-[#1f3d8f] px-4 py-2 text-[11px] font-semibold text-white"
             >
               Update Password
+            </button>
+            {passwordStatus && (
+              <p className="m-0 text-[10px] text-[#1f3d8f]">{passwordStatus}</p>
+            )}
+            <button
+              type="button"
+              onClick={() =>
+                persistSettings({
+                  admin: {
+                    name: adminName,
+                    email: adminEmail,
+                    avatar: data.admin.avatar
+                  }
+                })
+              }
+              className="w-full rounded-full border border-[#e6ecf7] bg-white px-4 py-2 text-[11px] font-semibold text-[#1f3d8f]"
+            >
+              Save Profile
             </button>
           </div>
         </aside>

@@ -5,6 +5,7 @@
     "platformName": "SwiftBook Pro",
     "supportEmail": "support@platform.com",
     "brandIdentity": {
+      "logoData": "",
       "note": "Upload a logo for the admin panel and emails. Suggested size: 512x512px (PNG, SVG).",
       "cta": "Update Favicon"
     }
