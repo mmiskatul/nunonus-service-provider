@@ -44,6 +44,15 @@ export function SettingsView({ data }: { data: SettingsData }) {
   const [adminEmail, setAdminEmail] = useState(data.admin.email);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [passwordStatus, setPasswordStatus] = useState<string | null>(null);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  } | null>(null);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
 
   const persistSettings = async (payload: Partial<SettingsData>) => {
@@ -122,16 +131,21 @@ export function SettingsView({ data }: { data: SettingsData }) {
               <button
                 type="button"
                 onClick={() =>
-                  persistSettings({
-                    general: {
-                      platformName,
-                      supportEmail,
-                      brandIdentity: {
-                        logoData: brandLogoData,
-                        note: data.general.brandIdentity.note,
-                        cta: data.general.brandIdentity.cta
-                      }
-                    }
+                  setConfirmAction({
+                    title: "Save General Settings",
+                    description: "Apply platform name and support email changes?",
+                    onConfirm: () =>
+                      persistSettings({
+                        general: {
+                          platformName,
+                          supportEmail,
+                          brandIdentity: {
+                            logoData: brandLogoData,
+                            note: data.general.brandIdentity.note,
+                            cta: data.general.brandIdentity.cta
+                          }
+                        }
+                      })
                   })
                 }
                 className="rounded-full border border-[#e6ecf7] bg-white px-3 py-1.5 text-[10px] font-semibold text-[#1f3d8f]"
@@ -210,12 +224,17 @@ export function SettingsView({ data }: { data: SettingsData }) {
               <button
                 type="button"
                 onClick={() =>
-                  persistSettings({
-                    commission: {
-                      globalRate,
-                      categoryRate,
-                      categoryLabel: data.commission.categoryLabel
-                    }
+                  setConfirmAction({
+                    title: "Save Commission Rates",
+                    description: "Apply updated commission rates?",
+                    onConfirm: () =>
+                      persistSettings({
+                        commission: {
+                          globalRate,
+                          categoryRate,
+                          categoryLabel: data.commission.categoryLabel
+                        }
+                      })
                   })
                 }
                 className="rounded-full border border-[#e6ecf7] bg-white px-3 py-1.5 text-[10px] font-semibold text-[#1f3d8f]"
@@ -277,6 +296,8 @@ export function SettingsView({ data }: { data: SettingsData }) {
               <label>Current Password</label>
               <input
                 type="password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
                 className="mt-2 w-full rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2 text-[11px] text-[#1f2d46] outline-none"
               />
             </div>
@@ -284,6 +305,8 @@ export function SettingsView({ data }: { data: SettingsData }) {
               <label>New Password</label>
               <input
                 type="password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
                 className="mt-2 w-full rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2 text-[11px] text-[#1f2d46] outline-none"
               />
             </div>
@@ -291,19 +314,41 @@ export function SettingsView({ data }: { data: SettingsData }) {
               <label>Confirm New Password</label>
               <input
                 type="password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
                 className="mt-2 w-full rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2 text-[11px] text-[#1f2d46] outline-none"
               />
             </div>
             <button
               type="button"
               onClick={() => {
+                setPasswordStatus(null);
+                if (!currentPassword || !newPassword || !confirmPassword) {
+                  setPasswordError("All password fields are required.");
+                  return;
+                }
+                if (newPassword.length < 8) {
+                  setPasswordError("New password must be at least 8 characters.");
+                  return;
+                }
+                if (newPassword !== confirmPassword) {
+                  setPasswordError("New password and confirmation do not match.");
+                  return;
+                }
+                setPasswordError(null);
                 setPasswordStatus("Password updated");
+                setCurrentPassword("");
+                setNewPassword("");
+                setConfirmPassword("");
                 setTimeout(() => setPasswordStatus(null), 1500);
               }}
               className="mt-3 w-full rounded-full bg-[#1f3d8f] px-4 py-2 text-[11px] font-semibold text-white"
             >
               Update Password
             </button>
+            {passwordError && (
+              <p className="m-0 text-[10px] text-[#ef4444]">{passwordError}</p>
+            )}
             {passwordStatus && (
               <p className="m-0 text-[10px] text-[#1f3d8f]">{passwordStatus}</p>
             )}
@@ -325,6 +370,54 @@ export function SettingsView({ data }: { data: SettingsData }) {
           </div>
         </aside>
       </section>
+      {confirmAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div
+            className="fixed inset-0 bg-[#0f172a]/40"
+            onClick={() => setConfirmAction(null)}
+          />
+          <div className="relative z-10 w-full max-w-[420px] rounded-2xl border border-[#e6ecf7] bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between">
+              <div>
+                <h4 className="m-0 text-[14px] font-semibold text-[#1f2d46]">
+                  {confirmAction.title}
+                </h4>
+                <p className="m-0 mt-2 text-[11px] text-[#64748b]">
+                  {confirmAction.description}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConfirmAction(null)}
+                className="text-[#94a3b8]"
+                aria-label="Close confirmation"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmAction(null)}
+                className="rounded-full border border-[#e6ecf7] bg-white px-4 py-2 text-[11px] font-semibold text-[#1f2d46]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const run = confirmAction.onConfirm;
+                  setConfirmAction(null);
+                  run();
+                }}
+                className="rounded-full bg-[#1f3d8f] px-4 py-2 text-[11px] font-semibold text-white shadow-md shadow-[#1f3d8f]/20"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
