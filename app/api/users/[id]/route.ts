@@ -4,6 +4,11 @@ import path from "path";
 
 const dataPath = path.join(process.cwd(), "data", "users.json");
 type JsonObject = Record<string, unknown>;
+type UserAction = {
+  label: string;
+  tone: string;
+  [key: string]: unknown;
+};
 
 async function readUsersFile() {
   const raw = await fs.readFile(dataPath, "utf-8");
@@ -32,7 +37,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
     if (action === "block") {
       user.status = "BLOCKED";
-      user.actions = (user.actions || []).map((actionItem: { label: string; tone: string }) => {
+      const actions = Array.isArray(user.actions) ? (user.actions as UserAction[]) : [];
+      user.actions = actions.map((actionItem) => {
         if (actionItem.label.toLowerCase().includes("block")) {
           return {
             ...actionItem,
@@ -46,7 +52,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
     if (action === "unblock") {
       user.status = "ACTIVE";
-      user.actions = (user.actions || []).map((actionItem: { label: string; tone: string }) => {
+      const actions = Array.isArray(user.actions) ? (user.actions as UserAction[]) : [];
+      user.actions = actions.map((actionItem) => {
         if (actionItem.label.toLowerCase().includes("block")) {
           return {
             ...actionItem,
@@ -59,7 +66,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     }
 
     if (action === "resetPassword") {
-      user.actions = (user.actions || []).map((actionItem: { label: string; tone: string }) => {
+      const actions = Array.isArray(user.actions) ? (user.actions as UserAction[]) : [];
+      user.actions = actions.map((actionItem) => {
         if (actionItem.label.toLowerCase().includes("reset password")) {
           return { ...actionItem, label: "Password Reset Sent", tone: "neutral" };
         }
