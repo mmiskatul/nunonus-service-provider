@@ -1,8 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, useState } from "react";
-import { FiEdit2, FiShield, FiUpload } from "react-icons/fi";
+import { ChangeEvent, ReactNode, useRef, useState } from "react";
+import {
+  FiCheck,
+  FiCreditCard,
+  FiExternalLink,
+  FiGlobe,
+  FiUploadCloud
+} from "react-icons/fi";
 
 type SettingsData = {
   title: string;
@@ -34,236 +40,342 @@ type SettingsData = {
   };
 };
 
+const panelClass =
+  "rounded-[18px] border border-[#dfe4ee] bg-white px-4 py-4 shadow-[0_8px_26px_rgba(15,23,42,0.04)] sm:px-5";
+const inputClass =
+  "h-11 w-full rounded-[10px] border border-[#d6dce8] bg-white px-3 text-[13px] text-[#27324a] outline-none transition focus:border-[#25408f]";
+
+function SectionBadge({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 text-[13px] font-semibold text-[#18233c]">
+      <span className="grid h-4 w-4 place-items-center text-[#24408d]">{icon}</span>
+      <span>{children}</span>
+    </div>
+  );
+}
+
+function FieldLabel({ children }: { children: ReactNode }) {
+  return <label className="mb-1.5 block text-[11px] font-medium text-[#56647f]">{children}</label>;
+}
+
 export function SettingsView({ data }: { data: SettingsData }) {
   const [platformName, setPlatformName] = useState(data.general.platformName);
   const [supportEmail, setSupportEmail] = useState(data.general.supportEmail);
   const [brandLogoData, setBrandLogoData] = useState(data.general.brandIdentity.logoData ?? "");
   const [globalRate, setGlobalRate] = useState(data.commission.globalRate);
   const [categoryRate, setCategoryRate] = useState(data.commission.categoryRate);
-  const [adminName, setAdminName] = useState(data.admin.name);
-  const [adminEmail, setAdminEmail] = useState(data.admin.email);
-  const [saveStatus, setSaveStatus] = useState<string | null>(null);
-  const [passwordStatus, setPasswordStatus] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const [passwordStatus, setPasswordStatus] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [confirmAction, setConfirmAction] = useState<{
-    title: string;
-    description: string;
-    onConfirm: () => void;
-  } | null>(null);
-  const [passwordConfirmOpen, setPasswordConfirmOpen] = useState(false);
+  const [avatarBroken, setAvatarBroken] = useState(false);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const generalSnapshot = useRef({
+    platformName: data.general.platformName,
+    supportEmail: data.general.supportEmail,
+    logoData: data.general.brandIdentity.logoData ?? ""
+  });
+  const commissionSnapshot = useRef({
+    globalRate: data.commission.globalRate,
+    categoryRate: data.commission.categoryRate
+  });
 
-  const persistSettings = async (payload: Partial<SettingsData>) => {
+  const persistSettings = async (payload: Partial<SettingsData>, successMessage: string) => {
     setSaveStatus("Saving...");
     const response = await fetch("/api/settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
+
     if (!response.ok) {
-      setSaveStatus("Save failed");
-      return;
+      setSaveStatus("Update failed");
+      setTimeout(() => setSaveStatus(null), 2200);
+      return false;
     }
-    setSaveStatus("Saved");
-    setTimeout(() => setSaveStatus(null), 1500);
+
+    setSaveStatus(successMessage);
+    setTimeout(() => setSaveStatus(null), 1800);
+    return true;
   };
 
-  const handleLogoUpload = async (file?: File) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : "";
-      setBrandLogoData(result);
-      persistSettings({
+  const commitGeneralSettings = async () => {
+    if (
+      platformName === generalSnapshot.current.platformName &&
+      supportEmail === generalSnapshot.current.supportEmail &&
+      brandLogoData === generalSnapshot.current.logoData
+    ) {
+      return;
+    }
+
+    const ok = await persistSettings(
+      {
         general: {
           platformName,
           supportEmail,
           brandIdentity: {
-            logoData: result,
+            logoData: brandLogoData,
             note: data.general.brandIdentity.note,
             cta: data.general.brandIdentity.cta
           }
         }
-      });
+      },
+      "General settings updated"
+    );
+
+    if (ok) {
+      generalSnapshot.current = {
+        platformName,
+        supportEmail,
+        logoData: brandLogoData
+      };
+    }
+  };
+
+  const commitCommissionSettings = async () => {
+    if (
+      globalRate === commissionSnapshot.current.globalRate &&
+      categoryRate === commissionSnapshot.current.categoryRate
+    ) {
+      return;
+    }
+
+    const ok = await persistSettings(
+      {
+        commission: {
+          globalRate,
+          categoryRate,
+          categoryLabel: data.commission.categoryLabel
+        }
+      },
+      "Commission settings updated"
+    );
+
+    if (ok) {
+      commissionSnapshot.current = {
+        globalRate,
+        categoryRate
+      };
+    }
+  };
+
+  const handleLogoUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      setBrandLogoData(result);
+      const ok = await persistSettings(
+        {
+          general: {
+            platformName,
+            supportEmail,
+            brandIdentity: {
+              logoData: result,
+              note: data.general.brandIdentity.note,
+              cta: data.general.brandIdentity.cta
+            }
+          }
+        },
+        "Brand identity updated"
+      );
+
+      if (ok) {
+        generalSnapshot.current = {
+          platformName,
+          supportEmail,
+          logoData: result
+        };
+      }
     };
     reader.readAsDataURL(file);
   };
+
+  const handlePasswordUpdate = async () => {
+    setPasswordStatus(null);
+    setPasswordError(null);
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError("All password fields are required.");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New password and confirmation do not match.");
+      return;
+    }
+
+    const response = await fetch("/api/auth/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: data.admin.email,
+        currentPassword,
+        newPassword
+      })
+    });
+
+    if (!response.ok) {
+      setPasswordError("Current password is incorrect.");
+      return;
+    }
+
+    setPasswordError(null);
+    setPasswordStatus("Password updated");
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setTimeout(() => setPasswordStatus(null), 1800);
+  };
+
+  const initials = data.admin.name
+    .split(" ")
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+
   return (
-    <section className="space-y-4">
-      <header className="rounded-2xl border border-[#e6ecf7] bg-white px-5 py-4">
-        <h2 className="m-0 text-[18px] font-semibold text-[#1d2a43]">{data.title}</h2>
-        <p className="m-0 mt-1 text-[11px] text-[#7d8ba6]">{data.description}</p>
-        {saveStatus && <p className="m-0 mt-2 text-[10px] text-[#1f3d8f]">{saveStatus}</p>}
+    <section className="space-y-5 pb-6 pt-2">
+      <header className="flex flex-col gap-2">
+        <div>
+          <h2 className="m-0 text-[28px] font-semibold tracking-[-0.03em] text-[#18233c] sm:text-[32px]">
+            {data.title}
+          </h2>
+          <p className="m-0 mt-1 text-[13px] text-[#74819a]">{data.description}</p>
+        </div>
+        {saveStatus && <p className="m-0 text-[12px] font-medium text-[#24408d]">{saveStatus}</p>}
       </header>
 
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_0.7fr]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.75fr)_290px]">
         <div className="space-y-4">
-          <section className="rounded-2xl border border-[#e6ecf7] bg-white p-4">
-            <div className="flex items-center gap-2 text-[11px] font-semibold text-[#1f2d46]">
-              <span className="grid h-6 w-6 place-items-center rounded-full bg-[#eef2ff] text-[#1f3d8f]">
-                <FiShield size={12} />
-              </span>
-              General Settings
-            </div>
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <section className={panelClass}>
+            <SectionBadge icon={<FiGlobe size={13} />}>General Settings</SectionBadge>
+            <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+              <div className="space-y-3">
+                <div>
+                  <FieldLabel>Platform Name</FieldLabel>
+                  <input
+                    type="text"
+                    value={platformName}
+                    onChange={(event) => setPlatformName(event.target.value)}
+                    onBlur={commitGeneralSettings}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <FieldLabel>Support Email</FieldLabel>
+                  <input
+                    type="email"
+                    value={supportEmail}
+                    onChange={(event) => setSupportEmail(event.target.value)}
+                    onBlur={commitGeneralSettings}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="text-[10px] text-[#7d8ba6]">Platform Name</label>
+                <FieldLabel>Brand Identity</FieldLabel>
+                <div className="flex min-h-[124px] gap-3 rounded-[14px] border border-dashed border-[#cfd7e5] bg-[#fafbfd] px-3 py-3">
+                  <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-[14px] border border-[#d8e0eb] bg-white">
+                    {brandLogoData ? (
+                      <Image src={brandLogoData} alt="Brand mark" width={48} height={48} className="h-12 w-12 object-contain" />
+                    ) : (
+                      <FiUploadCloud size={18} className="text-[#24408d]" />
+                    )}
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col justify-center">
+                    <p className="m-0 text-[11px] leading-5 text-[#8a96ad]">{data.general.brandIdentity.note}</p>
+                    <button
+                      type="button"
+                      onClick={() => logoInputRef.current?.click()}
+                      className="mt-3 w-fit bg-transparent p-0 text-[12px] font-semibold text-[#24408d]"
+                    >
+                      {data.general.brandIdentity.cta}
+                    </button>
+                  </div>
+                </div>
                 <input
-                  type="text"
-                  value={platformName}
-                  onChange={(event) => setPlatformName(event.target.value)}
-                  className="mt-2 w-full rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2 text-[11px] text-[#1f2d46] outline-none"
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleLogoUpload}
                 />
               </div>
-              <div>
-                <label className="text-[10px] text-[#7d8ba6]">Support Email</label>
-                <input
-                  type="email"
-                  value={supportEmail}
-                  onChange={(event) => setSupportEmail(event.target.value)}
-                  className="mt-2 w-full rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2 text-[11px] text-[#1f2d46] outline-none"
-                />
-              </div>
-            </div>
-            <div className="mt-3 flex justify-end">
-              <button
-                type="button"
-                onClick={() =>
-                  setConfirmAction({
-                    title: "Save General Settings",
-                    description: "Apply platform name and support email changes?",
-                    onConfirm: () =>
-                      persistSettings({
-                        general: {
-                          platformName,
-                          supportEmail,
-                          brandIdentity: {
-                            logoData: brandLogoData,
-                            note: data.general.brandIdentity.note,
-                            cta: data.general.brandIdentity.cta
-                          }
-                        }
-                      })
-                  })
-                }
-                className="rounded-full border border-[#e6ecf7] bg-white px-3 py-1.5 text-[10px] font-semibold text-[#1f3d8f]"
-              >
-                Save Changes
-              </button>
-            </div>
-            <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-[#dbe2ef] bg-[#f8fafc] px-3 py-3">
-              <div className="grid h-10 w-10 place-items-center overflow-hidden rounded-2xl bg-white text-[#1f3d8f] shadow-sm">
-                {brandLogoData ? (
-                  <Image src={brandLogoData} alt="Brand Logo" width={40} height={40} />
-                ) : (
-                  <FiUpload size={16} />
-                )}
-              </div>
-              <div className="flex-1 text-[10px] text-[#7d8ba6]">
-                <p className="m-0 text-[11px] font-semibold text-[#1f2d46]">Brand Identity</p>
-                <p className="m-0 mt-1">{data.general.brandIdentity.note}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => logoInputRef.current?.click()}
-                className="rounded-full border border-[#e6ecf7] bg-white px-3 py-1.5 text-[10px] font-semibold text-[#1f3d8f]"
-              >
-                {data.general.brandIdentity.cta}
-              </button>
-              <input
-                ref={logoInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(event) => handleLogoUpload(event.target.files?.[0])}
-              />
             </div>
           </section>
 
-          <section className="rounded-2xl border border-[#e6ecf7] bg-white p-4">
-            <div className="flex items-center gap-2 text-[11px] font-semibold text-[#1f2d46]">
-              <span className="grid h-6 w-6 place-items-center rounded-full bg-[#eef2ff] text-[#1f3d8f]">
-                %
-              </span>
-              Commission & Revenue
-            </div>
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <section className={panelClass}>
+            <SectionBadge icon={<FiCreditCard size={13} />}>Commission &amp; Revenue</SectionBadge>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
               <div>
-                <label className="text-[10px] text-[#7d8ba6]">Global Service Commission (%)</label>
-                <div className="mt-2 flex items-center rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2">
+                <FieldLabel>Global Service Commission (%)</FieldLabel>
+                <div className="relative">
                   <input
                     type="number"
                     value={globalRate}
                     onChange={(event) => setGlobalRate(event.target.value)}
-                    className="w-full border-0 bg-transparent text-[11px] text-[#1f2d46] outline-none"
+                    onBlur={commitCommissionSettings}
+                    className={`${inputClass} pr-10`}
                   />
-                  <span className="text-[10px] text-[#94a3b8]">%</span>
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-[#9aa5ba]">
+                    %
+                  </span>
                 </div>
-                <p className="m-0 mt-2 text-[9px] text-[#94a3b8]">
+                <p className="m-0 mt-2 text-[11px] text-[#97a1b4]">
                   Default rate applied to all categories unless specified.
                 </p>
               </div>
               <div>
-                <label className="text-[10px] text-[#7d8ba6]">
-                  Category-Specific Rate ({data.commission.categoryLabel})
-                </label>
-                <div className="mt-2 flex items-center rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2">
+                <FieldLabel>Category-Specific Rate ({data.commission.categoryLabel})</FieldLabel>
+                <div className="relative">
                   <input
                     type="number"
                     value={categoryRate}
                     onChange={(event) => setCategoryRate(event.target.value)}
-                    className="w-full border-0 bg-transparent text-[11px] text-[#1f2d46] outline-none"
+                    onBlur={commitCommissionSettings}
+                    className={`${inputClass} pr-10`}
                   />
-                  <span className="text-[10px] text-[#94a3b8]">%</span>
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-[#9aa5ba]">
+                    %
+                  </span>
                 </div>
               </div>
             </div>
-            <div className="mt-3 flex justify-end">
-              <button
-                type="button"
-                onClick={() =>
-                  setConfirmAction({
-                    title: "Save Commission Rates",
-                    description: "Apply updated commission rates?",
-                    onConfirm: () =>
-                      persistSettings({
-                        commission: {
-                          globalRate,
-                          categoryRate,
-                          categoryLabel: data.commission.categoryLabel
-                        }
-                      })
-                  })
-                }
-                className="rounded-full border border-[#e6ecf7] bg-white px-3 py-1.5 text-[10px] font-semibold text-[#1f3d8f]"
-              >
-                Save Rates
-              </button>
-            </div>
           </section>
 
-          <section className="rounded-2xl border border-[#e6ecf7] bg-white p-4">
-            <div className="flex items-center gap-2 text-[11px] font-semibold text-[#1f2d46]">
-              <span className="grid h-6 w-6 place-items-center rounded-full bg-[#eef2ff] text-[#1f3d8f]">
-                <FiEdit2 size={12} />
-              </span>
-              Legal & Compliance
-            </div>
-            <div className="mt-4 space-y-3 text-[11px] text-[#1f2d46]">
-              <div className="flex items-center justify-between">
+          <section className={panelClass}>
+            <h3 className="m-0 text-[22px] font-medium text-[#1e2b43]">Legal &amp; Compliance</h3>
+            <div className="mt-4 overflow-hidden rounded-[14px] border border-[#edf1f6] bg-white">
+              <div className="flex items-center justify-between px-3 py-3 text-[13px] text-[#1f2b42]">
                 <span>{data.legal.terms}</span>
-                <button className="text-[10px] font-semibold text-[#1f3d8f]">Edit</button>
+                <button type="button" className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#24408d]">
+                  Edit <FiExternalLink size={12} />
+                </button>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="h-px bg-[#edf1f6]" />
+              <div className="flex items-center justify-between px-3 py-3 text-[13px] text-[#1f2b42]">
                 <span>{data.legal.privacy}</span>
-                <button className="text-[10px] font-semibold text-[#1f3d8f]">Edit</button>
+                <button type="button" className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#24408d]">
+                  Edit <FiExternalLink size={12} />
+                </button>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="h-px bg-[#edf1f6]" />
+              <div className="flex items-center justify-between px-3 py-3 text-[13px] text-[#1f2b42]">
                 <span>{data.legal.gdpr}</span>
-                <span className="rounded-full bg-[#dcfce7] px-2 py-0.5 text-[9px] font-semibold text-[#15803d]">
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#dff7e8] px-3 py-1 text-[11px] font-semibold text-[#24895a]">
+                  <FiCheck size={11} />
                   {data.legal.gdprStatus}
                 </span>
               </div>
@@ -271,216 +383,72 @@ export function SettingsView({ data }: { data: SettingsData }) {
           </section>
         </div>
 
-        <aside className="rounded-2xl border border-[#e6ecf7] bg-white p-4">
-          <h3 className="m-0 text-[12px] font-semibold text-[#1f2d46]">Admin Profile</h3>
-          <div className="mt-4 flex flex-col items-center text-center">
-            <div className="relative h-16 w-16 overflow-hidden rounded-full bg-gradient-to-br from-[#1f3d8f] to-[#60a5fa]">
-              {data.admin.avatar && (
-                <Image src={data.admin.avatar} alt={data.admin.name} fill className="object-cover" />
+        <aside className={`${panelClass} h-fit`}>
+          <h3 className="m-0 text-[24px] font-medium text-[#1e2b43]">Admin Profile</h3>
+          <div className="mt-5 flex flex-col items-center text-center">
+            <div className="relative grid h-[74px] w-[74px] place-items-center overflow-hidden rounded-full bg-[radial-gradient(circle_at_top,#49a2ff_0%,#1f4db6_55%,#14306b_100%)] text-[24px] font-semibold text-white">
+              {data.admin.avatar && !avatarBroken ? (
+                <Image
+                  src={data.admin.avatar}
+                  alt={data.admin.name}
+                  fill
+                  unoptimized
+                  className="object-cover"
+                  onError={() => setAvatarBroken(true)}
+                />
+              ) : (
+                initials
               )}
             </div>
-            <input
-              type="text"
-              value={adminName}
-              onChange={(event) => setAdminName(event.target.value)}
-              className="mt-3 w-full rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2 text-center text-[11px] text-[#1f2d46] outline-none"
-            />
-            <input
-              type="email"
-              value={adminEmail}
-              onChange={(event) => setAdminEmail(event.target.value)}
-              className="mt-2 w-full rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2 text-center text-[11px] text-[#1f2d46] outline-none"
-            />
+            <p className="m-0 mt-4 text-[16px] font-semibold text-[#1e2b43]">{data.admin.name}</p>
+            <p className="m-0 mt-1 text-[12px] text-[#7e8aa1]">{data.admin.email}</p>
           </div>
-          <div className="mt-4 space-y-3 text-[10px] text-[#7d8ba6]">
+
+          <div className="mt-5 space-y-3">
             <div>
-              <label>Current Password</label>
+              <FieldLabel>Current Password</FieldLabel>
               <input
                 type="password"
                 value={currentPassword}
                 onChange={(event) => setCurrentPassword(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2 text-[11px] text-[#1f2d46] outline-none"
+                className={inputClass}
               />
             </div>
             <div>
-              <label>New Password</label>
+              <FieldLabel>New Password</FieldLabel>
               <input
                 type="password"
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2 text-[11px] text-[#1f2d46] outline-none"
+                className={inputClass}
               />
             </div>
             <div>
-              <label>Confirm New Password</label>
+              <FieldLabel>Confirm New Password</FieldLabel>
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2 text-[11px] text-[#1f2d46] outline-none"
+                className={inputClass}
               />
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setPasswordStatus(null);
-                if (!currentPassword || !newPassword || !confirmPassword) {
-                  setPasswordError("All password fields are required.");
-                  return;
-                }
-                if (newPassword.length < 8) {
-                  setPasswordError("New password must be at least 8 characters.");
-                  return;
-                }
-                if (newPassword !== confirmPassword) {
-                  setPasswordError("New password and confirmation do not match.");
-                  return;
-                }
-                setPasswordError(null);
-                setPasswordConfirmOpen(true);
-              }}
-              className="mt-3 w-full rounded-full bg-[#1f3d8f] px-4 py-2 text-[11px] font-semibold text-white"
-            >
-              Update Password
-            </button>
-            {passwordError && (
-              <p className="m-0 text-[10px] text-[#ef4444]">{passwordError}</p>
-            )}
-            {passwordStatus && (
-              <p className="m-0 text-[10px] text-[#1f3d8f]">{passwordStatus}</p>
-            )}
-            <button
-              type="button"
-              onClick={() =>
-                persistSettings({
-                  admin: {
-                    name: adminName,
-                    email: adminEmail,
-                    avatar: data.admin.avatar
-                  }
-                })
-              }
-              className="w-full rounded-full border border-[#e6ecf7] bg-white px-4 py-2 text-[11px] font-semibold text-[#1f3d8f]"
-            >
-              Save Profile
-            </button>
           </div>
+
+          {(passwordError || passwordStatus) && (
+            <p className={`m-0 mt-3 text-[12px] ${passwordError ? "text-[#d44a4a]" : "text-[#24408d]"}`}>
+              {passwordError ?? passwordStatus}
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={handlePasswordUpdate}
+            className="mt-4 h-11 w-full rounded-[8px] bg-[#24408d] text-[13px] font-semibold text-white shadow-[0_12px_28px_rgba(36,64,141,0.2)]"
+          >
+            Update Password
+          </button>
         </aside>
-      </section>
-      {confirmAction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div
-            className="fixed inset-0 bg-[#0f172a]/40"
-            onClick={() => setConfirmAction(null)}
-          />
-          <div className="relative z-10 w-full max-w-[420px] rounded-2xl border border-[#e6ecf7] bg-white p-5 shadow-2xl">
-            <div className="flex items-start justify-between">
-              <div>
-                <h4 className="m-0 text-[14px] font-semibold text-[#1f2d46]">
-                  {confirmAction.title}
-                </h4>
-                <p className="m-0 mt-2 text-[11px] text-[#64748b]">
-                  {confirmAction.description}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setConfirmAction(null)}
-                className="text-[#94a3b8]"
-                aria-label="Close confirmation"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="mt-4 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setConfirmAction(null)}
-                className="rounded-full border border-[#e6ecf7] bg-white px-4 py-2 text-[11px] font-semibold text-[#1f2d46]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const run = confirmAction.onConfirm;
-                  setConfirmAction(null);
-                  run();
-                }}
-                className="rounded-full bg-[#1f3d8f] px-4 py-2 text-[11px] font-semibold text-white shadow-md shadow-[#1f3d8f]/20"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {passwordConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div
-            className="fixed inset-0 bg-[#0f172a]/40"
-            onClick={() => setPasswordConfirmOpen(false)}
-          />
-          <div className="relative z-10 w-full max-w-[420px] rounded-2xl border border-[#e6ecf7] bg-white p-5 shadow-2xl">
-            <div className="flex items-start justify-between">
-              <div>
-                <h4 className="m-0 text-[14px] font-semibold text-[#1f2d46]">
-                  Update Password
-                </h4>
-                <p className="m-0 mt-2 text-[11px] text-[#64748b]">
-                  Confirm updating the admin password?
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPasswordConfirmOpen(false)}
-                className="text-[#94a3b8]"
-                aria-label="Close password confirmation"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="mt-4 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setPasswordConfirmOpen(false)}
-                className="rounded-full border border-[#e6ecf7] bg-white px-4 py-2 text-[11px] font-semibold text-[#1f2d46]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  setPasswordConfirmOpen(false);
-                  setPasswordStatus(null);
-                  const response = await fetch("/api/auth/update", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      email: adminEmail,
-                      currentPassword,
-                      newPassword
-                    })
-                  });
-                  if (!response.ok) {
-                    setPasswordError("Current password is incorrect.");
-                    return;
-                  }
-                  setPasswordError(null);
-                  setPasswordStatus("Password updated");
-                  setCurrentPassword("");
-                  setNewPassword("");
-                  setConfirmPassword("");
-                  setTimeout(() => setPasswordStatus(null), 1500);
-                }}
-                className="rounded-full bg-[#1f3d8f] px-4 py-2 text-[11px] font-semibold text-white shadow-md shadow-[#1f3d8f]/20"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
     </section>
   );
 }

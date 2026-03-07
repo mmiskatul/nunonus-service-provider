@@ -11,7 +11,7 @@ const titleByRoute: Record<string, string> = {
   "/offers": "Offers",
   "/billing": "Billing",
   "/support": "Support",
-  "/settings": "Settings"
+  "/settings": ""
 };
 
 export function Topbar({
@@ -24,7 +24,7 @@ export function Topbar({
 
   return (
     <header className="topbar">
-      <h1 className="title">{title}</h1>
+      {title ? <h1 className="title">{title}</h1> : <div aria-hidden />}
       <div className="topbar-right">
         <button
           type="button"

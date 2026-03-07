@@ -15,9 +15,9 @@ export function MainLayoutShell({
   const [panel, setPanel] = useState<PanelType>(null);
 
   return (
-    <div className="grid min-h-screen grid-cols-[220px_1fr] max-[980px]:grid-cols-1">
+    <div className="grid min-h-screen grid-cols-[220px_1fr] max-[980px]:grid-cols-1 min-[981px]:h-screen min-[981px]:overflow-hidden">
       <Sidebar activePanel={panel} onOpenPanel={(next) => setPanel(next)} />
-      <main className="px-[14px] pb-[18px]">
+      <main className="min-w-0 px-[14px] pb-[18px] min-[981px]:h-screen min-[981px]:overflow-y-auto">
         <Topbar onOpenPanel={(next) => setPanel(next)} />
         {children}
       </main>

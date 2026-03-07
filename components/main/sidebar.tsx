@@ -55,11 +55,11 @@ export function Sidebar({
   };
 
   return (
-    <aside className="flex flex-col border-r border-white/10 bg-[var(--bg-sidebar)] text-[#f7f9ff]">
+    <aside className="sticky top-0 flex h-screen self-start flex-col overflow-hidden border-r border-white/10 bg-[var(--bg-sidebar)] text-[#f7f9ff] max-[980px]:static max-[980px]:h-auto">
       <Link href="/"  className="border-b border-white/10 px-[22px] py-[20px] text-[30px] font-bold">
         Logo
       </Link>
-      <nav className="flex flex-1 flex-col gap-1 px-[10px] py-[14px]">
+      <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-[10px] py-[14px]">
         {navItems.map((item) => {
           if (item.type === "panel") {
             const isActive = activePanel === item.panel;
