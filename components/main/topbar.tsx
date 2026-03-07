@@ -20,7 +20,9 @@ export function Topbar({
   onOpenPanel: (panel: "notifications" | "profile") => void;
 }) {
   const pathname = usePathname();
-  const title = titleByRoute[pathname] ?? "Platform Overview";
+  const title = pathname.startsWith("/settings")
+    ? ""
+    : (titleByRoute[pathname] ?? "Platform Overview");
 
   return (
     <header className="topbar">

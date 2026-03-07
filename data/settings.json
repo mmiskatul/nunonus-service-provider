@@ -21,6 +21,28 @@
     "gdpr": "GDPR Compliance",
     "gdprStatus": "Active"
   },
+  "legalContent": {
+    "title": "Legal Content Editor",
+    "lastUpdated": "March 8, 2026 at 3:04 AM",
+    "documents": {
+      "terms": "Terms of Service",
+      "privacy": "Privacy Policy"
+    },
+    "audiences": {
+      "apps": "Apps",
+      "business": "Business"
+    },
+    "content": {
+      "terms": {
+        "apps": "# ***Terms of Service***\n\n###<u> 1. Acceptance of Terms</u>\nBy accessing and using our platform, you agree to be bound by these Terms of Service and all applicable laws and regulations.\n\n### 2. Account Responsibilities\nYou are responsible for maintaining the confidentiality of your account credentials and for all activity that occurs under your account.\n\n### 3. Platform Usage\nYou agree not to misuse the platform, interfere with other users, or attempt to access restricted services without authorization.**text**",
+        "business": "# Business Terms of Service\n\n### 1. Commercial Eligibility\nBusiness accounts must provide accurate company information and maintain an active point of contact for compliance updates.\n\n### 2. Billing and Renewals\nCommercial subscriptions renew automatically unless cancelled before the renewal date. Charges are billed to the payment method on file.\n\n### 3. Service Availability\n# We may modify, suspend, or discontinue business features when operational, security, or legal requirements require it."
+      },
+      "privacy": {
+        "apps": "# Privacy Policy\n\n### 1. Information We Collect\nWe collect account details, device information, and usage activity needed to operate, secure, and improve the app experience.\n\n### 2. How We Use Data\nCollected information is used to deliver services, personalize the product, respond to support requests, and enforce platform policies.\n\n### 3. Data Retention\nWe retain personal data only as long as necessary to meet contractual, legal, and operational obligations.",
+        "business": "# Business Privacy Policy\n\n### 1. Business Contact Data\nWe collect administrator details, team member information, and account-level configuration data required to deliver business services.\n\n### 2. Processing and Security\nBusiness data is processed under strict access controls and industry-standard safeguards designed to protect confidentiality and integrity.\n\n### 3. Data Requests\nAuthorized administrators may request export, correction, or deletion of eligible business records in accordance with applicable law."
+      }
+    }
+  },
   "admin": {
     "name": "John Administrator",
     "email": "admin@yardworkpro.com",

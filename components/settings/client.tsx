@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { ChangeEvent, ReactNode, useRef, useState } from "react";
 import {
   FiCheck,
@@ -360,16 +361,22 @@ export function SettingsView({ data }: { data: SettingsData }) {
             <div className="mt-4 overflow-hidden rounded-[14px] border border-[#edf1f6] bg-white">
               <div className="flex items-center justify-between px-3 py-3 text-[13px] text-[#1f2b42]">
                 <span>{data.legal.terms}</span>
-                <button type="button" className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#24408d]">
+                <Link
+                  href="/settings/legal-content?tab=terms"
+                  className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#24408d]"
+                >
                   Edit <FiExternalLink size={12} />
-                </button>
+                </Link>
               </div>
               <div className="h-px bg-[#edf1f6]" />
               <div className="flex items-center justify-between px-3 py-3 text-[13px] text-[#1f2b42]">
                 <span>{data.legal.privacy}</span>
-                <button type="button" className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#24408d]">
+                <Link
+                  href="/settings/legal-content?tab=privacy"
+                  className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#24408d]"
+                >
                   Edit <FiExternalLink size={12} />
-                </button>
+                </Link>
               </div>
               <div className="h-px bg-[#edf1f6]" />
               <div className="flex items-center justify-between px-3 py-3 text-[13px] text-[#1f2b42]">
