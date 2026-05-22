@@ -359,19 +359,25 @@ export default function ProfilePage() {
                     <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-600 transition-all group-hover:translate-x-1" />
                   </Link>
 
-                  <button className="w-full flex items-center justify-between p-4 px-6 hover:bg-slate-50/50 rounded-[20px] transition-all group">
+                  <Link
+                    href="/profile/legal/terms"
+                    className="w-full flex items-center justify-between p-4 px-6 hover:bg-slate-50/50 rounded-[20px] transition-all group"
+                  >
                     <span className="text-sm font-bold text-slate-500 group-hover:text-slate-800">
                       Terms & Conditions
                     </span>
                     <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-600 transition-all group-hover:translate-x-1" />
-                  </button>
+                  </Link>
 
-                  <button className="w-full flex items-center justify-between p-4 px-6 hover:bg-slate-50/50 rounded-[20px] transition-all group">
+                  <Link
+                    href="/profile/legal/privacy"
+                    className="w-full flex items-center justify-between p-4 px-6 hover:bg-slate-50/50 rounded-[20px] transition-all group"
+                  >
                     <span className="text-sm font-bold text-slate-500 group-hover:text-slate-800">
                       Privacy Policy
                     </span>
                     <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-600 transition-all group-hover:translate-x-1" />
-                  </button>
+                  </Link>
                 </div>
               </div>
             </div>
