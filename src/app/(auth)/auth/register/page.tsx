@@ -1,24 +1,231 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import {
-  User,
-  Mail,
-  Phone,
-  Lock,
-  MapPin,
-  Globe,
-  FileText,
-  Upload,
-  ChevronDown,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { User, MapPin, FileText, Upload, ChevronDown } from "lucide-react";
+
+type RegisterFormData = {
+  businessName: string;
+  category: string;
+  email: string;
+  phone: string;
+  password: string;
+  confirmPassword: string;
+  address: string;
+  city: string;
+  website: string;
+  description: string;
+  tradeLicenseNumber: string;
+  agreeToTerms: boolean;
+};
+
+type ApiErrorResponse = {
+  detail?: string | { msg?: string }[] | null;
+  message?: string;
+};
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+
+const DUMMY_TRADE_LICENSE_URL = "https://dummy.local/trade-license.pdf";
+const DUMMY_OWNER_ID_URL = "https://dummy.local/owner-id.pdf";
+
+const initialFormData: RegisterFormData = {
+  businessName: "",
+  category: "Hotel",
+  email: "",
+  phone: "",
+  password: "",
+  confirmPassword: "",
+  address: "",
+  city: "",
+  website: "",
+  description: "",
+  tradeLicenseNumber: "",
+  agreeToTerms: false,
+};
+
+const textFieldNames = new Set<keyof Omit<RegisterFormData, "agreeToTerms">>([
+  "businessName",
+  "category",
+  "email",
+  "phone",
+  "password",
+  "confirmPassword",
+  "address",
+  "city",
+  "website",
+  "description",
+  "tradeLicenseNumber",
+]);
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (!(error instanceof Error)) {
+    return fallback;
+  }
+
+  try {
+    const parsed = JSON.parse(error.message) as ApiErrorResponse;
+
+    if (typeof parsed.detail === "string" && parsed.detail.trim()) {
+      return parsed.detail;
+    }
+
+    if (Array.isArray(parsed.detail) && parsed.detail[0]?.msg) {
+      return parsed.detail[0].msg;
+    }
+
+    if (typeof parsed.message === "string" && parsed.message.trim()) {
+      return parsed.message;
+    }
+  } catch {
+    return error.message || fallback;
+  }
+
+  return fallback;
+}
+
+function validateRegisterForm(formData: RegisterFormData) {
+  if (formData.businessName.trim().length < 2) {
+    return "Business name must be at least 2 characters.";
+  }
+
+  if (!formData.email.trim()) {
+    return "Email address is required.";
+  }
+
+  if (formData.password.length < 8) {
+    return "Password must be at least 8 characters.";
+  }
+
+  if (formData.address.trim().length < 5) {
+    return "Address must be at least 5 characters.";
+  }
+
+  if (formData.city.trim().length < 2) {
+    return "City must be at least 2 characters.";
+  }
+
+  if (formData.description.trim().length < 10) {
+    return "Business description must be at least 10 characters.";
+  }
+
+  if (formData.tradeLicenseNumber.trim().length < 4) {
+    return "Trade license number must be at least 4 characters.";
+  }
+
+  return null;
+}
+
+async function postJson<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || `Request failed with status ${response.status}`);
+  }
+
+  return (await response.json()) as T;
+}
 
 export default function RegisterPage() {
+  const router = useRouter();
+  const [formData, setFormData] = useState(initialFormData);
+  const [submitMessage, setSubmitMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
+  ) => {
+    const { name } = e.target;
+
+    setSubmitMessage("");
+
+    if (name === "agreeToTerms" && e.target instanceof HTMLInputElement) {
+      setFormData((prev) => ({ ...prev, agreeToTerms: e.target.checked }));
+      return;
+    }
+
+    if (!textFieldNames.has(name as keyof Omit<RegisterFormData, "agreeToTerms">)) {
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: e.target.value,
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    const validationError = validateRegisterForm(formData);
+
+    if (validationError) {
+      setSubmitMessage(validationError);
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setSubmitMessage("Passwords do not match.");
+      return;
+    }
+
+    if (!formData.agreeToTerms) {
+      setSubmitMessage("You must accept the terms to continue.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitMessage("");
+
+    try {
+      const requestCodeResult = await postJson<{
+        validation_code?: string | null;
+      }>("/vendor/auth/register/request-code", {
+        email_or_phone: formData.email.trim(),
+      });
+      sessionStorage.setItem(
+        "pending_vendor_registration",
+        JSON.stringify({
+          business_name: formData.businessName.trim(),
+          owner_full_name: formData.businessName.trim(),
+          email_or_phone: formData.email.trim(),
+          phone: formData.phone.trim() || null,
+          address: formData.address.trim(),
+          city: formData.city.trim(),
+          website: formData.website.trim() || null,
+          business_description: formData.description.trim(),
+          trade_license_number: formData.tradeLicenseNumber.trim(),
+          trade_license_document_url: DUMMY_TRADE_LICENSE_URL,
+          owner_manager_id_document_url: DUMMY_OWNER_ID_URL,
+          terms_accepted: formData.agreeToTerms,
+          password: formData.password,
+          confirm_password: formData.confirmPassword,
+          debug_code: requestCodeResult.validation_code ?? null,
+        }),
+      );
+      router.push(
+        `/auth/verify-otp?mode=register&contact=${encodeURIComponent(formData.email.trim())}`,
+      );
+    } catch (error) {
+      setSubmitMessage(getErrorMessage(error, "Registration failed."));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#f3f4f6] flex flex-col items-center py-12 px-6">
-      {/* Header */}
       <div className="w-full max-w-[800px] flex items-center justify-between mb-12">
         <div className="h-10 w-10 bg-[#1e2a5e] rounded-xl flex items-center justify-center">
           <div className="h-5 w-5 bg-white rounded-sm transform rotate-45" />
@@ -47,8 +254,7 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
-          {/* Basic Information */}
+        <form className="space-y-8" onSubmit={handleSubmit}>
           <div className="bg-white rounded-[32px] p-8 md:p-10 shadow-xl shadow-slate-200/40 border border-slate-50">
             <div className="flex items-center gap-3 mb-8">
               <div className="h-10 w-10 bg-indigo-50 rounded-xl flex items-center justify-center text-[#1e2a5e]">
@@ -66,6 +272,9 @@ export default function RegisterPage() {
                 </label>
                 <input
                   type="text"
+                  name="businessName"
+                  value={formData.businessName}
+                  onChange={handleInputChange}
                   placeholder="e.g. Acme Services"
                   className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all"
                 />
@@ -75,7 +284,12 @@ export default function RegisterPage() {
                   Category
                 </label>
                 <div className="relative">
-                  <select className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 appearance-none text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all cursor-pointer">
+                  <select
+                    name="category"
+                    value={formData.category}
+                    onChange={handleInputChange}
+                    className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 appearance-none text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all cursor-pointer"
+                  >
                     <option>Hotel</option>
                     <option>Restaurant</option>
                     <option>Spa</option>
@@ -89,6 +303,9 @@ export default function RegisterPage() {
                 </label>
                 <input
                   type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
                   placeholder="business@example.com"
                   className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all"
                 />
@@ -99,6 +316,9 @@ export default function RegisterPage() {
                 </label>
                 <input
                   type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
                   placeholder="+1 (555) 000-0000"
                   className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all"
                 />
@@ -109,6 +329,9 @@ export default function RegisterPage() {
                 </label>
                 <input
                   type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
                   placeholder="********"
                   className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all"
                 />
@@ -119,6 +342,9 @@ export default function RegisterPage() {
                 </label>
                 <input
                   type="password"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
                   placeholder="********"
                   className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all"
                 />
@@ -126,7 +352,6 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {/* Business Details */}
           <div className="bg-white rounded-[32px] p-8 md:p-10 shadow-xl shadow-slate-200/40 border border-slate-50">
             <div className="flex items-center gap-3 mb-8">
               <div className="h-10 w-10 bg-indigo-50 rounded-xl flex items-center justify-center text-[#1e2a5e]">
@@ -144,6 +369,9 @@ export default function RegisterPage() {
                 </label>
                 <input
                   type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleInputChange}
                   placeholder="123 Business Way"
                   className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all"
                 />
@@ -155,6 +383,9 @@ export default function RegisterPage() {
                   </label>
                   <input
                     type="text"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleInputChange}
                     placeholder="New York"
                     className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all"
                   />
@@ -165,6 +396,9 @@ export default function RegisterPage() {
                   </label>
                   <input
                     type="url"
+                    name="website"
+                    value={formData.website}
+                    onChange={handleInputChange}
                     placeholder="https://www.yourbusiness.com"
                     className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all"
                   />
@@ -176,14 +410,16 @@ export default function RegisterPage() {
                 </label>
                 <textarea
                   rows={4}
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
                   placeholder="Tell us about your services..."
                   className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all resize-none"
-                ></textarea>
+                />
               </div>
             </div>
           </div>
 
-          {/* Verification */}
           <div className="bg-white rounded-[32px] p-8 md:p-10 shadow-xl shadow-slate-200/40 border border-slate-50">
             <div className="flex items-center gap-3 mb-8">
               <div className="h-10 w-10 bg-indigo-50 rounded-xl flex items-center justify-center text-[#1e2a5e]">
@@ -199,38 +435,43 @@ export default function RegisterPage() {
                 </label>
                 <input
                   type="text"
+                  name="tradeLicenseNumber"
+                  value={formData.tradeLicenseNumber}
+                  onChange={handleInputChange}
                   placeholder="TX-12345678"
                   className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all"
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                  <label className="text-xs font-black text-slate-800 uppercase tracking-widest block ml-1">
+                <label className="space-y-4 block">
+                  <span className="text-xs font-black text-slate-800 uppercase tracking-widest block ml-1">
                     Trade License Document
-                  </label>
-                  <div className="border-2 border-dashed border-slate-100 rounded-[28px] p-8 flex flex-col items-center justify-center gap-3 bg-slate-50/30 hover:bg-slate-50/50 transition-colors cursor-pointer group">
-                    <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-slate-400 group-hover:text-[#1e2a5e] shadow-sm transition-colors">
+                  </span>
+                  <input type="file" className="sr-only" />
+                  <span className="border-2 border-dashed border-slate-100 rounded-[28px] p-8 flex flex-col items-center justify-center gap-3 bg-slate-50/30 hover:bg-slate-50/50 transition-colors cursor-pointer group">
+                    <span className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-slate-400 group-hover:text-[#1e2a5e] shadow-sm transition-colors">
                       <Upload className="h-5 w-5" />
-                    </div>
+                    </span>
                     <span className="text-xs font-bold text-slate-400 group-hover:text-slate-600 transition-colors">
                       Upload PDF or JPG
                     </span>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <label className="text-xs font-black text-slate-800 uppercase tracking-widest block ml-1">
+                  </span>
+                </label>
+                <label className="space-y-4 block">
+                  <span className="text-xs font-black text-slate-800 uppercase tracking-widest block ml-1">
                     Owner/Manager ID
-                  </label>
-                  <div className="border-2 border-dashed border-slate-100 rounded-[28px] p-8 flex flex-col items-center justify-center gap-3 bg-slate-50/30 hover:bg-slate-50/50 transition-colors cursor-pointer group">
-                    <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-slate-400 group-hover:text-[#1e2a5e] shadow-sm transition-colors">
+                  </span>
+                  <input type="file" className="sr-only" />
+                  <span className="border-2 border-dashed border-slate-100 rounded-[28px] p-8 flex flex-col items-center justify-center gap-3 bg-slate-50/30 hover:bg-slate-50/50 transition-colors cursor-pointer group">
+                    <span className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-slate-400 group-hover:text-[#1e2a5e] shadow-sm transition-colors">
                       <Upload className="h-5 w-5" />
-                    </div>
+                    </span>
                     <span className="text-xs font-bold text-slate-400 group-hover:text-slate-600 transition-colors">
                       Upload Passport/ID
                     </span>
-                  </div>
-                </div>
+                  </span>
+                </label>
               </div>
             </div>
           </div>
@@ -239,6 +480,9 @@ export default function RegisterPage() {
             <label className="flex items-center gap-3 cursor-pointer group px-2">
               <input
                 type="checkbox"
+                name="agreeToTerms"
+                checked={formData.agreeToTerms}
+                onChange={handleInputChange}
                 className="h-5 w-5 rounded-lg border-2 border-slate-200 text-[#1e2a5e] focus:ring-[#1e2a5e] cursor-pointer"
               />
               <span className="text-sm font-bold text-slate-500">
@@ -254,11 +498,18 @@ export default function RegisterPage() {
               </span>
             </label>
 
+            {submitMessage ? (
+              <p className="text-sm font-bold text-[#1e2a5e] px-2">
+                {submitMessage}
+              </p>
+            ) : null}
+
             <button
               type="submit"
-              className="w-full bg-[#1e2a5e] hover:bg-[#1a2552] text-white py-5 rounded-[24px] text-lg font-bold shadow-2xl shadow-[#1e2a5e]/30 transition-all active:scale-[0.98]"
+              disabled={isSubmitting}
+              className="w-full bg-[#1e2a5e] hover:bg-[#1a2552] disabled:opacity-60 text-white py-5 rounded-[24px] text-lg font-bold shadow-2xl shadow-[#1e2a5e]/30 transition-all active:scale-[0.98]"
             >
-              Create Account
+              {isSubmitting ? "Creating Account..." : "Create Account"}
             </button>
 
             <div className="text-center">
