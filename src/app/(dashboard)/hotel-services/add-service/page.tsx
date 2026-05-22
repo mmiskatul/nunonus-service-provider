@@ -16,6 +16,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { uploadVendorFile } from "@/lib/vendor-api";
 
 const SERVICE_CATEGORIES = ["Food", "Laundry", "Cleaning", "Wellness", "Other"];
 
@@ -33,6 +34,7 @@ export default function AddServicePage() {
 
   const [images, setImages] = useState<string[]>([]);
   const [isDragActive, setIsDragActive] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleInputChange = (
@@ -44,12 +46,18 @@ export default function AddServicePage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFileSelection = (files: FileList | null) => {
+  const handleFileSelection = async (files: FileList | null) => {
     if (!files) return;
-    const newImages = Array.from(files).map((file) =>
-      URL.createObjectURL(file),
-    );
-    setImages((prev) => [...prev, ...newImages]);
+    for (const file of Array.from(files)) {
+      try {
+        const uploadedUrl = await uploadVendorFile(file);
+        setImages((prev) => [...prev, uploadedUrl]);
+      } catch (error) {
+        setStatusMessage(
+          error instanceof Error ? error.message : "Failed to upload image.",
+        );
+      }
+    }
   };
 
   const removeImage = (index: number) => {
@@ -86,10 +94,13 @@ export default function AddServicePage() {
         className="hidden"
         multiple
         accept="image/*"
-        onChange={(e) => handleFileSelection(e.target.files)}
+        onChange={(e) => void handleFileSelection(e.target.files)}
       />
 
       <div className="max-w-[1000px] mx-auto space-y-10">
+        {statusMessage ? (
+          <p className="text-sm font-bold text-[#1e2a5e]">{statusMessage}</p>
+        ) : null}
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
@@ -246,7 +257,7 @@ export default function AddServicePage() {
                 onDrop={(e) => {
                   e.preventDefault();
                   setIsDragActive(false);
-                  handleFileSelection(e.dataTransfer.files);
+                  void handleFileSelection(e.dataTransfer.files);
                 }}
                 onClick={() => fileInputRef.current?.click()}
                 className={cn(

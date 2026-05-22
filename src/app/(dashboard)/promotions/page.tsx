@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Header } from "@/components/Header";
 import Link from "next/link";
 import {
@@ -8,13 +8,18 @@ import {
   Users,
   MousePointer2,
   Plus,
-  Zap,
   Tag,
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PromotionsTable, Promotion } from "@/components/PromotionsTable";
 import { CampaignCard } from "@/components/CampaignCard";
+import {
+  vendorListPromotions,
+  vendorUpdatePromotionStatus,
+  vendorJoinPlatformCampaign,
+} from "@/lib/vendor-api";
+
 
 const STATS = [
   {
@@ -130,16 +135,50 @@ const PLATFORM_CAMPAIGNS = [
 ];
 
 export default function PromotionsPage() {
-  const [campaignStates, setCampaignStates] = useState<Record<string, boolean>>(
-    PLATFORM_CAMPAIGNS.reduce(
-      (acc, c) => ({ ...acc, [c.id]: c.isActive }),
-      {} as Record<string, boolean>,
-    ),
-  );
+  const [businessPromotions, setBusinessPromotions] = useState<Promotion[]>([]);
+  const [campaignStates, setCampaignStates] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
 
-  const toggleCampaign = (id: string) => {
-    setCampaignStates((prev) => ({ ...prev, [id]: !prev[id] }));
+  const fetchPromotions = useCallback(async () => {
+    try {
+      const raw = await vendorListPromotions() as { items?: Record<string, unknown>[] };
+      const items = raw?.items ?? [];
+      const normalized: Promotion[] = items.map((p) => ({
+        id: (p.id ?? p._id ?? "") as string,
+        name: (p.name ?? p.title ?? "") as string,
+        description: (p.description ?? "") as string,
+        type: (p.type ?? "PERCENTAGE") as string,
+        value: (p.value ?? "") as string,
+        schedule: (p.schedule ?? "") as string,
+        usageCount: (p.usage_count ?? p.usageCount ?? 0) as number,
+        usageMax: (p.usage_max ?? p.usageMax ?? 100) as number,
+        isActive: (p.is_active ?? p.isActive ?? false) as boolean,
+      }));
+      setBusinessPromotions(normalized);
+    } catch (err) {
+      console.warn("Failed to load promotions:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchPromotions(); }, [fetchPromotions]);
+
+  const toggleCampaign = async (id: string) => {
+    const newState = !campaignStates[id];
+    setCampaignStates((prev) => ({ ...prev, [id]: newState }));
+    try {
+      await vendorJoinPlatformCampaign(id, newState);
+    } catch (err) {
+      console.warn("Failed to update campaign state:", err);
+      // Revert on failure
+      setCampaignStates((prev) => ({ ...prev, [id]: !newState }));
+    }
   };
+
+  // Keep platform campaigns as static since they come from the platform
+  const platformCampaigns = PLATFORM_CAMPAIGNS;
+
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col pb-10">
@@ -204,7 +243,13 @@ export default function PromotionsPage() {
           </div>
 
           {/* Business Promotions Table */}
-          <PromotionsTable promotions={BUSINESS_PROMOTIONS} />
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="w-6 h-6 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : (
+            <PromotionsTable promotions={businessPromotions} />
+          )}
 
           {/* Platform Campaigns */}
           <section className="space-y-6 pt-4">
@@ -224,11 +269,11 @@ export default function PromotionsPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {PLATFORM_CAMPAIGNS.map((campaign) => (
+              {platformCampaigns.map((campaign) => (
                 <CampaignCard
                   key={campaign.id}
                   {...campaign}
-                  isActive={campaignStates[campaign.id]}
+                  isActive={campaignStates[campaign.id] ?? campaign.isActive}
                   onToggle={() => toggleCampaign(campaign.id)}
                 />
               ))}

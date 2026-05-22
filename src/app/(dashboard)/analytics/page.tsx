@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { vendorGetAnalyticsOverview, vendorExportAnalytics } from "@/lib/vendor-api";
+
 import { Header } from "@/components/Header";
 import {
   Calendar,
@@ -98,6 +100,8 @@ const REVIEWS: ReviewItem[] = [
 
 export default function AnalyticsPage() {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [stats, setStats] = useState(STATS);
+  const [exporting, setExporting] = useState(false);
   const calendarRef = useRef<HTMLDivElement>(null);
   const [dateRange, setDateRange] = useState<{
     start: Date | null;
@@ -106,6 +110,67 @@ export default function AnalyticsPage() {
     start: new Date(2026, 0, 1),
     end: new Date(2026, 0, 31),
   });
+
+  useEffect(() => {
+    vendorGetAnalyticsOverview()
+      .then((data) => {
+        const d = data as Record<string, unknown>;
+        if (d && Object.keys(d).length > 0) {
+          setStats([
+            {
+              label: "TOTAL BOOKINGS",
+              value: String(d.total_bookings ?? "—"),
+              trend: (d.bookings_trend as string) ?? "+0%",
+              trendType: (((d.bookings_trend as string) ?? "+").startsWith("-") ? "down" : "up") as "up" | "down",
+              icon: STATS[0].icon,
+              color: STATS[0].color,
+              bg: STATS[0].bg,
+            },
+            {
+              label: "TOTAL REVENUE",
+              value: d.total_revenue != null ? `$${Number(d.total_revenue).toLocaleString()}` : "—",
+              trend: (d.revenue_trend as string) ?? "+0%",
+              trendType: (((d.revenue_trend as string) ?? "+").startsWith("-") ? "down" : "up") as "up" | "down",
+              icon: STATS[1].icon,
+              color: STATS[1].color,
+              bg: STATS[1].bg,
+            },
+            {
+              label: "OCCUPANCY RATE",
+              value: d.occupancy_rate != null ? `${d.occupancy_rate}%` : "—",
+              trend: (d.occupancy_trend as string) ?? "0%",
+              trendType: (((d.occupancy_trend as string) ?? "+").startsWith("-") ? "down" : "up") as "up" | "down",
+              icon: STATS[2].icon,
+              color: STATS[2].color,
+              bg: STATS[2].bg,
+            },
+            {
+              label: "AVERAGE RATING",
+              value: d.avg_rating != null ? `${Number(d.avg_rating).toFixed(1)} / 5.0` : "—",
+              trend: (d.rating_trend as string) ?? "0",
+              trendType: "up",
+              icon: STATS[3].icon,
+              color: STATS[3].color,
+              bg: STATS[3].bg,
+            },
+          ]);
+        }
+      })
+      .catch(() => { /* keep fallback */ });
+  }, []);
+
+  const handleExport = async () => {
+    if (exporting) return;
+    try {
+      setExporting(true);
+      await vendorExportAnalytics();
+    } catch (err) {
+      console.warn("Export failed:", err);
+    } finally {
+      setExporting(false);
+    }
+  };
+
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -171,16 +236,20 @@ export default function AnalyticsPage() {
                   </div>
                 )}
               </div>
-              <button className="flex items-center gap-2 bg-[#1e2a5e] hover:bg-[#1a2552] text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-xl shadow-slate-900/10 transition-all font-sans">
+              <button
+                onClick={handleExport}
+                disabled={exporting}
+                className="flex items-center gap-2 bg-[#1e2a5e] hover:bg-[#1a2552] text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-xl shadow-slate-900/10 transition-all font-sans disabled:opacity-60"
+              >
                 <Download className="h-4 w-4" />
-                Export Report
+                {exporting ? "Exporting…" : "Export Report"}
               </button>
             </div>
           </div>
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {STATS.map((stat, idx) => (
+            {stats.map((stat, idx) => (
               <div
                 key={idx}
                 className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100 relative overflow-hidden group hover:shadow-md transition-shadow"

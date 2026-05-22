@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
@@ -77,7 +78,7 @@ function getErrorMessage(error: unknown, fallback: string) {
         return "Password must be at least 8 characters.";
       }
 
-      return firstError.msg;
+      return firstError.msg ?? fallback;
     }
 
     if (typeof parsed.message === "string" && parsed.message.trim()) {
@@ -107,7 +108,8 @@ async function postJson<T>(path: string, body: Record<string, unknown>): Promise
   return (await response.json()) as T;
 }
 
-export default function VerifyCodePage() {
+function VerifyCodeInner() {
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode");
@@ -331,5 +333,19 @@ export default function VerifyCodePage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function VerifyCodePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#f3f4f6] flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-[#1e2a5e] border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <VerifyCodeInner />
+    </Suspense>
   );
 }

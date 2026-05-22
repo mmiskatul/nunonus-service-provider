@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { parse, isWithinInterval, startOfDay } from "date-fns";
 import { BookingsHeader } from "@/components/BookingsHeader";
 import { BookingsTable, Booking } from "@/components/BookingsTable";
 import { Pagination } from "@/components/Pagination";
 import { BookingDetailsModal } from "@/components/BookingDetailsModal";
+import { vendorListBookings } from "@/lib/vendor-api";
+
 
 const ALL_BOOKINGS: Booking[] = [
   {
@@ -669,6 +671,8 @@ const ALL_BOOKINGS: Booking[] = [
 ];
 
 export default function BookingsPage() {
+  const [allBookings, setAllBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -680,6 +684,35 @@ export default function BookingsPage() {
     start: null,
     end: null,
   });
+
+  const fetchBookings = useCallback(async () => {
+    try {
+      setLoading(true);
+      const raw = await vendorListBookings({ limit: 200 }) as { items?: unknown[]; bookings?: unknown[] };
+      const items = (raw?.items ?? raw?.bookings ?? []) as Record<string, unknown>[];
+      const normalized: Booking[] = items.map((b, idx) => ({
+        id: (b.id ?? b._id ?? `#BK-${idx}`) as string,
+        customer: {
+          name: ((b.customer_name ?? b.customer ?? "Customer") as string),
+          avatar: ((b.customer_avatar ?? b.avatar ?? "") as string),
+        },
+        date: ((b.date ?? "") as string),
+        time: ((b.time ?? "") as string),
+        guests: ((b.guests ?? 1) as number),
+        service: ((b.service ?? b.service_name ?? b.provider_type ?? "") as string),
+        status: ((b.status ?? "pending") as string),
+        payment: ((b.payment_status ?? b.payment ?? "Unpaid") as string),
+      }));
+      setAllBookings(normalized);
+    } catch (err) {
+      console.warn("Failed to load bookings:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchBookings(); }, [fetchBookings]);
+
 
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
@@ -700,7 +733,7 @@ export default function BookingsPage() {
   };
 
   // Filter logic
-  const filteredBookings = ALL_BOOKINGS.filter((booking) => {
+  const filteredBookings = allBookings.filter((booking) => {
     // Search filter
     const matchesSearch =
       booking.id.toLowerCase().includes(searchQuery.toLowerCase()) ||

@@ -6,7 +6,7 @@ export interface Promotion {
   id: string;
   name: string;
   description: string;
-  type: "PERCENTAGE" | "HAPPY HOUR" | "FIXED";
+  type: "PERCENTAGE" | "HAPPY HOUR" | "FIXED" | string;
   value: string;
   schedule: string;
   usageCount: number;

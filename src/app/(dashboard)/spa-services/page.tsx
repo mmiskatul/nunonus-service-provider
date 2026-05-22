@@ -12,13 +12,15 @@ import {
   Waves,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { uploadVendorFile, vendorJson } from "@/lib/vendor-api";
 
 interface UploadedFile {
   id: string;
   name: string;
-  url: string;
+  previewUrl: string;
+  assetUrl: string;
   type: "menu" | "gallery";
-  status: "ready" | "uploading";
+  status: "uploading" | "uploaded";
 }
 
 export default function SpaServicesPage() {
@@ -26,23 +28,55 @@ export default function SpaServicesPage() {
   const [galleryFiles, setGalleryFiles] = useState<UploadedFile[]>([]);
   const [isDraggingMenu, setIsDraggingMenu] = useState(false);
   const [isDraggingGallery, setIsDraggingGallery] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const menuInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
-  const processFiles = (files: FileList | File[], type: "menu" | "gallery") => {
-    const newFiles: UploadedFile[] = Array.from(files).map((file) => ({
-      id: Math.random().toString(36).substr(2, 9),
-      name: file.name,
-      url: URL.createObjectURL(file),
-      type,
-      status: "ready",
-    }));
+  const processFiles = async (files: FileList | File[], type: "menu" | "gallery") => {
+    for (const file of Array.from(files)) {
+      const id = crypto.randomUUID();
+      const previewUrl = URL.createObjectURL(file);
+      const pendingFile: UploadedFile = {
+        id,
+        name: file.name,
+        previewUrl,
+        assetUrl: "",
+        type,
+        status: "uploading",
+      };
 
-    if (type === "menu") {
-      setMenuFiles((prev) => [...prev, ...newFiles]);
-    } else {
-      setGalleryFiles((prev) => [...prev, ...newFiles]);
+      if (type === "menu") {
+        setMenuFiles((prev) => [...prev, pendingFile]);
+      } else {
+        setGalleryFiles((prev) => [...prev, pendingFile]);
+      }
+
+      try {
+        const assetUrl = await uploadVendorFile(file);
+        const applyUpdate = (rows: UploadedFile[]) =>
+          rows.map((row) =>
+            row.id === id ? { ...row, assetUrl, status: "uploaded" as const } : row,
+          );
+
+        if (type === "menu") {
+          setMenuFiles(applyUpdate);
+        } else {
+          setGalleryFiles(applyUpdate);
+        }
+      } catch (error) {
+        URL.revokeObjectURL(previewUrl);
+        setStatusMessage(
+          error instanceof Error ? error.message : "Failed to upload file.",
+        );
+
+        if (type === "menu") {
+          setMenuFiles((prev) => prev.filter((row) => row.id !== id));
+        } else {
+          setGalleryFiles((prev) => prev.filter((row) => row.id !== id));
+        }
+      }
     }
   };
 
@@ -51,7 +85,7 @@ export default function SpaServicesPage() {
     type: "menu" | "gallery",
   ) => {
     const files = e.target.files;
-    if (files) processFiles(files, type);
+    if (files) void processFiles(files, type);
   };
 
   const handleDragOver = (e: React.DragEvent, type: "menu" | "gallery") => {
@@ -69,14 +103,63 @@ export default function SpaServicesPage() {
     e.preventDefault();
     handleDragLeave(type);
     const files = e.dataTransfer.files;
-    if (files) processFiles(files, type);
+    if (files) void processFiles(files, type);
   };
 
   const removeFile = (id: string, type: "menu" | "gallery") => {
     if (type === "menu") {
-      setMenuFiles((prev) => prev.filter((f) => f.id !== id));
+      setMenuFiles((prev) => {
+        const target = prev.find((f) => f.id === id);
+        if (target) {
+          URL.revokeObjectURL(target.previewUrl);
+        }
+        return prev.filter((f) => f.id !== id);
+      });
     } else {
-      setGalleryFiles((prev) => prev.filter((f) => f.id !== id));
+      setGalleryFiles((prev) => {
+        const target = prev.find((f) => f.id === id);
+        if (target) {
+          URL.revokeObjectURL(target.previewUrl);
+        }
+        return prev.filter((f) => f.id !== id);
+      });
+    }
+  };
+
+  const handleSave = async () => {
+    const allFiles = [...menuFiles, ...galleryFiles];
+
+    if (allFiles.some((file) => file.status === "uploading")) {
+      setStatusMessage("Please wait for uploads to finish.");
+      return;
+    }
+
+    setIsSaving(true);
+    setStatusMessage("");
+
+    try {
+      await Promise.all(
+        allFiles.map((file) =>
+          vendorJson(
+            file.type === "menu"
+              ? "/vendor/menu-services/menu-assets"
+              : "/vendor/menu-services/gallery-assets",
+            "POST",
+            {
+              asset_url: file.assetUrl,
+              file_name: file.name,
+              mime_type: null,
+            },
+          ),
+        ),
+      );
+      setStatusMessage("Assets saved.");
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "Failed to save assets.",
+      );
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -86,6 +169,9 @@ export default function SpaServicesPage() {
 
       <main className="flex-1 p-6 md:p-10 pb-32">
         <div className="max-w-[1400px] mx-auto space-y-8">
+          {statusMessage ? (
+            <p className="text-sm font-bold text-[#1e2a5e]">{statusMessage}</p>
+          ) : null}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
             {/* Spa Menu Upload Card */}
             <div className="bg-white rounded-[40px] p-10 shadow-sm border border-slate-100 flex flex-col">
@@ -143,7 +229,7 @@ export default function SpaServicesPage() {
                       className="group relative aspect-[3/4] rounded-2xl overflow-hidden border border-slate-100 shadow-sm"
                     >
                       <img
-                        src={file.url}
+                        src={file.previewUrl}
                         alt={file.name}
                         className="h-full w-full object-cover"
                       />
@@ -223,7 +309,7 @@ export default function SpaServicesPage() {
                       className="group relative aspect-[3/4] rounded-2xl overflow-hidden border border-slate-100 shadow-sm bg-slate-50"
                     >
                       <img
-                        src={file.url}
+                        src={file.previewUrl}
                         alt={file.name}
                         className="h-full w-full object-cover"
                       />
@@ -273,9 +359,13 @@ export default function SpaServicesPage() {
           <button className="px-8 py-3.5 rounded-2xl text-sm font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all">
             Discard
           </button>
-          <button className="px-8 py-3.5 bg-[#1e2a5e] hover:bg-[#1a2552] text-white rounded-2xl text-sm font-bold flex items-center gap-2 shadow-xl shadow-slate-900/10 transition-all">
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-8 py-3.5 bg-[#1e2a5e] hover:bg-[#1a2552] disabled:opacity-60 text-white rounded-2xl text-sm font-bold flex items-center gap-2 shadow-xl shadow-slate-900/10 transition-all"
+          >
             <Check className="h-4 w-4" />
-            Save Changes
+            {isSaving ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </footer>

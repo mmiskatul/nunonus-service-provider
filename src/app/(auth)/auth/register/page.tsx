@@ -28,9 +28,6 @@ type ApiErrorResponse = {
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
-const DUMMY_TRADE_LICENSE_URL = "https://dummy.local/trade-license.pdf";
-const DUMMY_OWNER_ID_URL = "https://dummy.local/owner-id.pdf";
-
 const initialFormData: RegisterFormData = {
   businessName: "",
   category: "Hotel",
@@ -135,11 +132,46 @@ async function postJson<T>(path: string, body: Record<string, unknown>): Promise
   return (await response.json()) as T;
 }
 
+async function uploadRegistrationDocument(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${API_BASE_URL}/vendor/auth/upload-document`, {
+    method: "POST",
+    body: formData,
+  });
+
+  const result = (await response.json()) as {
+    url?: string;
+    detail?: string | { msg?: string }[];
+    message?: string;
+  };
+
+  if (!response.ok || !result.url) {
+    throw new Error(
+      JSON.stringify({
+        detail:
+          typeof result.detail === "string"
+            ? result.detail
+            : result.message || "Failed to upload file.",
+      }),
+    );
+  }
+
+  return result.url;
+}
+
 export default function RegisterPage() {
   const router = useRouter();
   const [formData, setFormData] = useState(initialFormData);
   const [submitMessage, setSubmitMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [tradeLicenseDocumentName, setTradeLicenseDocumentName] = useState("");
+  const [ownerIdDocumentName, setOwnerIdDocumentName] = useState("");
+  const [tradeLicenseDocumentUrl, setTradeLicenseDocumentUrl] = useState("");
+  const [ownerIdDocumentUrl, setOwnerIdDocumentUrl] = useState("");
+  const [isUploadingTradeLicense, setIsUploadingTradeLicense] = useState(false);
+  const [isUploadingOwnerId, setIsUploadingOwnerId] = useState(false);
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -151,7 +183,8 @@ export default function RegisterPage() {
     setSubmitMessage("");
 
     if (name === "agreeToTerms" && e.target instanceof HTMLInputElement) {
-      setFormData((prev) => ({ ...prev, agreeToTerms: e.target.checked }));
+      const inputEl = e.target;
+      setFormData((prev) => ({ ...prev, agreeToTerms: inputEl.checked }));
       return;
     }
 
@@ -164,6 +197,55 @@ export default function RegisterPage() {
       [name]: e.target.value,
     }));
   };
+
+  const handleFileChange =
+    (field: "tradeLicenseDocument" | "ownerIdDocument") =>
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+
+      if (!file) {
+        return;
+      }
+
+      setSubmitMessage("");
+
+      if (field === "tradeLicenseDocument") {
+        setTradeLicenseDocumentName(file.name);
+        setTradeLicenseDocumentUrl("");
+        setIsUploadingTradeLicense(true);
+      } else {
+        setOwnerIdDocumentName(file.name);
+        setOwnerIdDocumentUrl("");
+        setIsUploadingOwnerId(true);
+      }
+
+      try {
+        const uploadedUrl = await uploadRegistrationDocument(file);
+
+        if (field === "tradeLicenseDocument") {
+          setTradeLicenseDocumentUrl(uploadedUrl);
+          return;
+        }
+
+        setOwnerIdDocumentUrl(uploadedUrl);
+      } catch (error) {
+        if (field === "tradeLicenseDocument") {
+          setTradeLicenseDocumentName("");
+        } else {
+          setOwnerIdDocumentName("");
+        }
+
+        setSubmitMessage(
+          getErrorMessage(error, "Failed to upload the selected file."),
+        );
+      } finally {
+        if (field === "tradeLicenseDocument") {
+          setIsUploadingTradeLicense(false);
+        } else {
+          setIsUploadingOwnerId(false);
+        }
+      }
+    };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -182,6 +264,16 @@ export default function RegisterPage() {
 
     if (!formData.agreeToTerms) {
       setSubmitMessage("You must accept the terms to continue.");
+      return;
+    }
+
+    if (isUploadingTradeLicense || isUploadingOwnerId) {
+      setSubmitMessage("Please wait for the document uploads to finish.");
+      return;
+    }
+
+    if (!tradeLicenseDocumentUrl || !ownerIdDocumentUrl) {
+      setSubmitMessage("Upload both verification documents before continuing.");
       return;
     }
 
@@ -206,8 +298,8 @@ export default function RegisterPage() {
           website: formData.website.trim() || null,
           business_description: formData.description.trim(),
           trade_license_number: formData.tradeLicenseNumber.trim(),
-          trade_license_document_url: DUMMY_TRADE_LICENSE_URL,
-          owner_manager_id_document_url: DUMMY_OWNER_ID_URL,
+          trade_license_document_url: tradeLicenseDocumentUrl,
+          owner_manager_id_document_url: ownerIdDocumentUrl,
           terms_accepted: formData.agreeToTerms,
           password: formData.password,
           confirm_password: formData.confirmPassword,
@@ -448,13 +540,22 @@ export default function RegisterPage() {
                   <span className="text-xs font-black text-slate-800 uppercase tracking-widest block ml-1">
                     Trade License Document
                   </span>
-                  <input type="file" className="sr-only" />
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleFileChange("tradeLicenseDocument")}
+                    className="sr-only"
+                  />
                   <span className="border-2 border-dashed border-slate-100 rounded-[28px] p-8 flex flex-col items-center justify-center gap-3 bg-slate-50/30 hover:bg-slate-50/50 transition-colors cursor-pointer group">
                     <span className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-slate-400 group-hover:text-[#1e2a5e] shadow-sm transition-colors">
                       <Upload className="h-5 w-5" />
                     </span>
                     <span className="text-xs font-bold text-slate-400 group-hover:text-slate-600 transition-colors">
-                      Upload PDF or JPG
+                      {isUploadingTradeLicense
+                        ? "Uploading..."
+                        : tradeLicenseDocumentUrl
+                          ? tradeLicenseDocumentName || "Uploaded"
+                          : "Upload PDF or JPG"}
                     </span>
                   </span>
                 </label>
@@ -462,13 +563,22 @@ export default function RegisterPage() {
                   <span className="text-xs font-black text-slate-800 uppercase tracking-widest block ml-1">
                     Owner/Manager ID
                   </span>
-                  <input type="file" className="sr-only" />
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleFileChange("ownerIdDocument")}
+                    className="sr-only"
+                  />
                   <span className="border-2 border-dashed border-slate-100 rounded-[28px] p-8 flex flex-col items-center justify-center gap-3 bg-slate-50/30 hover:bg-slate-50/50 transition-colors cursor-pointer group">
                     <span className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-slate-400 group-hover:text-[#1e2a5e] shadow-sm transition-colors">
                       <Upload className="h-5 w-5" />
                     </span>
                     <span className="text-xs font-bold text-slate-400 group-hover:text-slate-600 transition-colors">
-                      Upload Passport/ID
+                      {isUploadingOwnerId
+                        ? "Uploading..."
+                        : ownerIdDocumentUrl
+                          ? ownerIdDocumentName || "Uploaded"
+                          : "Upload Passport/ID"}
                     </span>
                   </span>
                 </label>

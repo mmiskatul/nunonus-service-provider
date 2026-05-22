@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { uploadVendorFile, vendorJson } from "@/lib/vendor-api";
 
 export default function ProfilePage() {
   const [formData, setFormData] = useState({
@@ -28,13 +29,69 @@ export default function ProfilePage() {
     website: "https://techflow.com",
     address:
       "123 Innovation Drive, Financial District, San Francisco, CA 94105",
+    avatarUrl: "",
   });
+  const [statusMessage, setStatusMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
+    setStatusMessage("");
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAvatarUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    setStatusMessage("");
+
+    try {
+      const uploadedUrl = await uploadVendorFile(file);
+      setFormData((prev) => ({ ...prev, avatarUrl: uploadedUrl }));
+      setStatusMessage("Profile image uploaded.");
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "Failed to upload profile image.",
+      );
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    setStatusMessage("");
+
+    try {
+      await vendorJson("/vendor/settings/profile", "PATCH", {
+        business_name: formData.businessName,
+        category: formData.category,
+        email_address: formData.contactEmail,
+        phone_number: formData.contactPhone,
+        about_business: formData.about,
+        office_address: formData.address,
+        website: formData.website,
+        map_embed_url: null,
+        avatar_url: formData.avatarUrl || null,
+      });
+      setStatusMessage("Profile settings saved.");
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "Failed to save profile settings.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -52,11 +109,18 @@ export default function ProfilePage() {
                 Manage how your business appears to potential clients.
               </p>
             </div>
-            <button className="px-8 py-3.5 bg-[#1e2a5e] hover:bg-[#1a234d] text-white rounded-[24px] text-sm font-black flex items-center gap-2 shadow-xl shadow-[#1e2a5e]/20 transition-all">
+            <button
+              onClick={handleSave}
+              disabled={isSaving || isUploadingAvatar}
+              className="px-8 py-3.5 bg-[#1e2a5e] hover:bg-[#1a234d] disabled:opacity-60 text-white rounded-[24px] text-sm font-black flex items-center gap-2 shadow-xl shadow-[#1e2a5e]/20 transition-all"
+            >
               <Save className="h-4 w-4" />
-              Save Changes
+              {isSaving ? "Saving..." : "Save Changes"}
             </button>
           </div>
+          {statusMessage ? (
+            <p className="text-sm font-bold text-[#1e2a5e]">{statusMessage}</p>
+          ) : null}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
@@ -65,15 +129,34 @@ export default function ProfilePage() {
                 <div className="flex flex-col items-center mb-10">
                   <div className="relative group">
                     <div className="h-32 w-32 rounded-full border-8 border-slate-50 overflow-hidden shadow-inner bg-slate-200">
-                      <div className="h-full w-full flex flex-col overflow-hidden">
-                        <div className="h-1/2 bg-[#f59e0b]" />
-                        <div className="h-1/2 bg-[#065f46]" />
-                      </div>
+                      {formData.avatarUrl ? (
+                        <img
+                          src={formData.avatarUrl}
+                          alt="Profile avatar"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-full w-full flex flex-col overflow-hidden">
+                          <div className="h-1/2 bg-[#f59e0b]" />
+                          <div className="h-1/2 bg-[#065f46]" />
+                        </div>
+                      )}
                     </div>
-                    <button className="absolute bottom-1 right-1 h-10 w-10 bg-[#1e2a5e] text-white rounded-2xl flex items-center justify-center border-4 border-white shadow-lg hover:scale-110 transition-transform">
+                    <label className="absolute bottom-1 right-1 h-10 w-10 bg-[#1e2a5e] text-white rounded-2xl flex items-center justify-center border-4 border-white shadow-lg hover:scale-110 transition-transform cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleAvatarUpload}
+                      />
                       <Camera className="h-5 w-5" />
-                    </button>
+                    </label>
                   </div>
+                  {isUploadingAvatar ? (
+                    <p className="text-xs font-bold text-slate-400 mt-4">
+                      Uploading profile image...
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
