@@ -1,5 +1,5 @@
-import { readAuthStore, writeAuthStore } from "@/app/api/auth/_store";
-import { jsonError, jsonOk } from "@/app/api/_data";
+import { jsonError } from "@/app/api/_data";
+import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -16,17 +16,12 @@ export async function POST(request: Request) {
     if (!payload?.email || !payload?.currentPassword || !payload?.newPassword) {
       return jsonError("Invalid password payload");
     }
-
-    const store = await readAuthStore();
-    const index = store.users.findIndex((user) => user.email === payload.email);
-    if (index === -1) return jsonError("User not found");
-    if (store.users[index].password !== payload.currentPassword) {
-      return jsonError("Current password is incorrect");
-    }
-
-    store.users[index].password = payload.newPassword;
-    await writeAuthStore(store);
-    return jsonOk({ success: true });
+    return NextResponse.json(
+      {
+        error: "Admin credentials are managed by the backend environment and backend auth flow."
+      },
+      { status: 400 }
+    );
   } catch {
     return jsonError("Failed to update password");
   }
