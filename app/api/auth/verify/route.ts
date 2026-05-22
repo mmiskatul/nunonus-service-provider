@@ -18,19 +18,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: "Email and code required." }, { status: 400 });
     }
 
-    const response = await fetch(`${getBackendBaseUrl()}/api/v1/dashboard/auth/forgot-password/verify-code`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/v1/platform-admin/auth/forgot-password/verify-code`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email_or_phone: email, code }),
+      body: JSON.stringify({ email_or_phone: email, validation_code: code }),
       cache: "no-store"
     });
     const payload = (await response.json().catch(() => ({}))) as {
-      data?: { reset_token?: string };
+      reset_token?: string;
       detail?: string;
       message?: string;
     };
 
-    if (!response.ok || !payload.data?.reset_token) {
+    if (!response.ok || !payload.reset_token) {
       return NextResponse.json(
         { ok: false, message: payload.detail ?? payload.message ?? "Invalid verification code." },
         { status: response.status || 500 }
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     }
 
     const nextResponse = NextResponse.json({ ok: true }, { status: 200 });
-    nextResponse.cookies.set("nunos_dashboard_reset_token", payload.data.reset_token, {
+    nextResponse.cookies.set("nunos_dashboard_reset_token", payload.reset_token, {
       httpOnly: true,
       sameSite: "lax",
       path: "/"

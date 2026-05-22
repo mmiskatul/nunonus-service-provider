@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
 import {
   FiDownload,
   FiEye,
@@ -15,6 +16,14 @@ import type { ContactType, UserProfile, UserStatus } from "@/components/main/use
 import type { useUsersManagement } from "@/components/main/users-management-logic";
 
 type UsersManagementUIProps = ReturnType<typeof useUsersManagement>;
+
+function safeImageSrc(src: string | null | undefined, fallbackSeed: string) {
+  const value = typeof src === "string" ? src.trim() : "";
+  if (value.length > 0) {
+    return value;
+  }
+  return `https://i.pravatar.cc/120?u=${encodeURIComponent(fallbackSeed)}`;
+}
 
 function statusClass(status: UserStatus) {
   if (status === "ACTIVE") {
@@ -85,6 +94,28 @@ export function UsersManagementUI({
   setShowAllBookings,
   persistUserAction
 }: UsersManagementUIProps) {
+  const [pendingStatusAction, setPendingStatusAction] = useState<{
+    userId: string;
+    userName: string;
+    action: "block" | "unblock";
+  } | null>(null);
+
+  const requestStatusAction = (user: UserProfile) => {
+    setPendingStatusAction({
+      userId: user.id,
+      userName: user.name,
+      action: user.status === "BLOCKED" ? "unblock" : "block",
+    });
+  };
+
+  const confirmStatusAction = () => {
+    if (!pendingStatusAction) {
+      return;
+    }
+    persistUserAction(pendingStatusAction.userId, pendingStatusAction.action);
+    setPendingStatusAction(null);
+  };
+
   const exportCsv = () => {
     const headers = ["User ID", "Name", "Email", "Status", "Total Bookings", "Joined Date"];
     const rows = filteredUsers.map((user: UserProfile) => [
@@ -230,11 +261,17 @@ export function UsersManagementUI({
               </thead>
               <tbody>
                 {pagedUsers.map((user: UserProfile, index: number) => (
-                  <tr key={user.id} className={index % 2 === 1 ? "bg-[#fbfcff]" : ""}>
+                  <tr key={`${user.id || user.email || user.name}-${index}`} className={index % 2 === 1 ? "bg-[#fbfcff]" : ""}>
                     <td className="border-b border-[#edf1fa] px-4 py-4 text-[12px] text-[#9aa6c0] ">{user.id}</td>
                     <td className="border-b border-[#edf1fa] px-4 py-4">
                       <div className="flex items-center gap-2.5">
-                        <Image src={user.avatar} alt={user.name} width={28} height={28} className="h-7 w-7 rounded-full" />
+                        <Image
+                          src={safeImageSrc(user.avatar, user.id || user.email || user.name)}
+                          alt={user.name}
+                          width={28}
+                          height={28}
+                          className="h-7 w-7 rounded-full"
+                        />
                         <div>
                           <div className="text-[13px] font-semibold text-[#1f2d46]">{user.name}</div>
                           <div className="text-[11px] text-[#7f8ea9]">{user.email}</div>
@@ -258,7 +295,9 @@ export function UsersManagementUI({
                         </button>
                         <button
                           type="button"
-                          onClick={() => persistUserAction(user.id, user.status === "BLOCKED" ? "unblock" : "block")}
+                          onClick={() => {
+                            requestStatusAction(user);
+                          }}
                           className={user.status === "BLOCKED" ? "text-[#16a34a]" : "text-[#ef4444]"}
                           aria-label={`${user.status === "BLOCKED" ? "Restore" : "Block"} ${user.name}`}
                         >
@@ -352,7 +391,7 @@ export function UsersManagementUI({
               <div className="mx-auto mb-6 flex w-fit flex-col items-center">
                 <div className="relative">
                   <Image
-                    src={selectedUser.avatar}
+                    src={safeImageSrc(selectedUser.avatar, selectedUser.id || selectedUser.email || selectedUser.name)}
                     alt={selectedUser.name}
                     width={72}
                     height={72}
@@ -364,7 +403,9 @@ export function UsersManagementUI({
                 <p className="m-0 mt-1 text-[11px] text-[#7d8ba6]">
                   {selectedUser.id} &bull; Member since {selectedUser.memberSince}
                 </p>
-                <p className="m-0 mt-1 text-[11px] text-[#8fa0bf]">Age {selectedUser.age}</p>
+                <p className="m-0 mt-1 text-[11px] text-[#8fa0bf]">
+                  {selectedUser.age > 0 ? `Age ${selectedUser.age}` : "Age unavailable"}
+                </p>
               </div>
 
               <div className="mb-6 grid grid-cols-3 gap-2.5">
@@ -385,8 +426,8 @@ export function UsersManagementUI({
               <div className="mb-6">
                 <h4 className="m-0 mb-3 text-[11px] tracking-[0.12em] text-[#8b96ad] uppercase">Contact Information</h4>
                 <div className="space-y-3">
-                  {selectedUser.contacts.map((contact) => (
-                    <div key={contact.label} className="flex items-start gap-2">
+                  {selectedUser.contacts.map((contact, index) => (
+                    <div key={`${contact.label}-${contact.value}-${index}`} className="flex items-start gap-2">
                       <SectionIcon type={contact.type} />
                       <p className="m-0 text-[12px] text-[#1f2d46]">
                         <span className="block text-[10px] text-[#8b96ad]">{contact.label}</span>
@@ -410,10 +451,10 @@ export function UsersManagementUI({
                 </div>
                 <div className="space-y-2">
                   {(showAllBookings ? selectedUser.recentBookings : selectedUser.recentBookings.slice(0, 2)).map(
-                    (booking) => (
-                      <div key={booking.hotel} className="flex items-center gap-2 rounded-lg border border-[#eef2f9] bg-white p-2">
+                    (booking, index) => (
+                      <div key={`${booking.hotel}-${booking.range}-${index}`} className="flex items-center gap-2 rounded-lg border border-[#eef2f9] bg-white p-2">
                         <Image
-                          src={booking.image}
+                          src={safeImageSrc(booking.image, `${selectedUser.id}-${booking.hotel}`)}
                           alt={booking.hotel}
                           width={34}
                           height={34}
@@ -435,13 +476,13 @@ export function UsersManagementUI({
             </div>
 
             <div className="space-y-2 border-t border-[#eef2f9] px-6 py-4">
-              {selectedUser.actions.map((action) => (
+              {selectedUser.actions.map((action, index) => (
                 <button
-                  key={action.label}
+                  key={`${action.label}-${index}`}
                   type="button"
                   onClick={() => {
                     if (action.label.toLowerCase().includes("block") || action.label.toLowerCase().includes("unblock")) {
-                      persistUserAction(selectedUser.id, selectedUser.status === "BLOCKED" ? "unblock" : "block");
+                      requestStatusAction(selectedUser);
                     }
                     if (action.label.toLowerCase().includes("reset password")) {
                       persistUserAction(selectedUser.id, "resetPassword");
@@ -471,6 +512,39 @@ export function UsersManagementUI({
           </div>
         )}
       </aside>
+
+      {pendingStatusAction && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#0f172a]/45 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.25)]">
+            <h3 className="m-0 text-[18px] font-semibold text-[#1d2a43]">
+              Confirm {pendingStatusAction.action === "block" ? "Block" : "Unblock"}
+            </h3>
+            <p className="m-0 mt-3 text-[13px] leading-6 text-[#60718f]">
+              {pendingStatusAction.action === "block"
+                ? `Block ${pendingStatusAction.userName}? This action will restrict the user from accessing their account.`
+                : `Unblock ${pendingStatusAction.userName}? This action will restore the user account access.`}
+            </p>
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setPendingStatusAction(null)}
+                className="inline-flex h-10 items-center rounded-xl border border-[#dbe2ef] px-4 text-[13px] font-medium text-[#4e5f83]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmStatusAction}
+                className={`inline-flex h-10 items-center rounded-xl px-4 text-[13px] font-semibold text-white ${
+                  pendingStatusAction.action === "block" ? "bg-[#dc2626]" : "bg-[#15803d]"
+                }`}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

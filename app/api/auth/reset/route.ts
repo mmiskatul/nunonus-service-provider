@@ -25,10 +25,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: "Verification required." }, { status: 401 });
     }
 
-    const response = await fetch(`${getBackendBaseUrl()}/api/v1/dashboard/auth/forgot-password/reset`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/v1/platform-admin/auth/forgot-password/reset`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reset_token: decodeURIComponent(resetToken), new_password: password }),
+      body: JSON.stringify({
+        reset_token: decodeURIComponent(resetToken),
+        new_password: password,
+        confirm_password: password,
+      }),
       cache: "no-store"
     });
     const payload = (await response.json().catch(() => ({}))) as { detail?: string; message?: string };

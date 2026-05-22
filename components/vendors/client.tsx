@@ -45,6 +45,11 @@ const summaryIconByLabel: Record<string, { Icon: typeof FaUsers; tone: string }>
   "Rejected Vendors": { Icon: IoAlertCircle, tone: "bg-[#feeeee] text-[#ef4444]" }
 };
 
+function safeImageSrc(src: string | null | undefined, fallbackSeed: string) {
+  const value = typeof src === "string" ? src.trim() : "";
+  return value || `https://i.pravatar.cc/120?u=${encodeURIComponent(fallbackSeed)}`;
+}
+
 export function VendorsManagementView({
   data
 }: {
@@ -52,6 +57,11 @@ export function VendorsManagementView({
 }) {
   const [vendors, setVendors] = useState<Vendor[]>(data.vendors);
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
+  const [pendingVendorAction, setPendingVendorAction] = useState<{
+    vendorId: string;
+    vendorName: string;
+    action: "approve" | "block";
+  } | null>(null);
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<"ALL" | VendorStatus>("ALL");
@@ -109,7 +119,7 @@ export function VendorsManagementView({
     return items;
   }, [currentPage, totalPages]);
 
-  async function updateVendorStatus(id: string, action: "approve" | "reject") {
+  async function updateVendorStatus(id: string, action: "approve" | "block") {
     try {
       const res = await fetch(`/api/vendors/${encodeURIComponent(id)}`, {
         method: "PATCH",
@@ -124,6 +134,23 @@ export function VendorsManagementView({
       // no-op for mock API
     }
   }
+
+  const requestVendorAction = (vendor: Vendor, action: "approve" | "block") => {
+    setPendingVendorAction({
+      vendorId: vendor.id,
+      vendorName: vendor.businessName,
+      action,
+    });
+  };
+
+  const confirmVendorAction = async () => {
+    if (!pendingVendorAction) {
+      return;
+    }
+    const { vendorId, action } = pendingVendorAction;
+    setPendingVendorAction(null);
+    await updateVendorStatus(vendorId, action);
+  };
 
   return (
     <section className="relative space-y-6">
@@ -226,7 +253,7 @@ export function VendorsManagementView({
                     <td className="border-b border-[#edf1fa] px-4 py-4">
                       <div className="flex items-center gap-3">
                         <Image
-                          src={vendor.avatar}
+                          src={safeImageSrc(vendor.avatar, vendor.id || vendor.businessName)}
                           alt={vendor.businessName}
                           width={26}
                           height={26}
@@ -241,7 +268,7 @@ export function VendorsManagementView({
                         {vendor.category}
                       </span>
                     </td>
-                    <td className="border-b border-[#edf1fa] px-4 py-4 text-[#2f3f60]">{vendor.bookings.toLocaleString()}</td>
+                    <td className="border-b border-[#edf1fa] px-4 py-4 text-[#2f3f60]">{(vendor.bookings ?? 0).toLocaleString()}</td>
                     <td className="border-b border-[#edf1fa] px-4 py-4 text-[#f59e0b]">
                       <span className="inline-flex items-center gap-1">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
@@ -260,7 +287,7 @@ export function VendorsManagementView({
                           <path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.6l1-5.8-4.3-4.1 5.9-.9L12 3.5Z" />
                         </svg>
                       </span>
-                      <span className="ml-2 text-[#7d8ba6]">{vendor.rating.toFixed(1)}</span>
+                      <span className="ml-2 text-[#7d8ba6]">{(vendor.rating ?? 0).toFixed(1)}</span>
                     </td>
                     <td className="border-b border-[#edf1fa] px-4 py-4">
                       <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold ${vendorStatusClass(vendor.status)}`}>
@@ -282,8 +309,9 @@ export function VendorsManagementView({
                         </button>
                         <button
                           type="button"
-                          onClick={() => updateVendorStatus(vendor.id, "approve")}
+                          onClick={() => requestVendorAction(vendor, "approve")}
                           className="grid h-6 w-6 place-items-center rounded-full border border-[#d7f2e3] text-[#16a34a]"
+                          aria-label={`Approve ${vendor.businessName}`}
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                             <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
@@ -292,8 +320,9 @@ export function VendorsManagementView({
                         </button>
                         <button
                           type="button"
-                          onClick={() => updateVendorStatus(vendor.id, "reject")}
+                          onClick={() => requestVendorAction(vendor, "block")}
                           className="grid h-6 w-6 place-items-center rounded-full border border-[#fde2e2] text-[#ef4444]"
+                          aria-label={`Block ${vendor.businessName}`}
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                             <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
@@ -386,7 +415,7 @@ export function VendorsManagementView({
             <div className="flex-1 overflow-y-auto px-6 py-6">
               <div className="flex flex-col items-center">
                 <Image
-                  src={selectedVendor.avatar}
+                  src={safeImageSrc(selectedVendor.avatar, selectedVendor.id || selectedVendor.businessName)}
                   alt={selectedVendor.businessName}
                   width={64}
                   height={64}
@@ -457,11 +486,11 @@ export function VendorsManagementView({
                 <section>
                   <h5 className="m-0 text-[9px] tracking-[0.08em] text-[#8b96ad] uppercase">Reviews Summary</h5>
                   <div className="mt-2 flex items-end gap-3">
-                    <span className="text-[30px] leading-none text-[#1d2a43]">{selectedVendor.verification.reviewScore.toFixed(1)}</span>
+                    <span className="text-[30px] leading-none text-[#1d2a43]">{(selectedVendor.verification.reviewScore ?? 0).toFixed(1)}</span>
                     <span className="text-[11px] text-[#f59e0b]">{"★".repeat(5)}</span>
                   </div>
                   <span className="mt-1 block text-[9px] text-[#8b96ad]">
-                    Based on {selectedVendor.verification.reviewCount.toLocaleString()} verified reviews
+                    Based on {(selectedVendor.verification.reviewCount ?? 0).toLocaleString()} verified reviews
                   </span>
                 </section>
               </div>
@@ -471,7 +500,7 @@ export function VendorsManagementView({
               <div className="flex flex-col gap-3">
                 <button
                   type="button"
-                  onClick={() => updateVendorStatus(selectedVendor.id, "approve")}
+                  onClick={() => requestVendorAction(selectedVendor, "approve")}
                   className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#1f3d8f] text-[12px] font-semibold text-white shadow-[0_10px_20px_rgba(31,61,143,0.25)]"
                 >
                   <BsPatchCheckFill size={18}/>
@@ -479,17 +508,50 @@ export function VendorsManagementView({
                 </button>
                 <button
                   type="button"
-                  onClick={() => updateVendorStatus(selectedVendor.id, "reject")}
+                  onClick={() => requestVendorAction(selectedVendor, "block")}
                   className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[#fee2e2] bg-[#fff5f5] text-[12px] font-semibold text-[#ef4444]"
                 >
                   <IoAlertCircle size={16} />
-                  Reject Vendor
+                  Block Vendor
                 </button>
               </div>
             </div>
           </div>
         )}
       </aside>
+
+      {pendingVendorAction && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#0f172a]/45 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.25)]">
+            <h3 className="m-0 text-[18px] font-semibold text-[#1d2a43]">
+              Confirm {pendingVendorAction.action === "approve" ? "Approval" : "Block"}
+            </h3>
+            <p className="m-0 mt-3 text-[13px] leading-6 text-[#60718f]">
+              {pendingVendorAction.action === "approve"
+                ? `Approve ${pendingVendorAction.vendorName}? This vendor will be allowed to operate on the platform.`
+                : `Block ${pendingVendorAction.vendorName}? This vendor will be removed from active approval status.`}
+            </p>
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setPendingVendorAction(null)}
+                className="inline-flex h-10 items-center rounded-xl border border-[#dbe2ef] px-4 text-[13px] font-medium text-[#4e5f83]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmVendorAction}
+                className={`inline-flex h-10 items-center rounded-xl px-4 text-[13px] font-semibold text-white ${
+                  pendingVendorAction.action === "approve" ? "bg-[#1f3d8f]" : "bg-[#dc2626]"
+                }`}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

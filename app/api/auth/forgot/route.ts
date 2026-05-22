@@ -17,7 +17,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: "Email required." }, { status: 400 });
     }
 
-    const response = await fetch(`${getBackendBaseUrl()}/api/v1/dashboard/auth/forgot-password/request`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/v1/platform-admin/auth/forgot-password/request`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email_or_phone: email }),

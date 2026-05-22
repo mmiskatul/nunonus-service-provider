@@ -58,6 +58,8 @@ export function OffersManagementView({
 }: {
   data: { summaryCards: Array<{ label: string; value: string; note: string; tone: string }>; offers: Offer[] };
 }) {
+  const startDateInputRef = useRef<HTMLInputElement | null>(null);
+  const endDateInputRef = useRef<HTMLInputElement | null>(null);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [offers, setOffers] = useState<Offer[]>(data.offers);
@@ -91,6 +93,23 @@ export function OffersManagementView({
   const [formActive, setFormActive] = useState(true);
   const [createSaving, setCreateSaving] = useState(false);
   const [editOfferId, setEditOfferId] = useState<string | null>(null);
+
+  const formatDateDisplay = (value: string) => {
+    if (!value) return "mm/dd/yyyy";
+    const [year, month, day] = value.split("-");
+    if (!year || !month || !day) return value;
+    return `${month}/${day}/${year}`;
+  };
+
+  const openDatePicker = (ref: React.RefObject<HTMLInputElement | null>) => {
+    if (!ref.current) return;
+    if (typeof ref.current.showPicker === "function") {
+      ref.current.showPicker();
+      return;
+    }
+    ref.current.focus();
+    ref.current.click();
+  };
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
@@ -621,26 +640,48 @@ export function OffersManagementView({
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-[11px] font-semibold text-[#334155]">Start Date</label>
-                      <div className="mt-2 flex items-center justify-between rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2">
+                      <div className="relative mt-2">
                         <input
+                          ref={startDateInputRef}
                           type="date"
                           value={formStartDate}
                           onChange={(event) => setFormStartDate(event.target.value)}
-                          className="w-full border-0 bg-transparent text-[11px] text-[#1f2d46] outline-none"
+                          className="absolute inset-0 z-10 cursor-pointer opacity-0"
+                          aria-label="Start Date"
                         />
-                        <FiCalendar size={12} className="text-[#94a3b8]" />
+                        <button
+                          type="button"
+                          onClick={() => openDatePicker(startDateInputRef)}
+                          className="flex w-full items-center justify-between rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2 text-left"
+                        >
+                          <span className={formStartDate ? "text-[11px] text-[#1f2d46]" : "text-[11px] text-[#94a3b8]"}>
+                            {formatDateDisplay(formStartDate)}
+                          </span>
+                          <FiCalendar size={12} className="text-[#94a3b8]" />
+                        </button>
                       </div>
                     </div>
                     <div>
                       <label className="text-[11px] font-semibold text-[#334155]">End Date</label>
-                      <div className="mt-2 flex items-center justify-between rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2">
+                      <div className="relative mt-2">
                         <input
+                          ref={endDateInputRef}
                           type="date"
                           value={formEndDate}
                           onChange={(event) => setFormEndDate(event.target.value)}
-                          className="w-full border-0 bg-transparent text-[11px] text-[#1f2d46] outline-none"
+                          className="absolute inset-0 z-10 cursor-pointer opacity-0"
+                          aria-label="End Date"
                         />
-                        <FiCalendar size={12} className="text-[#94a3b8]" />
+                        <button
+                          type="button"
+                          onClick={() => openDatePicker(endDateInputRef)}
+                          className="flex w-full items-center justify-between rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2 text-left"
+                        >
+                          <span className={formEndDate ? "text-[11px] text-[#1f2d46]" : "text-[11px] text-[#94a3b8]"}>
+                            {formatDateDisplay(formEndDate)}
+                          </span>
+                          <FiCalendar size={12} className="text-[#94a3b8]" />
+                        </button>
                       </div>
                     </div>
                   </div>

@@ -26,12 +26,13 @@ export async function POST(request: Request) {
     });
 
     const payload = (await response.json().catch(() => ({}))) as {
-      data?: { access_token?: string; admin?: { email?: string } };
+      access_token?: string;
+      admin?: { email?: string };
       detail?: string;
       message?: string;
     };
 
-    if (!response.ok || !payload.data?.access_token) {
+    if (!response.ok || !payload.access_token) {
       return NextResponse.json(
         { ok: false, message: payload.detail ?? payload.message ?? "Login failed." },
         { status: response.status || 500 }
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
     }
 
     const nextResponse = NextResponse.json(
-      { ok: true, user: { email: payload.data.admin?.email ?? email } },
+      { ok: true, user: { email: payload.admin?.email ?? email } },
       { status: 200 }
     );
     nextResponse.cookies.set("nunos_auth", "true", {
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
       sameSite: "lax",
       path: "/"
     });
-    nextResponse.cookies.set("nunos_dashboard_access_token", payload.data.access_token, {
+    nextResponse.cookies.set("nunos_dashboard_access_token", payload.access_token, {
       httpOnly: true,
       sameSite: "lax",
       path: "/"
