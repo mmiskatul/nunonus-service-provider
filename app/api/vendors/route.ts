@@ -1,13 +1,9 @@
-import { readJson, jsonError, jsonOk } from "@/app/api/_data";
+import { NextRequest } from "next/server";
+import { proxyGet } from "@/app/api/backend-proxy";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export async function GET() {
-  try {
-    const data = await readJson("vendors.json");
-    return jsonOk(data);
-  } catch {
-    return jsonError("Failed to read vendors data");
-  }
+export async function GET(request: NextRequest) {
+  return proxyGet(request, "/platform-admin/vendors");
 }

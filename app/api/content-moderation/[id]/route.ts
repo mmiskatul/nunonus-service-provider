@@ -1,43 +1,21 @@
-import { NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
+import { NextRequest } from "next/server";
+import { proxyGet, proxyPatch } from "@/app/api/backend-proxy";
 
-const dataPath = path.join(process.cwd(), "data", "content-moderation.json");
-type JsonObject = Record<string, unknown>;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-async function readModerationFile() {
-  const raw = await fs.readFile(dataPath, "utf-8");
-  return JSON.parse(raw);
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  return proxyGet(request, `/platform-admin/moderation/submissions/${id}`);
 }
 
-async function writeModerationFile(data: unknown) {
-  await fs.writeFile(dataPath, JSON.stringify(data, null, 2) + "\n", "utf-8");
-}
-
-export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
-  try {
-    const { id } = await context.params;
-    const decodedId = decodeURIComponent(id);
-    const body = (await request.json()) as JsonObject;
-    const action = body.action as "approved" | "rejected" | "pending" | undefined;
-
-    const data = (await readModerationFile()) as JsonObject;
-    const items = Array.isArray(data.items) ? (data.items as JsonObject[]) : [];
-    const index = items.findIndex((item) => item.id === decodedId);
-
-    if (index === -1) {
-      return NextResponse.json({ error: "Submission not found" }, { status: 404 });
-    }
-
-    if (action) {
-      items[index] = { ...items[index], state: action };
-    }
-
-    data.items = items;
-    await writeModerationFile(data);
-
-    return NextResponse.json({ item: items[index] }, { status: 200 });
-  } catch {
-    return NextResponse.json({ error: "Failed to update submission" }, { status: 500 });
-  }
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  return proxyPatch(request, `/platform-admin/moderation/submissions/${id}/decision`);
 }

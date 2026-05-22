@@ -1,0 +1,123 @@
+/**
+ * backend-proxy.ts
+ * Helper to proxy Next.js API route requests to the FastAPI backend.
+ * Forwards Authorization headers from the incoming request.
+ */
+
+import { NextRequest, NextResponse } from "next/server";
+
+const BACKEND_BASE =
+  process.env.NEXT_PUBLIC_AUTH_API_BASE ?? "http://localhost:8000";
+
+const V1 = `${BACKEND_BASE}/api/v1`;
+
+export function backendUrl(path: string): string {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return `${V1}${normalized}`;
+}
+
+export async function proxyGet(
+  request: NextRequest,
+  backendPath: string,
+): Promise<NextResponse> {
+  try {
+    const url = new URL(backendUrl(backendPath));
+    // Forward query params from the incoming request
+    request.nextUrl.searchParams.forEach((value, key) => {
+      url.searchParams.set(key, value);
+    });
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    const auth = request.headers.get("authorization");
+    if (auth) headers["Authorization"] = auth;
+
+    const res = await fetch(url.toString(), { method: "GET", headers, cache: "no-store" });
+    const data = await res.json().catch(() => ({}));
+
+    return NextResponse.json(data, { status: res.status });
+  } catch (err) {
+    return NextResponse.json(
+      { error: "Backend unavailable", detail: String(err) },
+      { status: 502 },
+    );
+  }
+}
+
+export async function proxyPost(
+  request: NextRequest,
+  backendPath: string,
+): Promise<NextResponse> {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    const auth = request.headers.get("authorization");
+    if (auth) headers["Authorization"] = auth;
+
+    const res = await fetch(backendUrl(backendPath), {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    return NextResponse.json(data, { status: res.status });
+  } catch (err) {
+    return NextResponse.json(
+      { error: "Backend unavailable", detail: String(err) },
+      { status: 502 },
+    );
+  }
+}
+
+export async function proxyPatch(
+  request: NextRequest,
+  backendPath: string,
+): Promise<NextResponse> {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    const auth = request.headers.get("authorization");
+    if (auth) headers["Authorization"] = auth;
+
+    const res = await fetch(backendUrl(backendPath), {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    return NextResponse.json(data, { status: res.status });
+  } catch (err) {
+    return NextResponse.json(
+      { error: "Backend unavailable", detail: String(err) },
+      { status: 502 },
+    );
+  }
+}
+
+export async function proxyDelete(
+  request: NextRequest,
+  backendPath: string,
+): Promise<NextResponse> {
+  try {
+    const headers: Record<string, string> = {};
+    const auth = request.headers.get("authorization");
+    if (auth) headers["Authorization"] = auth;
+
+    const res = await fetch(backendUrl(backendPath), {
+      method: "DELETE",
+      headers,
+    });
+    const data = await res.json().catch(() => ({}));
+    return NextResponse.json(data, { status: res.status });
+  } catch (err) {
+    return NextResponse.json(
+      { error: "Backend unavailable", detail: String(err) },
+      { status: 502 },
+    );
+  }
+}

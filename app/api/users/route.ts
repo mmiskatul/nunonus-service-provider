@@ -1,13 +1,13 @@
-import { readJson, jsonError, jsonOk } from "@/app/api/_data";
+import { NextRequest } from "next/server";
+import { proxyGet, proxyPatch } from "@/app/api/backend-proxy";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export async function GET() {
-  try {
-    const data = await readJson("users.json");
-    return jsonOk(data);
-  } catch {
-    return jsonError("Failed to read users data");
-  }
+export async function GET(request: NextRequest) {
+  return proxyGet(request, "/platform-admin/users");
+}
+
+export async function PATCH(request: NextRequest) {
+  return proxyPatch(request, "/platform-admin/users");
 }

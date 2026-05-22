@@ -68,15 +68,15 @@ export function DashboardView({ data }: { data: DashboardData }) {
   const vendorPageSize = 10;
 
   const revenueData = range === "weekly" ? data.weeklyData : data.monthlyData;
-  const pieData = data.bookingByRange[range] ?? [];
-  const bookingTotal = data.bookingTotals[range] ?? 0;
-  const vendorTotalPages = Math.max(1, Math.ceil(data.vendors.length / vendorPageSize));
-  const pagedVendors = data.vendors.slice((vendorPage - 1) * vendorPageSize, vendorPage * vendorPageSize);
+  const pieData = (data.bookingByRange?.[range]) ?? [];
+  const bookingTotal = (data.bookingTotals?.[range]) ?? 0;
+  const vendorTotalPages = Math.max(1, Math.ceil((data.vendors?.length ?? 0) / vendorPageSize));
+  const pagedVendors = (data.vendors ?? []).slice((vendorPage - 1) * vendorPageSize, vendorPage * vendorPageSize);
 
   return (
     <section className="space-y-4">
       <section className="grid grid-cols-1 gap-3 lg:grid-cols-5">
-        {data.stats.map((card) => {
+        {(data.stats ?? []).map((card) => {
           const CardIcon = statsIconMap[card.icon];
           return (
           <article key={card.label} className="rounded-xl border border-[#dbe2ef] bg-white p-4">

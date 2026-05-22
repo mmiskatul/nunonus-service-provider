@@ -37,7 +37,7 @@ async function resolveBaseUrl() {
   return `http://127.0.0.1:${port}`;
 }
 
-export async function fetchApiData<T>(path: string, fallback: T): Promise<T> {
+export async function fetchApiData<T extends object>(path: string, fallback: T): Promise<T> {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
 
   try {
@@ -51,8 +51,20 @@ export async function fetchApiData<T>(path: string, fallback: T): Promise<T> {
       return fallback;
     }
 
-    const data = (await response.json()) as T;
-    return data ?? fallback;
+    const raw = (await response.json()) as Record<string, unknown>;
+
+    // Merge with fallback so any missing key from a stub/partial response is filled.
+    // Only spread the response if it shares at least one key with the fallback.
+    const fallbackKeys = Object.keys(fallback as object);
+    const responseKeys = Object.keys(raw ?? {});
+    const hasMatchingKey = fallbackKeys.some((k) => responseKeys.includes(k));
+
+    if (!hasMatchingKey) {
+      // The response is completely different shape (e.g. a stub) — use fallback
+      return fallback;
+    }
+
+    return { ...fallback, ...raw } as T;
   } catch {
     return fallback;
   }
