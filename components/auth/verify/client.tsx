@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { verifyCode, requestReset } from "@/components/auth/auth-client";
 
-const codeLength = 4;
+const codeLength = 6;
 
 export function VerifyCodeView() {
   const router = useRouter();
@@ -41,7 +41,7 @@ export function VerifyCodeView() {
     event.preventDefault();
     setError("");
     if (code.length !== codeLength) {
-      setError("Enter the full 4-digit code.");
+      setError("Enter the full 6-digit code.");
       return;
     }
     setLoading(true);

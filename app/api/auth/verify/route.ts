@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
-import { readAuthStore } from "@/app/api/auth/_store";
+
+function getBackendBaseUrl() {
+  const value = process.env.NEXT_PUBLIC_AUTH_API_BASE?.trim();
+  if (!value) {
+    throw new Error("NEXT_PUBLIC_AUTH_API_BASE is not configured.");
+  }
+  return value.replace(/\/+$/, "");
+}
 
 export async function POST(request: Request) {
   try {
@@ -11,14 +18,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: "Email and code required." }, { status: 400 });
     }
 
-    const store = await readAuthStore();
-    const resetEntry = store.resetCodes[email];
+    const response = await fetch(`${getBackendBaseUrl()}/api/v1/dashboard/auth/forgot-password/verify-code`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email_or_phone: email, code }),
+      cache: "no-store"
+    });
+    const payload = (await response.json().catch(() => ({}))) as {
+      data?: { reset_token?: string };
+      detail?: string;
+      message?: string;
+    };
 
-    if (!resetEntry || resetEntry.code !== code) {
-      return NextResponse.json({ ok: false, message: "Invalid verification code." }, { status: 401 });
+    if (!response.ok || !payload.data?.reset_token) {
+      return NextResponse.json(
+        { ok: false, message: payload.detail ?? payload.message ?? "Invalid verification code." },
+        { status: response.status || 500 }
+      );
     }
 
-    return NextResponse.json({ ok: true }, { status: 200 });
+    const nextResponse = NextResponse.json({ ok: true }, { status: 200 });
+    nextResponse.cookies.set("nunos_dashboard_reset_token", payload.data.reset_token, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/"
+    });
+    return nextResponse;
   } catch {
     return NextResponse.json({ ok: false, message: "Verification failed." }, { status: 500 });
   }

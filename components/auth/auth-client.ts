@@ -16,7 +16,16 @@ async function postJson<T>(path: string, body: Record<string, unknown>): Promise
 }
 
 export async function login(email: string, password: string) {
-  return postJson<{ ok: boolean; user?: { email: string } }>("/api/auth/login", { email, password });
+  const res = await fetch("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password })
+  });
+  const data = (await res.json().catch(() => ({}))) as { user?: { email: string }; message?: string };
+  if (!res.ok) {
+    return { ok: false, message: data.message ?? "Login failed." };
+  }
+  return { ok: true, data };
 }
 
 export async function requestReset(email: string) {

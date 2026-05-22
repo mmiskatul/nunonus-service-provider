@@ -8,5 +8,11 @@ export async function POST() {
     path: "/",
     maxAge: 0
   });
+  response.cookies.set("nunos_dashboard_access_token", "", {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0
+  });
   return response;
 }

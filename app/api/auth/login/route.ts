@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
-import { readAuthStore } from "@/app/api/auth/_store";
+
+function getBackendBaseUrl() {
+  const value = process.env.NEXT_PUBLIC_AUTH_API_BASE?.trim();
+  if (!value) {
+    throw new Error("NEXT_PUBLIC_AUTH_API_BASE is not configured.");
+  }
+  return value.replace(/\/+$/, "");
+}
 
 export async function POST(request: Request) {
   try {
@@ -11,14 +18,41 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: "Email and password required." }, { status: 400 });
     }
 
-    await readAuthStore();
-    const response = NextResponse.json({ ok: true, user: { email } }, { status: 200 });
-    response.cookies.set("nunos_auth", "true", {
+    const response = await fetch(`${getBackendBaseUrl()}/api/v1/dashboard/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email_or_phone: email, password }),
+      cache: "no-store"
+    });
+
+    const payload = (await response.json().catch(() => ({}))) as {
+      data?: { access_token?: string; admin?: { email?: string } };
+      detail?: string;
+      message?: string;
+    };
+
+    if (!response.ok || !payload.data?.access_token) {
+      return NextResponse.json(
+        { ok: false, message: payload.detail ?? payload.message ?? "Login failed." },
+        { status: response.status || 500 }
+      );
+    }
+
+    const nextResponse = NextResponse.json(
+      { ok: true, user: { email: payload.data.admin?.email ?? email } },
+      { status: 200 }
+    );
+    nextResponse.cookies.set("nunos_auth", "true", {
       httpOnly: true,
       sameSite: "lax",
       path: "/"
     });
-    return response;
+    nextResponse.cookies.set("nunos_dashboard_access_token", payload.data.access_token, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/"
+    });
+    return nextResponse;
   } catch {
     return NextResponse.json({ ok: false, message: "Login failed." }, { status: 500 });
   }
