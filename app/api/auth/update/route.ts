@@ -1,4 +1,5 @@
 import { jsonError } from "@/app/api/_data";
+import { backendUrl } from "@/app/api/backend-proxy";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -16,12 +17,25 @@ export async function POST(request: Request) {
     if (!payload?.email || !payload?.currentPassword || !payload?.newPassword) {
       return jsonError("Invalid password payload");
     }
-    return NextResponse.json(
-      {
-        error: "Admin credentials are managed by the backend environment and backend auth flow."
-      },
-      { status: 400 }
-    );
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json"
+    };
+    const auth = request.headers.get("authorization");
+    if (auth) headers.Authorization = auth;
+
+    const response = await fetch(backendUrl("/platform-admin/settings/password"), {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({
+        currentPassword: payload.currentPassword,
+        newPassword: payload.newPassword,
+        confirmPassword: payload.newPassword
+      })
+    });
+
+    const result = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    return NextResponse.json(result, { status: response.status });
   } catch {
     return jsonError("Failed to update password");
   }

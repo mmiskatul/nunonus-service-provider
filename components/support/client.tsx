@@ -60,6 +60,15 @@ function summaryIcon(i: number) {
   return "bg-[#ede9fe] text-[#3b1e8a]";
 }
 
+function formatDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(date);
+}
+
 const pageSize = 5;
 
 export function SupportDashboardView({
@@ -154,7 +163,7 @@ export function SupportDashboardView({
             ? {
                 ...ticket,
                 conversation: Array.isArray(payload.conversation) ? payload.conversation : ticket.conversation,
-                status: payload.status ?? "In Progress",
+                status: payload.status ?? "In Progress"
               }
             : ticket
         )
@@ -184,7 +193,7 @@ export function SupportDashboardView({
             ? {
                 ...ticket,
                 conversation: Array.isArray(payload.conversation) ? payload.conversation : ticket.conversation,
-                status: payload.status ?? nextStatus,
+                status: payload.status ?? nextStatus
               }
             : ticket
         )
@@ -233,7 +242,7 @@ export function SupportDashboardView({
               </div>
               <div>
                 <p className="m-0 text-[10px] text-[#7d8ba6]">{card.label}</p>
-                <h3 className={`m-0 text-[20px] font-semibold text-[#1d2a43]`}>{card.value}</h3>
+                <h3 className="m-0 text-[20px] font-semibold text-[#1d2a43]">{card.value}</h3>
               </div>
             </div>
           </article>
@@ -421,7 +430,7 @@ export function SupportDashboardView({
       </section>
 
       <div
-        className={`fixed inset-0 z-20 bg-black/40 transition-opacity ${
+        className={`fixed inset-0 z-20 bg-black/50 backdrop-blur-[2px] transition-opacity ${
           selectedTicket ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
         }`}
         onClick={() => setSelectedTicketId(null)}
@@ -429,73 +438,139 @@ export function SupportDashboardView({
       />
 
       {selectedTicket && (
-        <div className="fixed inset-0 z-30 grid place-items-center px-4">
-          <aside className="w-full max-w-[360px] overflow-hidden rounded-2xl border border-[#e6ecf7] bg-white shadow-[0_18px_40px_rgba(15,23,42,0.2)]">
-            <header className="border-b border-[#e6ecf7] px-5 py-4">
-              <div className="flex items-start justify-between">
+        <div className="fixed inset-0 z-30 grid place-items-center p-4 md:p-6">
+          <aside className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-[#e6ecf7] bg-[#fcfdff] shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
+            <header className="border-b border-[#e6ecf7] bg-white px-5 py-4 md:px-7 md:py-5">
+              <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="m-0 text-[13px] font-semibold text-[#1d2a43]">{selectedTicket.id}</h3>
+                  <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8b96ad]">Support Ticket</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <h3 className="m-0 text-[18px] font-semibold text-[#1d2a43]">{selectedTicket.subject}</h3>
                     {selectedTicket.priority === "High" && (
-                      <span className="rounded-full bg-[#fee2e2] px-2 py-0.5 text-[9px] font-semibold text-[#dc2626]">HIGH PRIORITY</span>
+                      <span className="rounded-full bg-[#fee2e2] px-2.5 py-1 text-[10px] font-semibold text-[#dc2626]">High Priority</span>
                     )}
+                    <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${ticketStatusClass(selectedTicket.status)}`}>
+                      {selectedTicket.status}
+                    </span>
                   </div>
-                  <p className="m-0 mt-1 text-[10px] text-[#8b96ad]">Opened {selectedTicket.openedAt}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[#70809d]">
+                    <span className="font-semibold text-[#3b1e8a]">{selectedTicket.id}</span>
+                    <span>Opened {formatDateTime(selectedTicket.openedAt)}</span>
+                    <span>{selectedTicket.type}</span>
+                  </div>
                 </div>
-                <button type="button" onClick={() => setSelectedTicketId(null)} className="text-[#95a2b8]">
+                <button
+                  type="button"
+                  onClick={() => setSelectedTicketId(null)}
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#e6ecf7] bg-[#f8faff] text-[18px] text-[#7c8aa5]"
+                  aria-label="Close ticket details"
+                >
                   x
                 </button>
               </div>
             </header>
 
-            <div className="space-y-5 px-5 py-5">
-              <section>
-                <h4 className="m-0 text-[9px] tracking-[0.12em] text-[#8b96ad] uppercase">Issue Details</h4>
-                <p className="m-0 mt-2 rounded-2xl bg-[#f1f5f9] px-4 py-3 text-[11px] leading-[1.45] text-[#475569]">
-                  {selectedTicket.issueDetails}
-                </p>
-              </section>
-
-              <section>
-                <h4 className="m-0 text-[9px] tracking-[0.12em] text-[#8b96ad] uppercase">Conversation</h4>
-                <div className="mt-3 space-y-3">
-                  {selectedTicket.conversation.map((message, i) => (
-                    <div key={`${message.time}-${i}`}>
-                      <p
-                        className={`m-0 max-w-[300px] rounded-2xl p-3 text-[11px] leading-[1.35] ${
-                          message.sender === "agent"
-                            ? "ml-auto rounded-tr-md bg-[#3b1e8a] text-white"
-                            : "rounded-tl-md bg-[#f1f5f9] text-[#475569]"
-                        }`}
-                      >
-                        {message.text}
-                      </p>
-                      <p className={`m-0 mt-1 text-[9px] text-[#9aa6c0] ${message.sender === "agent" ? "text-right" : ""}`}>
-                        {message.name} • {message.time}
-                      </p>
+            <div className="grid min-h-0 flex-1 gap-0 lg:grid-cols-[320px_minmax(0,1fr)]">
+              <div className="border-b border-[#e6ecf7] bg-white px-5 py-5 lg:border-b-0 lg:border-r lg:px-6">
+                <div className="rounded-3xl border border-[#e6ecf7] bg-[#f8fbff] p-4">
+                  <div className="flex items-center gap-3">
+                    <Image
+                      src={safeImageSrc(selectedTicket.avatar, selectedTicket.id || selectedTicket.userName)}
+                      alt={selectedTicket.userName}
+                      width={52}
+                      height={52}
+                      className="h-[52px] w-[52px] rounded-full"
+                    />
+                    <div>
+                      <p className="m-0 text-[15px] font-semibold text-[#1d2a43]">{selectedTicket.userName}</p>
+                      <p className="m-0 mt-1 text-[11px] text-[#70809d]">{selectedTicket.userRole}</p>
                     </div>
-                  ))}
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-[11px]">
+                    <div className="rounded-2xl bg-white px-3 py-3">
+                      <p className="m-0 text-[#8b96ad]">Status</p>
+                      <p className="m-0 mt-1 font-semibold text-[#1d2a43]">{selectedTicket.status}</p>
+                    </div>
+                    <div className="rounded-2xl bg-white px-3 py-3">
+                      <p className="m-0 text-[#8b96ad]">Priority</p>
+                      <p className="m-0 mt-1 font-semibold text-[#1d2a43]">{selectedTicket.priority}</p>
+                    </div>
+                    <div className="rounded-2xl bg-white px-3 py-3">
+                      <p className="m-0 text-[#8b96ad]">Type</p>
+                      <p className="m-0 mt-1 font-semibold text-[#1d2a43]">{selectedTicket.type}</p>
+                    </div>
+                    <div className="rounded-2xl bg-white px-3 py-3">
+                      <p className="m-0 text-[#8b96ad]">Opened</p>
+                      <p className="m-0 mt-1 font-semibold text-[#1d2a43]">{formatDateTime(selectedTicket.openedAt)}</p>
+                    </div>
+                  </div>
                 </div>
-              </section>
+
+                <section className="mt-5">
+                  <h4 className="m-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8b96ad]">Issue Details</h4>
+                  <p className="m-0 mt-3 rounded-3xl border border-[#e6ecf7] bg-white px-4 py-4 text-[13px] leading-6 text-[#475569]">
+                    {selectedTicket.issueDetails}
+                  </p>
+                </section>
+              </div>
+
+              <div className="flex min-h-0 flex-col bg-[#fbfcff]">
+                <section className="border-b border-[#e6ecf7] px-5 py-4 md:px-6">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <h4 className="m-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8b96ad]">Conversation</h4>
+                      <p className="m-0 mt-1 text-[12px] text-[#70809d]">Review the full thread and respond from the same panel.</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {(["Open", "In Progress", "Resolved"] as const).map((statusOption) => (
+                        <button
+                          key={statusOption}
+                          type="button"
+                          onClick={() => handleStatusUpdate(statusOption)}
+                          className={`rounded-full px-3.5 py-2 text-[11px] font-semibold ${
+                            selectedTicket.status === statusOption
+                              ? "bg-[#1f3d8f] text-white"
+                              : "border border-[#dbe2ef] bg-white text-[#64748b]"
+                          }`}
+                        >
+                          {statusOption}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+
+                <div className="min-h-0 flex-1 px-5 py-5 md:px-6">
+                  <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[24px] border border-[#e6ecf7] bg-white">
+                    <div className="border-b border-[#eef2fb] px-4 py-3">
+                      <p className="m-0 text-[11px] font-semibold text-[#5f6f8c]">Messages</p>
+                    </div>
+                    <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+                      <div className="space-y-4">
+                        {selectedTicket.conversation.map((message, i) => (
+                          <div key={`${message.time}-${i}`} className={message.sender === "agent" ? "ml-auto max-w-[78%]" : "max-w-[78%]"}>
+                            <div
+                              className={`rounded-3xl px-4 py-3 text-[13px] leading-6 ${
+                                message.sender === "agent"
+                                  ? "rounded-tr-md bg-[#3b1e8a] text-white shadow-[0_12px_24px_rgba(59,30,138,0.18)]"
+                                  : "rounded-tl-md border border-[#e6ecf7] bg-[#f8fbff] text-[#475569]"
+                              }`}
+                            >
+                              {message.text}
+                            </div>
+                            <p className={`m-0 mt-2 text-[11px] text-[#8b96ad] ${message.sender === "agent" ? "text-right" : ""}`}>
+                              {(message.name || (message.sender === "agent" ? "Support Agent" : selectedTicket.userName))} | {formatDateTime(message.time)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="mt-auto border-t border-[#e6ecf7] bg-white px-5 py-4">
-              <div className="mb-3 flex items-center gap-2">
-                {(["Open", "In Progress", "Resolved"] as const).map((statusOption) => (
-                  <button
-                    key={statusOption}
-                    type="button"
-                    onClick={() => handleStatusUpdate(statusOption)}
-                    className={`rounded-full px-3 py-1 text-[10px] font-semibold ${
-                      selectedTicket.status === statusOption
-                        ? "bg-[#1f3d8f] text-white"
-                        : "border border-[#dbe2ef] bg-white text-[#64748b]"
-                    }`}
-                  >
-                    {statusOption}
-                  </button>
-                ))}
-              </div>
+            <div className="border-t border-[#e6ecf7] bg-white px-5 py-4 md:px-6 md:py-5">
               <div className="relative">
                 <textarea
                   placeholder="Type your reply here..."
@@ -507,24 +582,27 @@ export function SupportDashboardView({
                       handleSendReply();
                     }
                   }}
-                  className="h-20 w-full rounded-2xl border border-[#dbe2ef] bg-white px-4 py-3 text-[11px] text-[#475569] outline-none"
+                  className="min-h-[104px] w-full rounded-3xl border border-[#dbe2ef] bg-[#fbfcff] px-4 py-3 text-[13px] leading-6 text-[#475569] outline-none"
                 />
                 <div className="absolute bottom-3 right-3 flex items-center gap-2 text-[#9aa6c0]">
-                  <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] bg-white">
+                  <button type="button" className="grid h-8 w-8 place-items-center rounded-full border border-[#e6ecf7] bg-white">
                     <FiPaperclip size={12} />
                   </button>
-                  <button type="button" className="grid h-6 w-6 place-items-center rounded-full border border-[#e6ecf7] bg-white">
+                  <button type="button" className="grid h-8 w-8 place-items-center rounded-full border border-[#e6ecf7] bg-white">
                     <FiSmile size={12} />
                   </button>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={handleSendReply}
-                className="mt-3 h-10 w-full rounded-full bg-[#3b1e8a] text-[12px] font-semibold text-white"
-              >
-                Update Ticket & Send Reply
-              </button>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="m-0 text-[11px] text-[#8b96ad]">Press Enter to send quickly, or use Shift + Enter for a new line.</p>
+                <button
+                  type="button"
+                  onClick={handleSendReply}
+                  className="h-11 rounded-full bg-[#3b1e8a] px-6 text-[13px] font-semibold text-white sm:min-w-[220px]"
+                >
+                  Update Ticket & Send Reply
+                </button>
+              </div>
             </div>
           </aside>
         </div>
