@@ -12,6 +12,20 @@ type DataPayload = {
     status: "Active" | "Inactive";
     redemptions: number;
     kind: "PERCENT" | "FLAT" | "BOGO";
+    startDate: string;
+    endDate: string;
+    discountValue: number;
+    providerCount: number;
+    engagedUsers: number;
+    providerBreakdown: Array<{
+      providerId: string;
+      providerName: string;
+      vendorCategory: string;
+      status: string;
+      redemptions: number;
+      engagedUsers: number;
+      active: boolean;
+    }>;
   }>;
 };
 

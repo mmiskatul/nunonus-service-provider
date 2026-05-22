@@ -42,6 +42,11 @@ type SupportTicket = {
   conversation: ConversationMessage[];
 };
 
+function safeImageSrc(value: string, fallbackSeed: string) {
+  const normalized = typeof value === "string" ? value.trim() : "";
+  return normalized || `https://i.pravatar.cc/120?u=${encodeURIComponent(fallbackSeed)}`;
+}
+
 function ticketStatusClass(status: TicketStatus) {
   if (status === "Open") return "bg-[#dbeafe] text-[#1d4ed8]";
   if (status === "Resolved") return "bg-[#dcfce7] text-[#15803d]";
@@ -129,34 +134,62 @@ export function SupportDashboardView({
   };
 
   const handleSendReply = () => {
-    if (!selectedTicketId || !reply.trim()) return;
-    const socket = socketRef.current;
-    if (socket?.connected) {
-      socket.emit("support:message", {
-        ticketId: selectedTicketId,
-        sender: "agent",
-        name: "You",
-        message: reply.trim()
+    void (async () => {
+      if (!selectedTicketId || !reply.trim()) return;
+      const response = await fetch(`/api/support/${encodeURIComponent(selectedTicketId)}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: reply.trim(), name: "Support Agent" })
       });
-      setReply("");
-      return;
-    }
+      const payload = (await response.json().catch(() => ({}))) as {
+        id?: string;
+        conversation?: ConversationMessage[];
+        status?: TicketStatus;
+      };
+      if (!response.ok) return;
 
-    const now = new Date();
-    const nextMessage: ConversationMessage = {
-      sender: "agent",
-      text: reply.trim(),
-      time: formatTime(now),
-      name: "You"
-    };
-    setTickets((prev) =>
-      prev.map((ticket) =>
-        ticket.id === selectedTicketId
-          ? { ...ticket, conversation: [...ticket.conversation, nextMessage] }
-          : ticket
-      )
-    );
-    setReply("");
+      setTickets((prev) =>
+        prev.map((ticket) =>
+          ticket.id === selectedTicketId
+            ? {
+                ...ticket,
+                conversation: Array.isArray(payload.conversation) ? payload.conversation : ticket.conversation,
+                status: payload.status ?? "In Progress",
+              }
+            : ticket
+        )
+      );
+      setReply("");
+    })();
+  };
+
+  const handleStatusUpdate = (nextStatus: TicketStatus) => {
+    void (async () => {
+      if (!selectedTicketId) return;
+      const response = await fetch(`/api/support/${encodeURIComponent(selectedTicketId)}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus })
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        id?: string;
+        conversation?: ConversationMessage[];
+        status?: TicketStatus;
+      };
+      if (!response.ok) return;
+
+      setTickets((prev) =>
+        prev.map((ticket) =>
+          ticket.id === selectedTicketId
+            ? {
+                ...ticket,
+                conversation: Array.isArray(payload.conversation) ? payload.conversation : ticket.conversation,
+                status: payload.status ?? nextStatus,
+              }
+            : ticket
+        )
+      );
+    })();
   };
 
   useEffect(() => {
@@ -307,7 +340,7 @@ export function SupportDashboardView({
                   <td className="border-b border-[#edf1fa] px-4 py-3 text-[12px] font-semibold text-[#3b1e8a]">{ticket.id}</td>
                   <td className="border-b border-[#edf1fa] px-4 py-3">
                     <div className="flex items-center gap-2.5">
-                      <Image src={ticket.avatar} alt={ticket.userName} width={28} height={28} className="h-7 w-7 rounded-full" />
+                      <Image src={safeImageSrc(ticket.avatar, ticket.id || ticket.userName)} alt={ticket.userName} width={28} height={28} className="h-7 w-7 rounded-full" />
                       <div>
                         <div className="text-[12px] font-semibold text-[#1f2d46]">{ticket.userName}</div>
                         <div className="text-[10px] text-[#8b96ad]">{ticket.userRole}</div>
@@ -442,14 +475,27 @@ export function SupportDashboardView({
                       </p>
                     </div>
                   ))}
-                  <p className="m-0 text-center text-[9px] text-[#9aa6c0] uppercase">
-                    Status changed to &quot;In Progress&quot;
-                  </p>
                 </div>
               </section>
             </div>
 
             <div className="mt-auto border-t border-[#e6ecf7] bg-white px-5 py-4">
+              <div className="mb-3 flex items-center gap-2">
+                {(["Open", "In Progress", "Resolved"] as const).map((statusOption) => (
+                  <button
+                    key={statusOption}
+                    type="button"
+                    onClick={() => handleStatusUpdate(statusOption)}
+                    className={`rounded-full px-3 py-1 text-[10px] font-semibold ${
+                      selectedTicket.status === statusOption
+                        ? "bg-[#1f3d8f] text-white"
+                        : "border border-[#dbe2ef] bg-white text-[#64748b]"
+                    }`}
+                  >
+                    {statusOption}
+                  </button>
+                ))}
+              </div>
               <div className="relative">
                 <textarea
                   placeholder="Type your reply here..."

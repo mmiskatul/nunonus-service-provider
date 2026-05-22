@@ -269,7 +269,6 @@ export function SettingsView({ data }: { data: SettingsData }) {
                     type="text"
                     value={platformName}
                     onChange={(event) => setPlatformName(event.target.value)}
-                    onBlur={commitGeneralSettings}
                     className={inputClass}
                   />
                 </div>
@@ -279,7 +278,6 @@ export function SettingsView({ data }: { data: SettingsData }) {
                     type="email"
                     value={supportEmail}
                     onChange={(event) => setSupportEmail(event.target.value)}
-                    onBlur={commitGeneralSettings}
                     className={inputClass}
                   />
                 </div>
@@ -315,6 +313,15 @@ export function SettingsView({ data }: { data: SettingsData }) {
                 />
               </div>
             </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={commitGeneralSettings}
+                className="h-10 rounded-[10px] bg-[#24408d] px-4 text-[12px] font-semibold text-white shadow-[0_12px_28px_rgba(36,64,141,0.18)]"
+              >
+                Save General Settings
+              </button>
+            </div>
           </section>
 
           <section className={panelClass}>
@@ -327,7 +334,6 @@ export function SettingsView({ data }: { data: SettingsData }) {
                     type="number"
                     value={globalRate}
                     onChange={(event) => setGlobalRate(event.target.value)}
-                    onBlur={commitCommissionSettings}
                     className={`${inputClass} pr-10`}
                   />
                   <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-[#9aa5ba]">
@@ -345,7 +351,6 @@ export function SettingsView({ data }: { data: SettingsData }) {
                     type="number"
                     value={categoryRate}
                     onChange={(event) => setCategoryRate(event.target.value)}
-                    onBlur={commitCommissionSettings}
                     className={`${inputClass} pr-10`}
                   />
                   <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-[#9aa5ba]">
@@ -353,6 +358,15 @@ export function SettingsView({ data }: { data: SettingsData }) {
                   </span>
                 </div>
               </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={commitCommissionSettings}
+                className="h-10 rounded-[10px] bg-[#24408d] px-4 text-[12px] font-semibold text-white shadow-[0_12px_28px_rgba(36,64,141,0.18)]"
+              >
+                Save Commission Settings
+              </button>
             </div>
           </section>
 

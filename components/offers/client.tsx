@@ -38,6 +38,20 @@ type Offer = {
   status: OfferStatus;
   redemptions: number;
   kind: DiscountKind;
+  startDate: string;
+  endDate: string;
+  discountValue: number;
+  providerCount: number;
+  engagedUsers: number;
+  providerBreakdown: Array<{
+    providerId: string;
+    providerName: string;
+    vendorCategory: string;
+    status: string;
+    redemptions: number;
+    engagedUsers: number;
+    active: boolean;
+  }>;
 };
 
 function offerStatusClass(status: OfferStatus) {
@@ -74,12 +88,16 @@ export function OffersManagementView({
   const [providerSearch, setProviderSearch] = useState("");
   const [providerMenuOpen, setProviderMenuOpen] = useState(false);
   const [providerRows, setProviderRows] = useState<
-    Array<{ category: string; redemptions: number; active: boolean }>
-  >([
-    { category: "Electronics", redemptions: 1204, active: true },
-    { category: "Retail", redemptions: 852, active: true },
-    { category: "Home", redemptions: 412, active: false }
-  ]);
+    Array<{
+      providerId: string;
+      providerName: string;
+      vendorCategory: string;
+      status: string;
+      redemptions: number;
+      engagedUsers: number;
+      active: boolean;
+    }>
+  >([]);
   const [applyMenuOpen, setApplyMenuOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
@@ -91,6 +109,7 @@ export function OffersManagementView({
   const [formEndDate, setFormEndDate] = useState("");
   const [formApplyTo, setFormApplyTo] = useState("All Vendors");
   const [formActive, setFormActive] = useState(true);
+  const [formError, setFormError] = useState("");
   const [createSaving, setCreateSaving] = useState(false);
   const [editOfferId, setEditOfferId] = useState<string | null>(null);
 
@@ -188,6 +207,13 @@ export function OffersManagementView({
     const start = (page - 1) * pageSize;
     return filteredOffers.slice(start, start + pageSize);
   }, [filteredOffers, page]);
+  const providerCategoryOptions = useMemo(() => {
+    const categories = new Set<string>();
+    providerRows.forEach((row) => {
+      if (row.vendorCategory) categories.add(row.vendorCategory);
+    });
+    return ["All Categories", ...Array.from(categories).sort((left, right) => left.localeCompare(right))];
+  }, [providerRows]);
 
   const paginationItems = useMemo(() => {
     if (totalPages <= 4) {
@@ -218,6 +244,7 @@ export function OffersManagementView({
     setFormEndDate("");
     setFormApplyTo("All Vendors");
     setFormActive(true);
+    setFormError("");
     setApplyMenuOpen(false);
     setEditOfferId(null);
   };
@@ -225,16 +252,12 @@ export function OffersManagementView({
   const openEditOffer = (offer: Offer) => {
     setFormName(offer.name);
     setFormDiscountType(offer.kind);
-    if (offer.kind === "PERCENT" || offer.kind === "FLAT") {
-      const numeric = Number(offer.discount.replace(/[^\d.]/g, ""));
-      setFormDiscountValue(Number.isNaN(numeric) ? 0 : numeric);
-    } else {
-      setFormDiscountValue(0);
-    }
-    setFormStartDate("");
-    setFormEndDate("");
+    setFormDiscountValue(offer.kind === "BOGO" ? 0 : offer.discountValue);
+    setFormStartDate(offer.startDate ? offer.startDate.slice(0, 10) : "");
+    setFormEndDate(offer.endDate ? offer.endDate.slice(0, 10) : "");
     setFormApplyTo(offer.appliedTo);
     setFormActive(offer.status === "Active");
+    setFormError("");
     setEditOfferId(offer.id);
     setCreateOpen(true);
   };
@@ -243,6 +266,7 @@ export function OffersManagementView({
     if (!offerId) return;
     const found = offers.find((offer) => offer.id === offerId) ?? null;
     setDetailsOffer(found);
+    setProviderRows(found?.providerBreakdown ?? []);
     setDetailsOpen(true);
     setProviderCategory("All Categories");
     setProviderSearch("");
@@ -251,6 +275,7 @@ export function OffersManagementView({
 
   const handleCreateOffer = async () => {
     if (!formName.trim() || createSaving) return;
+    setFormError("");
     setCreateSaving(true);
     try {
       const response = await fetch("/api/offers", {
@@ -267,7 +292,19 @@ export function OffersManagementView({
           active: formActive
         })
       });
-      if (!response.ok) throw new Error("Failed to create offer");
+      if (!response.ok) {
+        const errorPayload = (await response.json().catch(() => ({}))) as {
+          detail?: string;
+          message?: string;
+          error?: string;
+        };
+        throw new Error(
+          errorPayload.detail ||
+          errorPayload.message ||
+          errorPayload.error ||
+          "Failed to create offer"
+        );
+      }
       const payload = (await response.json()) as { offer: Offer; offers: Offer[] };
       if (payload?.offers?.length) {
         setOffers(payload.offers);
@@ -277,6 +314,8 @@ export function OffersManagementView({
       setCreateOpen(false);
       resetCreateForm();
       setPage(1);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Failed to create offer");
     } finally {
       setCreateSaving(false);
     }
@@ -572,6 +611,11 @@ export function OffersManagementView({
                     handleCreateOffer();
                   }}
                 >
+                  {formError && (
+                    <div className="rounded-xl border border-[#fde2e2] bg-[#fff5f5] px-3 py-2 text-[11px] text-[#dc2626]">
+                      {formError}
+                    </div>
+                  )}
                   <div>
                     <label className="text-[11px] font-semibold text-[#334155]">Offer Name</label>
                     <input
@@ -585,11 +629,11 @@ export function OffersManagementView({
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-[11px] font-semibold text-[#334155]">Discount Type</label>
-                      <div className="mt-2 flex items-center rounded-xl border border-[#e6ecf7] bg-[#f8fafc] p-1">
+                      <div className="mt-2 grid h-[46px] grid-cols-3 items-center rounded-xl border border-[#e6ecf7] bg-[#f8fafc] p-1">
                         <button
                           type="button"
                           onClick={() => setFormDiscountType("PERCENT")}
-                          className={`flex-1 rounded-lg px-3 py-2 text-[10px] font-semibold ${
+                          className={`flex h-full items-center justify-center rounded-lg px-2 text-center text-[10px] font-semibold leading-none ${
                             formDiscountType === "PERCENT"
                               ? "bg-white text-[#1f3d8f] shadow-sm"
                               : "text-[#64748b]"
@@ -600,7 +644,7 @@ export function OffersManagementView({
                         <button
                           type="button"
                           onClick={() => setFormDiscountType("FLAT")}
-                          className={`flex-1 rounded-lg px-3 py-2 text-[10px] font-semibold ${
+                          className={`flex h-full items-center justify-center rounded-lg px-2 text-center text-[10px] font-semibold leading-none ${
                             formDiscountType === "FLAT"
                               ? "bg-white text-[#1f3d8f] shadow-sm"
                               : "text-[#64748b]"
@@ -611,7 +655,7 @@ export function OffersManagementView({
                         <button
                           type="button"
                           onClick={() => setFormDiscountType("BOGO")}
-                          className={`flex-1 rounded-lg px-3 py-2 text-[10px] font-semibold ${
+                          className={`flex h-full items-center justify-center rounded-lg px-2 text-center text-[10px] font-semibold leading-none ${
                             formDiscountType === "BOGO"
                               ? "bg-white text-[#1f3d8f] shadow-sm"
                               : "text-[#64748b]"
@@ -623,13 +667,17 @@ export function OffersManagementView({
                     </div>
                     <div>
                       <label className="text-[11px] font-semibold text-[#334155]">Discount Value</label>
-                      <div className="mt-2 flex items-center justify-between rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3 py-2">
+                      <div className="mt-2 flex h-[46px] items-center justify-between rounded-xl border border-[#e6ecf7] bg-[#f8fafc] px-3">
                         <input
                           type="number"
-                          value={formDiscountValue}
-                          onChange={(event) => setFormDiscountValue(Number(event.target.value))}
+                          value={formDiscountType === "BOGO" ? "" : formDiscountValue === 0 ? "" : String(formDiscountValue)}
+                          onChange={(event) => {
+                            const nextValue = event.target.value;
+                            setFormDiscountValue(nextValue === "" ? 0 : Number(nextValue));
+                          }}
                           disabled={formDiscountType === "BOGO"}
-                          className="w-full border-0 bg-transparent text-[11px] text-[#1f2d46] outline-none"
+                          placeholder={formDiscountType === "BOGO" ? "BOGO" : "Enter value"}
+                          className="w-full border-0 bg-transparent text-[11px] text-[#1f2d46] outline-none placeholder:text-[#94a3b8]"
                         />
                         <span className="text-[11px] text-[#94a3b8]">
                           {formDiscountType === "PERCENT" ? "%" : formDiscountType === "FLAT" ? "$" : "BOGO"}
@@ -646,8 +694,9 @@ export function OffersManagementView({
                           type="date"
                           value={formStartDate}
                           onChange={(event) => setFormStartDate(event.target.value)}
-                          className="absolute inset-0 z-10 cursor-pointer opacity-0"
+                          className="pointer-events-none absolute inset-0 z-10 opacity-0"
                           aria-label="Start Date"
+                          tabIndex={-1}
                         />
                         <button
                           type="button"
@@ -669,8 +718,9 @@ export function OffersManagementView({
                           type="date"
                           value={formEndDate}
                           onChange={(event) => setFormEndDate(event.target.value)}
-                          className="absolute inset-0 z-10 cursor-pointer opacity-0"
+                          className="pointer-events-none absolute inset-0 z-10 opacity-0"
                           aria-label="End Date"
+                          tabIndex={-1}
                         />
                         <button
                           type="button"
@@ -853,9 +903,9 @@ export function OffersManagementView({
 
                     <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
                       {[
-                        { label: "Providers", value: "150", note: "+12%", icon: <FiUsers size={14} /> },
-                        { label: "Redemptions", value: "4.2k", note: "+8%", icon: <FiRepeat size={14} /> },
-                        { label: "Engaged Users", value: "12k", note: "Unique", icon: <FiUserCheck size={14} /> }
+                        { label: "Providers", value: detailsOffer.providerCount.toLocaleString(), note: detailsOffer.appliedTo, icon: <FiUsers size={14} /> },
+                        { label: "Redemptions", value: detailsOffer.redemptions.toLocaleString(), note: detailsOffer.status, icon: <FiRepeat size={14} /> },
+                        { label: "Engaged Users", value: detailsOffer.engagedUsers.toLocaleString(), note: "Tracked users", icon: <FiUserCheck size={14} /> }
                       ].map((item) => (
                         <div
                           key={item.label}
@@ -893,7 +943,7 @@ export function OffersManagementView({
                             </button>
                             {providerMenuOpen && (
                               <div className="absolute right-0 mt-2 w-40 overflow-hidden rounded-xl border border-[#e6ecf7] bg-white text-[10px] shadow-lg">
-                                {["All Categories", "Electronics", "Retail", "Home"].map((option) => (
+                                {providerCategoryOptions.map((option) => (
                                   <button
                                     key={option}
                                     type="button"
@@ -922,49 +972,59 @@ export function OffersManagementView({
                         </div>
                       </div>
                       <div className="mt-3 rounded-xl border border-[#edf1fa]">
+                        {providerRows.length > 0 && (
+                          <div className="grid grid-cols-[minmax(0,1.6fr)_0.9fr_0.8fr_0.7fr] gap-2 border-b border-[#edf1fa] px-3 py-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-[#94a3b8]">
+                            <span>Provider</span>
+                            <span className="text-right">Bookings</span>
+                            <span className="text-right">Users</span>
+                            <span className="text-right">Status</span>
+                          </div>
+                        )}
                         {providerRows
                           .filter((row) => {
                             const matchesCategory =
                               providerCategory === "All Categories" ||
-                              row.category === providerCategory;
-                            const matchesSearch = row.category
-                              .toLowerCase()
-                              .includes(providerSearch.trim().toLowerCase());
+                              row.vendorCategory === providerCategory;
+                            const normalizedSearch = providerSearch.trim().toLowerCase();
+                            const matchesSearch =
+                              !normalizedSearch ||
+                              row.providerName.toLowerCase().includes(normalizedSearch) ||
+                              row.vendorCategory.toLowerCase().includes(normalizedSearch);
                             return matchesCategory && matchesSearch;
                           })
                           .map((row) => (
                             <div
-                              key={row.category}
-                              className="flex items-center justify-between border-b border-[#edf1fa] px-3 py-2 text-[10px] text-[#64748b] last:border-b-0"
+                              key={row.providerId || row.providerName}
+                              className="grid grid-cols-[minmax(0,1.6fr)_0.9fr_0.8fr_0.7fr] items-center gap-2 border-b border-[#edf1fa] px-3 py-2 text-[10px] text-[#64748b] last:border-b-0"
                             >
-                              <span className="rounded-full bg-[#f1f5f9] px-2 py-0.5 text-[9px] text-[#475569]">
-                                {row.category}
-                              </span>
-                              <span>{row.redemptions.toLocaleString()}</span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setProviderRows((prev) =>
-                                    prev.map((item) =>
-                                      item.category === row.category
-                                        ? { ...item, active: !item.active }
-                                        : item
-                                    )
-                                  )
-                                }
-                                className={`inline-flex h-4 w-8 items-center rounded-full ${
-                                  row.active ? "bg-[#1f3d8f]" : "bg-[#e2e8f0]"
-                                }`}
-                                aria-pressed={row.active}
-                              >
+                              <div className="min-w-0">
+                                <div className="truncate text-[10px] font-semibold text-[#1f2d46]">
+                                  {row.providerName}
+                                </div>
+                                <div className="truncate text-[9px] text-[#94a3b8]">
+                                  {row.vendorCategory}
+                                </div>
+                              </div>
+                              <span className="text-right">{row.redemptions.toLocaleString()}</span>
+                              <span className="text-right">{row.engagedUsers.toLocaleString()}</span>
+                              <div className="flex justify-end">
                                 <span
-                                  className={`h-3 w-3 rounded-full bg-white ${
-                                    row.active ? "translate-x-4" : "translate-x-1"
+                                  className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${
+                                    row.active
+                                      ? "bg-[#dcfce7] text-[#15803d]"
+                                      : "bg-[#e2e8f0] text-[#64748b]"
                                   }`}
-                                />
-                              </button>
+                                >
+                                  {row.active ? "Active" : row.status}
+                                </span>
+                              </div>
                             </div>
                           ))}
+                        {providerRows.length === 0 && (
+                          <div className="px-3 py-4 text-[10px] text-[#94a3b8]">
+                            No provider-level breakdown is available for this offer yet.
+                          </div>
+                        )}
                       </div>
                     </section>
                   </div>

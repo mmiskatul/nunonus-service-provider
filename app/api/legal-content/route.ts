@@ -1,4 +1,5 @@
-import { jsonError, jsonOk, readJson, writeJson } from "@/app/api/_data";
+import { NextRequest, NextResponse } from "next/server";
+import { backendUrl } from "@/app/api/backend-proxy";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -12,10 +13,6 @@ type LegalContentData = {
   documents: Record<DocumentKey, string>;
   audiences: Record<AudienceKey, string>;
   content: Record<DocumentKey, Record<AudienceKey, string>>;
-};
-
-type SettingsData = {
-  legalContent: LegalContentData;
 };
 
 type UpdatePayload = {
@@ -32,31 +29,31 @@ function isAudienceKey(value: string | undefined): value is AudienceKey {
   return value === "apps" || value === "business";
 }
 
-function formatTimestamp(date: Date) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
-  }).formatToParts(date);
-
-  const month = parts.find((part) => part.type === "month")?.value ?? "";
-  const day = parts.find((part) => part.type === "day")?.value ?? "";
-  const year = parts.find((part) => part.type === "year")?.value ?? "";
-  const hour = parts.find((part) => part.type === "hour")?.value ?? "";
-  const minute = parts.find((part) => part.type === "minute")?.value ?? "";
-  const dayPeriod = parts.find((part) => part.type === "dayPeriod")?.value ?? "";
-
-  return `${month} ${day}, ${year} at ${hour}:${minute} ${dayPeriod}`.trim();
+function forwardHeaders(request?: Request | NextRequest) {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  const auth = request?.headers.get("authorization");
+  if (auth) {
+    headers.Authorization = auth;
+  }
+  return headers;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const data = (await readJson("settings.json")) as SettingsData;
-    return jsonOk(data.legalContent);
-  } catch {
-    return jsonError("Failed to read legal content data");
+    const response = await fetch(backendUrl("/platform-admin/settings/legal-content"), {
+      method: "GET",
+      headers: forwardHeaders(request),
+      cache: "no-store",
+    });
+    const payload = (await response.json().catch(() => ({}))) as LegalContentData | { detail?: string };
+    return NextResponse.json(payload, { status: response.status });
+  } catch (error) {
+    return NextResponse.json(
+      { detail: error instanceof Error ? error.message : "Failed to read legal content data" },
+      { status: 502 },
+    );
   }
 }
 
@@ -65,29 +62,21 @@ export async function PATCH(request: Request) {
     const payload = (await request.json()) as UpdatePayload;
 
     if (!isDocumentKey(payload.document) || !isAudienceKey(payload.audience) || typeof payload.content !== "string") {
-      return jsonError("Invalid legal content payload");
+      return NextResponse.json({ detail: "Invalid legal content payload" }, { status: 400 });
     }
 
-    const settings = (await readJson("settings.json")) as SettingsData;
-    const nextLegalContent: LegalContentData = {
-      ...settings.legalContent,
-      lastUpdated: formatTimestamp(new Date()),
-      content: {
-        ...settings.legalContent.content,
-        [payload.document]: {
-          ...settings.legalContent.content[payload.document],
-          [payload.audience]: payload.content
-        }
-      }
-    };
-
-    await writeJson("settings.json", {
-      ...settings,
-      legalContent: nextLegalContent
+    const response = await fetch(backendUrl("/platform-admin/settings/legal-content"), {
+      method: "PATCH",
+      headers: forwardHeaders(request),
+      body: JSON.stringify(payload),
+      cache: "no-store",
     });
-
-    return jsonOk(nextLegalContent);
-  } catch {
-    return jsonError("Failed to update legal content");
+    const nextLegalContent = (await response.json().catch(() => ({}))) as LegalContentData | { detail?: string };
+    return NextResponse.json(nextLegalContent, { status: response.status });
+  } catch (error) {
+    return NextResponse.json(
+      { detail: error instanceof Error ? error.message : "Failed to update legal content" },
+      { status: 502 },
+    );
   }
 }
