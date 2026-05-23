@@ -65,6 +65,12 @@ export function SettingsView({ data }: { data: SettingsData }) {
   const [brandLogoData, setBrandLogoData] = useState(data.general.brandIdentity.logoData ?? "");
   const [globalRate, setGlobalRate] = useState(data.commission.globalRate);
   const [categoryRate, setCategoryRate] = useState(data.commission.categoryRate);
+  const [adminName, setAdminName] = useState(data.admin.name);
+  const [adminEmail, setAdminEmail] = useState(data.admin.email);
+  const [adminAvatar, setAdminAvatar] = useState(data.admin.avatar ?? "");
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+  const [profileStatus, setProfileStatus] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -73,10 +79,16 @@ export function SettingsView({ data }: { data: SettingsData }) {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [avatarBroken, setAvatarBroken] = useState(false);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const generalSnapshot = useRef({
     platformName: data.general.platformName,
     supportEmail: data.general.supportEmail,
     logoData: data.general.brandIdentity.logoData ?? ""
+  });
+  const profileSnapshot = useRef({
+    name: data.admin.name,
+    email: data.admin.email,
+    avatar: data.admin.avatar ?? ""
   });
   const commissionSnapshot = useRef({
     globalRate: data.commission.globalRate,
@@ -196,6 +208,98 @@ export function SettingsView({ data }: { data: SettingsData }) {
     reader.readAsDataURL(file);
   };
 
+  const handleAvatarUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const previewUrl = URL.createObjectURL(file);
+    setPendingAvatarFile(file);
+    setAdminAvatar(previewUrl);
+    setAvatarBroken(false);
+    setProfileError(null);
+    setProfileStatus("Profile image ready to save");
+  };
+
+  const handleProfileSave = async () => {
+    setProfileStatus(null);
+    setProfileError(null);
+
+    const hasProfileChanges =
+      adminName !== profileSnapshot.current.name ||
+      adminEmail !== profileSnapshot.current.email;
+    const hasAvatarChange = pendingAvatarFile !== null;
+
+    if (!hasProfileChanges && !hasAvatarChange) {
+      return;
+    }
+
+    let avatarUrl = profileSnapshot.current.avatar;
+    setProfileStatus("Saving profile...");
+
+    if (pendingAvatarFile) {
+      const formData = new FormData();
+      formData.append("file", pendingAvatarFile);
+
+      const uploadResponse = await fetch("/api/settings/profile/avatar", {
+        method: "POST",
+        body: formData
+      });
+      const uploadPayload = (await uploadResponse.json().catch(() => ({}))) as {
+        avatar?: string;
+        profile_image_url?: string;
+        detail?: string;
+      };
+
+      if (!uploadResponse.ok) {
+        setProfileStatus(null);
+        setProfileError(uploadPayload.detail ?? "Failed to upload profile image.");
+        return;
+      }
+
+      avatarUrl = uploadPayload.avatar ?? uploadPayload.profile_image_url ?? avatarUrl;
+    }
+
+    const profileResponse = await fetch("/api/settings/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        admin: {
+          name: adminName,
+          email: adminEmail,
+          avatar: avatarUrl
+        }
+      })
+    });
+    const profilePayload = (await profileResponse.json().catch(() => ({}))) as {
+      admin?: { name?: string; email?: string; avatar?: string };
+      detail?: string;
+    };
+
+    if (!profileResponse.ok) {
+      setProfileStatus(null);
+      setProfileError(profilePayload.detail ?? "Failed to save profile.");
+      return;
+    }
+
+    const savedAdmin = profilePayload.admin ?? {};
+    const nextName = savedAdmin.name ?? adminName;
+    const nextEmail = savedAdmin.email ?? adminEmail;
+    const nextAvatar = savedAdmin.avatar ?? avatarUrl;
+
+    setAdminName(nextName);
+    setAdminEmail(nextEmail);
+    setAdminAvatar(nextAvatar);
+    setPendingAvatarFile(null);
+    setProfileError(null);
+    setProfileStatus("Profile updated");
+    profileSnapshot.current = {
+      name: nextName,
+      email: nextEmail,
+      avatar: nextAvatar
+    };
+    setTimeout(() => setProfileStatus(null), 1800);
+  };
+
   const handlePasswordUpdate = async () => {
     setPasswordStatus(null);
     setPasswordError(null);
@@ -238,7 +342,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
     setTimeout(() => setPasswordStatus(null), 1800);
   };
 
-  const initials = data.admin.name
+  const initials = adminName
     .split(" ")
     .slice(0, 2)
     .map((part) => part[0])
@@ -408,10 +512,10 @@ export function SettingsView({ data }: { data: SettingsData }) {
           <h3 className="m-0 text-[24px] font-medium text-[#1e2b43]">Admin Profile</h3>
           <div className="mt-5 flex flex-col items-center text-center">
             <div className="relative grid h-[74px] w-[74px] place-items-center overflow-hidden rounded-full bg-[radial-gradient(circle_at_top,#49a2ff_0%,#1f4db6_55%,#14306b_100%)] text-[24px] font-semibold text-white">
-              {data.admin.avatar && !avatarBroken ? (
+              {adminAvatar && !avatarBroken ? (
                 <Image
-                  src={data.admin.avatar}
-                  alt={data.admin.name}
+                  src={adminAvatar}
+                  alt={adminName}
                   fill
                   unoptimized
                   className="object-cover"
@@ -421,11 +525,41 @@ export function SettingsView({ data }: { data: SettingsData }) {
                 initials
               )}
             </div>
-            <p className="m-0 mt-4 text-[16px] font-semibold text-[#1e2b43]">{data.admin.name}</p>
-            <p className="m-0 mt-1 text-[12px] text-[#7e8aa1]">{data.admin.email}</p>
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              className="mt-3 text-[12px] font-semibold text-[#24408d]"
+            >
+              Change Profile Image
+            </button>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarUpload}
+            />
           </div>
 
           <div className="mt-5 space-y-3">
+            <div>
+              <FieldLabel>Admin Name</FieldLabel>
+              <input
+                type="text"
+                value={adminName}
+                onChange={(event) => setAdminName(event.target.value)}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <FieldLabel>Admin Email</FieldLabel>
+              <input
+                type="email"
+                value={adminEmail}
+                onChange={(event) => setAdminEmail(event.target.value)}
+                className={inputClass}
+              />
+            </div>
             <div>
               <FieldLabel>Current Password</FieldLabel>
               <input
@@ -454,6 +588,20 @@ export function SettingsView({ data }: { data: SettingsData }) {
               />
             </div>
           </div>
+
+          {(profileError || profileStatus) && (
+            <p className={`m-0 mt-3 text-[12px] ${profileError ? "text-[#d44a4a]" : "text-[#24408d]"}`}>
+              {profileError ?? profileStatus}
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={handleProfileSave}
+            className="mt-4 h-11 w-full rounded-[8px] border border-[#24408d] bg-white text-[13px] font-semibold text-[#24408d]"
+          >
+            Save Profile Changes
+          </button>
 
           {(passwordError || passwordStatus) && (
             <p className={`m-0 mt-3 text-[12px] ${passwordError ? "text-[#d44a4a]" : "text-[#24408d]"}`}>
