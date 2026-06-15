@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { backendUrl } from "@/app/api/backend-proxy";
+import { backendUrl, resolveAuthHeader } from "@/app/api/backend-proxy";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -33,9 +33,11 @@ function forwardHeaders(request?: Request | NextRequest) {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  const auth = request?.headers.get("authorization");
-  if (auth) {
-    headers.Authorization = auth;
+  if (request) {
+    const auth = resolveAuthHeader(request);
+    if (auth) {
+      headers.Authorization = auth;
+    }
   }
   return headers;
 }

@@ -1,8 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { ChangeEvent, ReactNode, useRef, useState } from "react";
+import { ChangeEvent, ReactNode, useEffect, useRef, useState } from "react";
 import {
   FiCheck,
   FiCreditCard,
@@ -94,6 +93,30 @@ export function SettingsView({ data }: { data: SettingsData }) {
     globalRate: data.commission.globalRate,
     categoryRate: data.commission.categoryRate
   });
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const res = await fetch("/api/settings/profile");
+        if (res.ok) {
+          const profileData = await res.json();
+          if (profileData && profileData.admin) {
+            setAdminName(profileData.admin.name);
+            setAdminEmail(profileData.admin.email);
+            setAdminAvatar(profileData.admin.avatar ?? "");
+            profileSnapshot.current = {
+              name: profileData.admin.name,
+              email: profileData.admin.email,
+              avatar: profileData.admin.avatar ?? ""
+            };
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load profile data", error);
+      }
+    };
+    loadProfile();
+  }, []);
 
   const persistSettings = async (payload: Partial<SettingsData>, successMessage: string) => {
     setSaveStatus("Saving...");
@@ -297,6 +320,13 @@ export function SettingsView({ data }: { data: SettingsData }) {
       email: nextEmail,
       avatar: nextAvatar
     };
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("admin-profile-updated", {
+          detail: { name: nextName, email: nextEmail, avatar: nextAvatar }
+        })
+      );
+    }
     setTimeout(() => setProfileStatus(null), 1800);
   };
 
@@ -392,7 +422,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
                 <div className="flex min-h-[124px] gap-3 rounded-[14px] border border-dashed border-[#cfd7e5] bg-[#fafbfd] px-3 py-3">
                   <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-[14px] border border-[#d8e0eb] bg-white">
                     {brandLogoData ? (
-                      <Image src={brandLogoData} alt="Brand mark" width={48} height={48} className="h-12 w-12 object-contain" />
+                      <img src={brandLogoData} alt="Brand mark" className="h-12 w-12 object-contain" />
                     ) : (
                       <FiUploadCloud size={18} className="text-[#24408d]" />
                     )}
@@ -508,17 +538,22 @@ export function SettingsView({ data }: { data: SettingsData }) {
           </section>
         </div>
 
+        {/* ── Right sidebar: Profile + Password ─────────────────── */}
+        <div className="space-y-5">
+
+        {/* ── Admin Profile Panel ────────────────────────────────── */}
         <aside className={`${panelClass} h-fit`}>
-          <h3 className="m-0 text-[24px] font-medium text-[#1e2b43]">Admin Profile</h3>
+          <h3 className="m-0 text-[20px] font-semibold text-[#1e2b43]">Admin Profile</h3>
+          <p className="m-0 mt-0.5 text-[12px] text-[#8a96ad]">Update your name, email, and profile photo.</p>
+
+          {/* Avatar */}
           <div className="mt-5 flex flex-col items-center text-center">
             <div className="relative grid h-[74px] w-[74px] place-items-center overflow-hidden rounded-full bg-[radial-gradient(circle_at_top,#49a2ff_0%,#1f4db6_55%,#14306b_100%)] text-[24px] font-semibold text-white">
               {adminAvatar && !avatarBroken ? (
-                <Image
+                <img
                   src={adminAvatar}
                   alt={adminName}
-                  fill
-                  unoptimized
-                  className="object-cover"
+                  className="absolute inset-0 h-full w-full object-cover"
                   onError={() => setAvatarBroken(true)}
                 />
               ) : (
@@ -528,7 +563,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
             <button
               type="button"
               onClick={() => avatarInputRef.current?.click()}
-              className="mt-3 text-[12px] font-semibold text-[#24408d]"
+              className="mt-3 text-[12px] font-semibold text-[#24408d] cursor-pointer"
             >
               Change Profile Image
             </button>
@@ -539,8 +574,12 @@ export function SettingsView({ data }: { data: SettingsData }) {
               className="hidden"
               onChange={handleAvatarUpload}
             />
+            {profileStatus && profileStatus === "Profile image ready to save" && (
+              <p className="m-0 mt-2 text-[11px] text-[#24408d]">{profileStatus}</p>
+            )}
           </div>
 
+          {/* Name & Email */}
           <div className="mt-5 space-y-3">
             <div>
               <FieldLabel>Admin Name</FieldLabel>
@@ -560,6 +599,29 @@ export function SettingsView({ data }: { data: SettingsData }) {
                 className={inputClass}
               />
             </div>
+          </div>
+
+          {(profileError || (profileStatus && profileStatus !== "Profile image ready to save")) && (
+            <p className={`m-0 mt-3 text-[12px] ${profileError ? "text-[#d44a4a]" : "text-[#24408d]"}`}>
+              {profileError ?? profileStatus}
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={handleProfileSave}
+            className="mt-4 h-11 w-full rounded-[8px] bg-[#24408d] text-[13px] font-semibold text-white shadow-[0_12px_28px_rgba(36,64,141,0.18)] cursor-pointer hover:bg-[#1c3372] transition-colors"
+          >
+            Save Profile Changes
+          </button>
+        </aside>
+
+        {/* ── Change Password Panel ───────────────────────────────── */}
+        <aside className={`${panelClass} h-fit`}>
+          <h3 className="m-0 text-[20px] font-semibold text-[#1e2b43]">Change Password</h3>
+          <p className="m-0 mt-0.5 text-[12px] text-[#8a96ad]">Enter your current password then set a new one.</p>
+
+          <div className="mt-5 space-y-3">
             <div>
               <FieldLabel>Current Password</FieldLabel>
               <input
@@ -567,6 +629,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
                 value={currentPassword}
                 onChange={(event) => setCurrentPassword(event.target.value)}
                 className={inputClass}
+                placeholder="••••••••"
               />
             </div>
             <div>
@@ -576,6 +639,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
                 className={inputClass}
+                placeholder="Min. 8 characters"
               />
             </div>
             <div>
@@ -585,26 +649,13 @@ export function SettingsView({ data }: { data: SettingsData }) {
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
                 className={inputClass}
+                placeholder="Repeat new password"
               />
             </div>
           </div>
 
-          {(profileError || profileStatus) && (
-            <p className={`m-0 mt-3 text-[12px] ${profileError ? "text-[#d44a4a]" : "text-[#24408d]"}`}>
-              {profileError ?? profileStatus}
-            </p>
-          )}
-
-          <button
-            type="button"
-            onClick={handleProfileSave}
-            className="mt-4 h-11 w-full rounded-[8px] border border-[#24408d] bg-white text-[13px] font-semibold text-[#24408d]"
-          >
-            Save Profile Changes
-          </button>
-
           {(passwordError || passwordStatus) && (
-            <p className={`m-0 mt-3 text-[12px] ${passwordError ? "text-[#d44a4a]" : "text-[#24408d]"}`}>
+            <p className={`m-0 mt-3 text-[12px] ${passwordError ? "text-[#d44a4a]" : "text-[#1da862]"}`}>
               {passwordError ?? passwordStatus}
             </p>
           )}
@@ -612,11 +663,13 @@ export function SettingsView({ data }: { data: SettingsData }) {
           <button
             type="button"
             onClick={handlePasswordUpdate}
-            className="mt-4 h-11 w-full rounded-[8px] bg-[#24408d] text-[13px] font-semibold text-white shadow-[0_12px_28px_rgba(36,64,141,0.2)]"
+            className="mt-4 h-11 w-full rounded-[8px] border border-[#24408d] bg-white text-[13px] font-semibold text-[#24408d] cursor-pointer hover:bg-[#f0f4ff] transition-colors"
           >
             Update Password
           </button>
         </aside>
+
+        </div>{/* end right sidebar */}
       </div>
     </section>
   );

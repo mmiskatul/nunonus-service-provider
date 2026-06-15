@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { backendUrl } from "@/app/api/backend-proxy";
+import { backendUrl, resolveAuthHeader } from "@/app/api/backend-proxy";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -9,7 +9,7 @@ async function proxyProfile(request: NextRequest, method: "GET" | "PATCH") {
     const headers: Record<string, string> = {
       "Content-Type": "application/json"
     };
-    const auth = request.headers.get("authorization");
+    const auth = resolveAuthHeader(request);
     if (auth) headers.Authorization = auth;
 
     const init: RequestInit = {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { backendUrl } from "@/app/api/backend-proxy";
+import { backendUrl, resolveAuthHeader } from "@/app/api/backend-proxy";
 import { mapVendorDetailPayload, mapVendorListItem } from "@/lib/vendors-admin";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ export async function GET(
   const { id } = await params;
   try {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
-    const auth = request.headers.get("authorization");
+    const auth = resolveAuthHeader(request);
     if (auth) headers.Authorization = auth;
 
     const response = await fetch(backendUrl(`/platform-admin/vendors/${id}`), {
@@ -48,7 +48,7 @@ export async function PATCH(
 
   try {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
-    const auth = request.headers.get("authorization");
+    const auth = resolveAuthHeader(request);
     if (auth) headers.Authorization = auth;
 
     const response = await fetch(backendUrl(`/platform-admin/vendors/${id}/verification`), {

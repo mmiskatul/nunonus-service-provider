@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { backendUrl } from "@/app/api/backend-proxy";
+import { backendUrl, resolveAuthHeader } from "@/app/api/backend-proxy";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const headers: Record<string, string> = {};
-    const auth = request.headers.get("authorization");
+    const auth = resolveAuthHeader(request);
     if (auth) headers.Authorization = auth;
 
     const response = await fetch(backendUrl("/platform-admin/settings/profile/avatar"), {

@@ -1,7 +1,7 @@
 /**
  * backend-proxy.ts
  * Helper to proxy Next.js API route requests to the FastAPI backend.
- * Forwards Authorization headers from the incoming request.
+ * Forwards Authorization headers or falls back to nunos_dashboard_access_token cookie.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -14,6 +14,26 @@ const V1 = `${BACKEND_BASE}/api/v1`;
 export function backendUrl(path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`;
   return `${V1}${normalized}`;
+}
+
+export function resolveAuthHeader(request: Request | NextRequest): string | null {
+  const auth = request.headers.get("authorization");
+  if (auth) return auth;
+
+  const cookieHeader = request.headers.get("cookie") || "";
+  const match = cookieHeader.match(/nunos_dashboard_access_token=([^;]+)/);
+  if (match && match[1]) {
+    return `Bearer ${decodeURIComponent(match[1])}`;
+  }
+
+  if ("cookies" in request && typeof (request as any).cookies?.get === "function") {
+    const token = (request as any).cookies.get("nunos_dashboard_access_token")?.value;
+    if (token) {
+      return `Bearer ${token}`;
+    }
+  }
+
+  return null;
 }
 
 export async function proxyGet(
@@ -30,7 +50,7 @@ export async function proxyGet(
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    const auth = request.headers.get("authorization");
+    const auth = resolveAuthHeader(request);
     if (auth) headers["Authorization"] = auth;
 
     const res = await fetch(url.toString(), { method: "GET", headers, cache: "no-store" });
@@ -54,7 +74,7 @@ export async function proxyPost(
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    const auth = request.headers.get("authorization");
+    const auth = resolveAuthHeader(request);
     if (auth) headers["Authorization"] = auth;
 
     const res = await fetch(backendUrl(backendPath), {
@@ -81,7 +101,7 @@ export async function proxyPatch(
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    const auth = request.headers.get("authorization");
+    const auth = resolveAuthHeader(request);
     if (auth) headers["Authorization"] = auth;
 
     const res = await fetch(backendUrl(backendPath), {
@@ -105,7 +125,7 @@ export async function proxyDelete(
 ): Promise<NextResponse> {
   try {
     const headers: Record<string, string> = {};
-    const auth = request.headers.get("authorization");
+    const auth = resolveAuthHeader(request);
     if (auth) headers["Authorization"] = auth;
 
     const res = await fetch(backendUrl(backendPath), {

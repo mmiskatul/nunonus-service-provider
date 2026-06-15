@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { backendUrl } from "@/app/api/backend-proxy";
+import { backendUrl, resolveAuthHeader } from "@/app/api/backend-proxy";
 import { buildOfferSummaryCards, mapAdminOffer } from "@/lib/offers-admin";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ async function requestBackend(request: NextRequest, path: string, init: RequestI
     "Content-Type": "application/json",
     ...(init.headers as Record<string, string> | undefined),
   };
-  const auth = request.headers.get("authorization");
+  const auth = resolveAuthHeader(request);
   if (auth) headers.Authorization = auth;
 
   return fetch(backendUrl(path), {

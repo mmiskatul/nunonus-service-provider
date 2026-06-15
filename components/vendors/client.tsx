@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { IoAlertCircle, IoShieldCheckmark, IoTimeOutline } from "react-icons/io5";
 import { FaUsers } from "react-icons/fa";
 import { BsPatchCheckFill } from "react-icons/bs";
@@ -55,6 +56,9 @@ export function VendorsManagementView({
 }: {
   data: { summaryCards: Array<{ label: string; value: string; note: string; tone: string }>; vendors: Vendor[] };
 }) {
+  const searchParams = useSearchParams();
+  const statusParam = searchParams.get("status");
+
   const [vendors, setVendors] = useState<Vendor[]>(data.vendors);
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
   const [pendingVendorAction, setPendingVendorAction] = useState<{
@@ -71,6 +75,16 @@ export function VendorsManagementView({
     () => vendors.find((vendor) => vendor.id === selectedVendorId) ?? null,
     [selectedVendorId, vendors]
   );
+
+  useEffect(() => {
+    if (statusParam === "PENDING" || statusParam === "APPROVED" || statusParam === "REJECTED") {
+      setStatusFilter(statusParam);
+      setPage(1);
+    } else if (statusParam === "ALL") {
+      setStatusFilter("ALL");
+      setPage(1);
+    }
+  }, [statusParam]);
 
   const summaryCards = useMemo(() => {
     const total = vendors.length;
