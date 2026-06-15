@@ -1,0 +1,60 @@
+import { NextResponse } from "next/server";
+
+function getBackendBaseUrl() {
+  const value = process.env.NEXT_PUBLIC_AUTH_API_BASE?.trim();
+  if (!value) {
+    throw new Error("NEXT_PUBLIC_AUTH_API_BASE is not configured.");
+  }
+  return value.replace(/\/+$/, "");
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const email = String(body?.email ?? "").trim().toLowerCase();
+    const password = String(body?.password ?? "");
+
+    if (!email || !password) {
+      return NextResponse.json({ ok: false, message: "Email and password required." }, { status: 400 });
+    }
+
+    const response = await fetch(`${getBackendBaseUrl()}/api/v1/platform-admin/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email_or_phone: email, password }),
+      cache: "no-store"
+    });
+
+    const payload = (await response.json().catch(() => ({}))) as {
+      access_token?: string;
+      admin?: { email?: string };
+      detail?: string;
+      message?: string;
+    };
+
+    if (!response.ok || !payload.access_token) {
+      return NextResponse.json(
+        { ok: false, message: payload.detail ?? payload.message ?? "Login failed." },
+        { status: response.status || 500 }
+      );
+    }
+
+    const nextResponse = NextResponse.json(
+      { ok: true, user: { email: payload.admin?.email ?? email } },
+      { status: 200 }
+    );
+    nextResponse.cookies.set("nunos_auth", "true", {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/"
+    });
+    nextResponse.cookies.set("nunos_dashboard_access_token", payload.access_token, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/"
+    });
+    return nextResponse;
+  } catch {
+    return NextResponse.json({ ok: false, message: "Login failed." }, { status: 500 });
+  }
+}
