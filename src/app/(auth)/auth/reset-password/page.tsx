@@ -30,7 +30,7 @@ export default function ResetPasswordPage() {
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="Type a strong password"
-                className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 pr-14 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all placeholder:text-slate-300"
+                className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 pr-14 text-sm font-medium text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all placeholder:text-slate-400"
               />
               <button
                 type="button"
@@ -55,7 +55,7 @@ export default function ResetPasswordPage() {
               <input
                 type={showConfirmPassword ? "text" : "password"}
                 placeholder="Re-type password"
-                className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 pr-14 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all placeholder:text-slate-300"
+                className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 pr-14 text-sm font-medium text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all placeholder:text-slate-400"
               />
               <button
                 type="button"

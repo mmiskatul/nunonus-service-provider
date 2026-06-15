@@ -80,33 +80,87 @@ const DUMMY_SERVICES: ServiceItem[] = [
   },
 ];
 
+import {
+  vendorListRooms,
+  vendorUpdateRoomAvailability,
+  vendorListServices,
+  vendorUpdateServiceStatus,
+} from "@/lib/vendor-api";
+import { useEffect } from "react";
+
 export default function HotelServicesPage() {
   const [activeTab, setActiveTab] = useState<"rooms" | "services">("rooms");
-  const [rooms, setRooms] = useState<Room[]>(DUMMY_ROOMS);
-  const [services, setServices] = useState<ServiceItem[]>(DUMMY_SERVICES);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [services, setServices] = useState<ServiceItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const toggleRoomStatus = (id: string) => {
-    setRooms(
-      rooms.map((room) =>
-        room.id === id
-          ? {
-              ...room,
-              status: room.status === "Available" ? "Unavailable" : "Available",
-            }
-          : room,
-      ),
-    );
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const roomsRes = await vendorListRooms();
+        const mappedRooms = (roomsRes.items || []).map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          image: r.images?.[0] || "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80",
+          price: r.base_price,
+          size: r.size_sqm,
+          maxGuests: r.max_guests,
+          bedType: r.bed_type,
+          amenities: r.amenities || [],
+          status: (r.available ? "Available" : "Unavailable") as "Available" | "Unavailable" | "Under Maintenance",
+        }));
+        setRooms(mappedRooms);
+
+        const servicesRes = await vendorListServices();
+        const mappedServices = (servicesRes.items || []).map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          category: s.category,
+          price: s.price,
+          image: s.images?.[0] || "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=400&q=80",
+          available: s.available ?? s.active_status ?? true,
+          deliveryTime: s.delivery_time || "UPON REQUEST",
+        }));
+        setServices(mappedServices);
+      } catch (err) {
+        console.error("Failed to load rooms and services:", err);
+      }
+    }
+    void loadData();
+  }, []);
+
+  const toggleRoomStatus = async (id: string) => {
+    const room = rooms.find((r) => r.id === id);
+    if (!room) return;
+    const nextAvailable = room.status !== "Available";
+    try {
+      await vendorUpdateRoomAvailability(id, nextAvailable);
+      setRooms(
+        rooms.map((r) =>
+          r.id === id
+            ? { ...r, status: nextAvailable ? "Available" : "Unavailable" }
+            : r,
+        ),
+      );
+    } catch (err) {
+      alert("Failed to update room status: " + (err instanceof Error ? err.message : String(err)));
+    }
   };
 
-  const toggleServiceStatus = (id: string) => {
-    setServices(
-      services.map((service) =>
-        service.id === id
-          ? { ...service, available: !service.available }
-          : service,
-      ),
-    );
+  const toggleServiceStatus = async (id: string) => {
+    const service = services.find((s) => s.id === id);
+    if (!service) return;
+    const nextAvailable = !service.available;
+    try {
+      await vendorUpdateServiceStatus(id, nextAvailable);
+      setServices(
+        services.map((s) =>
+          s.id === id ? { ...s, available: nextAvailable } : s,
+        ),
+      );
+    } catch (err) {
+      alert("Failed to update service status: " + (err instanceof Error ? err.message : String(err)));
+    }
   };
 
   const filteredRooms = rooms.filter((room) =>
@@ -182,7 +236,7 @@ export default function HotelServicesPage() {
               }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-16 pr-6 py-5 bg-white border border-slate-100 rounded-[28px] text-sm font-bold text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
+              className="w-full pl-16 pr-6 py-5 bg-white border border-slate-100 rounded-[28px] text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
             />
           </div>
           <button className="flex items-center gap-3 px-8 py-5 bg-white border border-slate-100 rounded-[28px] text-sm font-black text-slate-700 hover:bg-slate-50 transition-all">

@@ -55,6 +55,12 @@ export async function vendorRequest<T>(
   };
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearVendorTokens();
+      if (typeof window !== "undefined") {
+        window.location.href = "/auth/login";
+      }
+    }
     throw new Error(
       (result as { detail?: string }).detail ||
         (result as { message?: string }).message ||
@@ -337,6 +343,60 @@ export async function vendorUpdateRoomAvailability(
 /** DELETE /vendor/rooms-services/rooms/:id */
 export async function vendorDeleteRoom(roomId: string) {
   return vendorRequest(`/vendor/rooms-services/rooms/${roomId}`, "DELETE");
+}
+
+// ─── Room Services ───────────────────────────────────────────────────────────
+
+/** GET /vendor/rooms-services/services */
+export async function vendorListServices() {
+  return vendorRequest<{ items: Record<string, unknown>[] }>(
+    `/vendor/rooms-services/services`,
+  );
+}
+
+/** POST /vendor/rooms-services/services */
+export async function vendorCreateService(payload: Record<string, unknown>) {
+  return vendorRequest<Record<string, unknown>>(
+    `/vendor/rooms-services/services`,
+    "POST",
+    payload,
+  );
+}
+
+/** GET /vendor/rooms-services/services/:id */
+export async function vendorGetService(serviceId: string) {
+  return vendorRequest<Record<string, unknown>>(
+    `/vendor/rooms-services/services/${serviceId}`,
+  );
+}
+
+/** PATCH /vendor/rooms-services/services/:id */
+export async function vendorUpdateService(
+  serviceId: string,
+  payload: Record<string, unknown>,
+) {
+  return vendorRequest<Record<string, unknown>>(
+    `/vendor/rooms-services/services/${serviceId}`,
+    "PATCH",
+    payload,
+  );
+}
+
+/** PATCH /vendor/rooms-services/services/:id/status */
+export async function vendorUpdateServiceStatus(
+  serviceId: string,
+  active: boolean,
+) {
+  return vendorRequest<Record<string, unknown>>(
+    `/vendor/rooms-services/services/${serviceId}/status?active=${active}`,
+    "PATCH",
+    {},
+  );
+}
+
+/** DELETE /vendor/rooms-services/services/:id */
+export async function vendorDeleteService(serviceId: string) {
+  return vendorRequest(`/vendor/rooms-services/services/${serviceId}`, "DELETE");
 }
 
 // ─── Promotions ────────────────────────────────────────────────────────────────
@@ -669,7 +729,7 @@ export async function uploadVendorFile(file: File): Promise<string> {
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const response = await fetch(`${V}/vendor/upload`, {
+  const response = await fetch(`${V}/vendor/uploads/image`, {
     method: "POST",
     headers,
     body: formData,

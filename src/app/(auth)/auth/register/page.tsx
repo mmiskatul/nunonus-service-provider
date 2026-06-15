@@ -368,7 +368,7 @@ export default function RegisterPage() {
                   value={formData.businessName}
                   onChange={handleInputChange}
                   placeholder="e.g. Acme Services"
-                  className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all"
+                  className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all placeholder:text-slate-400"
                 />
               </div>
               <div className="space-y-2">
@@ -380,7 +380,7 @@ export default function RegisterPage() {
                     name="category"
                     value={formData.category}
                     onChange={handleInputChange}
-                    className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 appearance-none text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all cursor-pointer"
+                    className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 appearance-none text-sm font-medium text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all cursor-pointer"
                   >
                     <option>Hotel</option>
                     <option>Restaurant</option>
@@ -399,7 +399,7 @@ export default function RegisterPage() {
                   value={formData.email}
                   onChange={handleInputChange}
                   placeholder="business@example.com"
-                  className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all"
+                  className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all placeholder:text-slate-400"
                 />
               </div>
               <div className="space-y-2">
@@ -412,7 +412,7 @@ export default function RegisterPage() {
                   value={formData.phone}
                   onChange={handleInputChange}
                   placeholder="+1 (555) 000-0000"
-                  className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all"
+                  className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all placeholder:text-slate-400"
                 />
               </div>
               <div className="space-y-2">
@@ -425,7 +425,7 @@ export default function RegisterPage() {
                   value={formData.password}
                   onChange={handleInputChange}
                   placeholder="********"
-                  className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all"
+                  className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all placeholder:text-slate-400"
                 />
               </div>
               <div className="space-y-2">
@@ -438,7 +438,7 @@ export default function RegisterPage() {
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                   placeholder="********"
-                  className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all"
+                  className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all placeholder:text-slate-400"
                 />
               </div>
             </div>
@@ -465,7 +465,7 @@ export default function RegisterPage() {
                   value={formData.address}
                   onChange={handleInputChange}
                   placeholder="123 Business Way"
-                  className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all"
+                  className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all placeholder:text-slate-400"
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -479,7 +479,7 @@ export default function RegisterPage() {
                     value={formData.city}
                     onChange={handleInputChange}
                     placeholder="New York"
-                    className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all"
+                    className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all placeholder:text-slate-400"
                   />
                 </div>
                 <div className="space-y-2">
@@ -492,7 +492,7 @@ export default function RegisterPage() {
                     value={formData.website}
                     onChange={handleInputChange}
                     placeholder="https://www.yourbusiness.com"
-                    className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all"
+                    className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all placeholder:text-slate-400"
                   />
                 </div>
               </div>
@@ -506,7 +506,7 @@ export default function RegisterPage() {
                   value={formData.description}
                   onChange={handleInputChange}
                   placeholder="Tell us about your services..."
-                  className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all resize-none"
+                  className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all resize-none placeholder:text-slate-400"
                 />
               </div>
             </div>
@@ -531,7 +531,7 @@ export default function RegisterPage() {
                   value={formData.tradeLicenseNumber}
                   onChange={handleInputChange}
                   placeholder="TX-12345678"
-                  className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all"
+                  className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all placeholder:text-slate-400"
                 />
               </div>
 

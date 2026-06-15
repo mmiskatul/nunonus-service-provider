@@ -52,7 +52,7 @@ export default function LoginPage() {
               <input
                 type="email"
                 placeholder="Enter email"
-                className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 pl-14 pr-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all placeholder:text-slate-300"
+                className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 pl-14 pr-6 text-sm font-medium text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all placeholder:text-slate-400"
               />
             </div>
           </div>
@@ -69,7 +69,7 @@ export default function LoginPage() {
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter password"
-                className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 pl-14 pr-14 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all placeholder:text-slate-300"
+                className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 pl-14 pr-14 text-sm font-medium text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all placeholder:text-slate-400"
               />
               <button
                 type="button"

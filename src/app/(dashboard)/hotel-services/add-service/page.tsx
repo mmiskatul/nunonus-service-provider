@@ -16,7 +16,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { uploadVendorFile } from "@/lib/vendor-api";
+import { uploadVendorFile, vendorCreateService } from "@/lib/vendor-api";
 
 const SERVICE_CATEGORIES = ["Food", "Laundry", "Cleaning", "Wellness", "Other"];
 
@@ -78,11 +78,24 @@ export default function AddServicePage() {
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    console.log("Saving service:", { ...formData, images });
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsSubmitting(false);
-    router.push("/hotel-services");
+    try {
+      const servicePayload = {
+        name: formData.name,
+        category: formData.category,
+        price: parseFloat(formData.price) || 0,
+        delivery_time: formData.deliveryTime,
+        description: formData.description,
+        images: images,
+        active_status: formData.activeStatus,
+      };
+
+      await vendorCreateService(servicePayload);
+      setIsSubmitting(false);
+      router.push("/hotel-services");
+    } catch (err) {
+      setIsSubmitting(false);
+      alert("Failed to save service: " + (err instanceof Error ? err.message : String(err)));
+    }
   };
 
   return (
@@ -166,7 +179,7 @@ export default function AddServicePage() {
                     value={formData.name}
                     onChange={handleInputChange}
                     placeholder="e.g. Afternoon High Tea"
-                    className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
+                    className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
                   />
                 </div>
                 <div className="space-y-3">
@@ -199,7 +212,7 @@ export default function AddServicePage() {
                       value={formData.price}
                       onChange={handleInputChange}
                       placeholder="0.00"
-                      className="w-full pl-16 pr-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
+                      className="w-full pl-16 pr-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
                     />
                   </div>
                 </div>
@@ -215,7 +228,7 @@ export default function AddServicePage() {
                       value={formData.deliveryTime}
                       onChange={handleInputChange}
                       placeholder="e.g. 20-30 MIN"
-                      className="w-full pl-16 pr-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
+                      className="w-full pl-16 pr-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
                     />
                   </div>
                 </div>
@@ -231,7 +244,7 @@ export default function AddServicePage() {
                   value={formData.description}
                   onChange={handleInputChange}
                   placeholder="Details about the service, inclusions, or requirements..."
-                  className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-[28px] text-sm font-bold text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all resize-none"
+                  className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-[28px] text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all resize-none"
                 />
               </div>
             </div>

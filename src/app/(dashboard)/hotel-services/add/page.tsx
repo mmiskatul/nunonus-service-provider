@@ -16,7 +16,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { uploadVendorFile } from "@/lib/vendor-api";
+import { uploadVendorFile, vendorCreateRoom } from "@/lib/vendor-api";
 
 const AMENITIES_OPTIONS = [
   "Free WiFi",
@@ -132,11 +132,32 @@ export default function AddRoomPage() {
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    console.log("Saving room:", { ...formData, selectedAmenities, images });
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsSubmitting(false);
-    router.push("/hotel-services");
+    try {
+      const roomPayload = {
+        name: formData.name,
+        size_sqm: parseInt(formData.size) || 30,
+        max_guests: parseInt(formData.maxGuests.replace(/\D/g, "")) || 2,
+        bed_type: formData.bedType,
+        number_of_beds: parseInt(formData.numberOfBeds) || 1,
+        description: formData.description,
+        base_price: parseFloat(formData.basePrice) || 0,
+        weekend_price: parseFloat(formData.weekendPrice) || 0,
+        default_discount_percent: parseFloat(formData.discount) || 0,
+        amenities: selectedAmenities,
+        images: images,
+        inventory_count: parseInt(formData.totalInventory) || 1,
+        min_stay_nights: parseInt(formData.minStay) || 1,
+        max_stay_nights: parseInt(formData.maxStay) || 30,
+        active_status: formData.activeStatus,
+      };
+
+      await vendorCreateRoom(roomPayload);
+      setIsSubmitting(false);
+      router.push("/hotel-services");
+    } catch (err) {
+      setIsSubmitting(false);
+      alert("Failed to save room: " + (err instanceof Error ? err.message : String(err)));
+    }
   };
 
   return (
@@ -219,7 +240,7 @@ export default function AddRoomPage() {
                     value={formData.name}
                     onChange={handleInputChange}
                     placeholder="e.g. Deluxe Ocean View Suite"
-                    className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
+                    className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
                   />
                 </div>
                 <div className="space-y-3">
@@ -232,7 +253,7 @@ export default function AddRoomPage() {
                     value={formData.size}
                     onChange={handleInputChange}
                     placeholder="45"
-                    className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
+                    className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
                   />
                 </div>
               </div>
@@ -278,7 +299,7 @@ export default function AddRoomPage() {
                     value={formData.numberOfBeds}
                     onChange={handleInputChange}
                     placeholder="1"
-                    className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
+                    className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
                   />
                 </div>
               </div>
@@ -293,7 +314,7 @@ export default function AddRoomPage() {
                   value={formData.description}
                   onChange={handleInputChange}
                   placeholder="Describe the room features, view, and unique selling points..."
-                  className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-[28px] text-sm font-bold text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all resize-none"
+                  className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-[28px] text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all resize-none"
                 />
               </div>
             </div>
@@ -346,7 +367,7 @@ export default function AddRoomPage() {
                   value={formData.basePrice}
                   onChange={handleInputChange}
                   placeholder="299.00"
-                  className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
+                  className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
                 />
               </div>
               <div className="space-y-3">
@@ -359,7 +380,7 @@ export default function AddRoomPage() {
                   value={formData.weekendPrice}
                   onChange={handleInputChange}
                   placeholder="349.00"
-                  className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
+                  className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
                 />
               </div>
               <div className="space-y-3">
@@ -372,7 +393,7 @@ export default function AddRoomPage() {
                   value={formData.discount}
                   onChange={handleInputChange}
                   placeholder="0"
-                  className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
+                  className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
                 />
               </div>
             </div>
@@ -555,7 +576,7 @@ export default function AddRoomPage() {
                     value={formData.totalInventory}
                     onChange={handleInputChange}
                     placeholder="12"
-                    className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
+                    className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
                   />
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
                     Number of rooms of this type available.
@@ -571,7 +592,7 @@ export default function AddRoomPage() {
                     value={formData.minStay}
                     onChange={handleInputChange}
                     placeholder="1"
-                    className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
+                    className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
                   />
                 </div>
                 <div className="space-y-3">
@@ -584,7 +605,7 @@ export default function AddRoomPage() {
                     value={formData.maxStay}
                     onChange={handleInputChange}
                     placeholder="30"
-                    className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
+                    className="w-full px-6 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
                   />
                 </div>
               </div>
