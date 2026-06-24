@@ -6,14 +6,17 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND_BASE =
-  process.env.NEXT_PUBLIC_AUTH_API_BASE ?? "http://localhost:8000";
-
-const V1 = `${BACKEND_BASE}/api/v1`;
+function getBackendBase(): string {
+  const value = process.env.NEXT_PUBLIC_AUTH_API_BASE?.trim();
+  if (!value) {
+    throw new Error("NEXT_PUBLIC_AUTH_API_BASE is not configured.");
+  }
+  return value.replace(/\/+$/, "");
+}
 
 export function backendUrl(path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`;
-  return `${V1}${normalized}`;
+  return `${getBackendBase()}/api/v1${normalized}`;
 }
 
 export function resolveAuthHeader(request: Request | NextRequest): string | null {

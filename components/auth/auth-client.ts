@@ -1,9 +1,7 @@
-const authBase = process.env.NEXT_PUBLIC_AUTH_API_BASE ?? "";
-
 type ApiResult<T> = { ok: boolean; data?: T; message?: string };
 
 async function postJson<T>(path: string, body: Record<string, unknown>): Promise<ApiResult<T>> {
-  const res = await fetch(`${authBase}${path}`, {
+  const res = await fetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)

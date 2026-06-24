@@ -4,9 +4,15 @@
  * Reads token from localStorage (set during login).
  */
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_AUTH_API_BASE ?? "http://localhost:8000";
-const V1 = `${API_BASE}/api/v1`;
+function getApiBase(): string {
+  const value = process.env.NEXT_PUBLIC_AUTH_API_BASE?.trim();
+  if (!value) {
+    throw new Error("NEXT_PUBLIC_AUTH_API_BASE is not configured.");
+  }
+  return value.replace(/\/+$/, "");
+}
+
+const V1 = `${getApiBase()}/api/v1`;
 const PA = `${V1}/platform-admin`;
 
 // ─── Token helpers ──────────────────────────────────────────────────────────
@@ -84,29 +90,29 @@ export interface AdminAuthResult {
   admin?: Record<string, unknown>;
 }
 
-export async function adminRequestCode(payload: { email?: string; phone?: string }) {
+export async function adminRequestCode(payload: { email_or_phone: string }) {
   return adminRequest(`${PA}/auth/register/request-code`, "POST", payload, false);
 }
 
 export async function adminVerifyRegisterCode(payload: {
-  email?: string;
-  phone?: string;
-  code: string;
+  email_or_phone: string;
+  validation_code: string;
 }) {
   return adminRequest(`${PA}/auth/register/verify-code`, "POST", payload, false);
 }
 
 export async function adminRegister(payload: {
-  token: string;
+  signup_token: string;
+  email_or_phone: string;
   full_name: string;
   password: string;
+  confirm_password: string;
 }) {
   return adminRequest<AdminAuthResult>(`${PA}/auth/register`, "POST", payload, false);
 }
 
 export async function adminLogin(payload: {
-  email?: string;
-  phone?: string;
+  email_or_phone: string;
   password: string;
 }) {
   const result = await adminRequest<AdminAuthResult>(
@@ -122,23 +128,22 @@ export async function adminLogin(payload: {
 }
 
 export async function adminForgotPasswordRequest(payload: {
-  email?: string;
-  phone?: string;
+  email_or_phone: string;
 }) {
   return adminRequest(`${PA}/auth/forgot-password/request`, "POST", payload, false);
 }
 
 export async function adminForgotPasswordVerifyCode(payload: {
-  email?: string;
-  phone?: string;
-  code: string;
+  email_or_phone: string;
+  validation_code: string;
 }) {
   return adminRequest(`${PA}/auth/forgot-password/verify-code`, "POST", payload, false);
 }
 
 export async function adminResetPassword(payload: {
-  token: string;
+  reset_token: string;
   new_password: string;
+  confirm_password: string;
 }) {
   return adminRequest(`${PA}/auth/forgot-password/reset`, "POST", payload, false);
 }

@@ -3,11 +3,15 @@
  * Covers all vendor blueprint endpoints.
  */
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+function getApiBaseUrl(): string {
+  const value = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  if (!value) {
+    throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured.");
+  }
+  return value.replace(/\/+$/, "");
+}
 
-
-const V = API_BASE_URL; // e.g. http://localhost:8000/api/v1
+const V = getApiBaseUrl();
 
 // ─── Token management ─────────────────────────────────────────────────────────
 
@@ -95,17 +99,15 @@ export interface VendorAuthResult {
 
 /** POST /vendor/auth/register/request-code */
 export async function vendorRequestRegisterCode(payload: {
-  phone?: string;
-  email?: string;
+  email_or_phone: string;
 }) {
   return vendorRequest(`/vendor/auth/register/request-code`, "POST", payload);
 }
 
 /** POST /vendor/auth/register/verify-code */
 export async function vendorVerifyRegisterCode(payload: {
-  phone?: string;
-  email?: string;
-  code: string;
+  email_or_phone: string;
+  validation_code: string;
 }) {
   return vendorRequest(`/vendor/auth/register/verify-code`, "POST", payload);
 }
@@ -138,17 +140,15 @@ export async function vendorLogin(payload: {
 
 /** POST /vendor/auth/forgot-password/request */
 export async function vendorForgotPasswordRequest(payload: {
-  email?: string;
-  phone?: string;
+  email_or_phone: string;
 }) {
   return vendorRequest(`/vendor/auth/forgot-password/request`, "POST", payload);
 }
 
 /** POST /vendor/auth/forgot-password/verify-code */
 export async function vendorForgotPasswordVerifyCode(payload: {
-  email?: string;
-  phone?: string;
-  code: string;
+  email_or_phone: string;
+  validation_code: string;
 }) {
   return vendorRequest(
     `/vendor/auth/forgot-password/verify-code`,
@@ -159,8 +159,9 @@ export async function vendorForgotPasswordVerifyCode(payload: {
 
 /** POST /vendor/auth/forgot-password/reset */
 export async function vendorResetPassword(payload: {
-  token: string;
+  reset_token: string;
   new_password: string;
+  confirm_password: string;
 }) {
   return vendorRequest(`/vendor/auth/forgot-password/reset`, "POST", payload);
 }
