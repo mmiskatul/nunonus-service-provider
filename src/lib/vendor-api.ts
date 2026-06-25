@@ -696,12 +696,12 @@ export async function vendorListNotifications(
   );
 }
 
-/** PATCH /vendor/notifications/:id/read */
+/** POST /vendor/notifications/:id/action */
 export async function vendorMarkNotificationRead(notificationId: string) {
   return vendorRequest<Record<string, unknown>>(
-    `/vendor/notifications/${notificationId}/read`,
-    "PATCH",
-    {},
+    `/vendor/notifications/${notificationId}/action`,
+    "POST",
+    { action: "read" },
   );
 }
 

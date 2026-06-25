@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { parse, isWithinInterval, startOfDay } from "date-fns";
 import { BookingsHeader } from "@/components/BookingsHeader";
 import { HotelBookingsTable } from "@/components/HotelBookingsTable";
@@ -9,217 +9,97 @@ import {
   HotelBookingDetailsModal,
 } from "@/components/HotelBookingDetailsModal";
 import { Pagination } from "@/components/Pagination";
+import { vendorListBookings } from "@/lib/vendor-api";
 
-const HOTEL_BOOKINGS: HotelBooking[] = [
-  {
-    id: "#BK-1029",
+const ITEMS_PER_PAGE = 10;
+
+function mapStatus(raw: string): HotelBooking["status"] {
+  const s = (raw ?? "").toLowerCase().trim();
+  if (s === "confirmed") return "CONFIRMED";
+  if (s === "pending") return "PENDING";
+  if (s === "cancelled" || s === "canceled") return "CANCELLED";
+  if (s === "check_in" || s === "check in") return "CHECK IN";
+  if (s === "complete" || s === "completed") return "COMPLETE";
+  return "PENDING";
+}
+
+function toHotelBooking(raw: Record<string, unknown>): HotelBooking {
+  const guests = raw.guests ?? raw.guest_count ?? raw.num_guests ?? 1;
+  const ratePerNight = Number(raw.rate_per_night ?? raw.base_price ?? raw.price_per_night ?? 0);
+  const totalAmount = Number(raw.total_amount ?? 0);
+  const serviceFee = Number(raw.service_fee ?? 0);
+  const tourismTax = Number(raw.tourism_tax ?? raw.tax ?? 0);
+  const nights = Number(raw.nights ?? raw.num_nights ?? 1);
+
+  return {
+    id: String(raw.booking_code ?? raw.id ?? "#—"),
     customer: {
-      name: "Eleanor Shellstrop",
-      avatar:
-        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop",
-      since: "2021",
+      name: String(raw.customer_name ?? "Guest"),
+      avatar: String(raw.customer_avatar ?? "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop"),
+      since: raw.customer_since ? String(raw.customer_since) : new Date().getFullYear().toString(),
     },
-    checkIn: "Feb 14, 2026",
-    checkOut: "Feb 17, 2026",
-    nights: 3,
-    roomType: "Deluxe King Room",
-    roomNumber: "Room 101",
-    ratePerNight: 280,
-    serviceFee: 110,
-    tourismTax: 50,
-    status: "CONFIRMED",
-    payment: "Unpaid",
-    phone: "+1 (555) 234-5678",
-    email: "eleanor@goodplace.com",
-    specialRequests:
-      "Prefer a room with a city view. Also, late check-in around 10:00 PM.",
-    guests: "2 Guests",
-  },
-  {
-    id: "#BK-1030",
-    customer: {
-      name: "Julian Casablancas",
-      avatar:
-        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&h=80&fit=crop",
-      since: "2020",
-    },
-    checkIn: "Feb 14, 2026",
-    checkOut: "Feb 17, 2026",
-    nights: 3,
-    roomType: "Deluxe King Room",
-    roomNumber: "Room 102",
-    ratePerNight: 280,
-    serviceFee: 110,
-    tourismTax: 50,
-    status: "PENDING",
-    payment: "Unpaid",
-    phone: "+1 (555) 555-0123",
-    email: "julian@strokes.com",
-    specialRequests: "Birthday celebration.",
-    guests: "1 Guest",
-  },
-  {
-    id: "#BK-1031",
-    customer: {
-      name: "Michael Scott",
-      avatar:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop",
-      since: "2022",
-    },
-    checkIn: "Feb 14, 2026",
-    checkOut: "Feb 17, 2026",
-    nights: 3,
-    roomType: "Deluxe King Room",
-    roomNumber: "Room 103",
-    ratePerNight: 280,
-    serviceFee: 110,
-    tourismTax: 50,
-    status: "CONFIRMED",
-    payment: "Unpaid",
-    phone: "+1 (555) 123-4567",
-    email: "michael@dundermifflin.com",
-    specialRequests: "Near elevator.",
-    guests: "2 Guests",
-  },
-  {
-    id: "#BK-1032",
-    customer: {
-      name: "Sarah Jenkins",
-      avatar:
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop",
-      since: "2023",
-    },
-    checkIn: "Feb 14, 2026",
-    checkOut: "Feb 17, 2026",
-    nights: 3,
-    roomType: "Deluxe King Room",
-    roomNumber: "Room 104",
-    ratePerNight: 280,
-    serviceFee: 110,
-    tourismTax: 50,
-    status: "CANCELLED",
-    payment: "Unpaid",
-    phone: "+1 (555) 987-6543",
-    email: "sarah@example.com",
-    specialRequests: "Quiet room.",
-    guests: "2 Guests",
-  },
-  {
-    id: "#BK-1033",
-    customer: {
-      name: "Sarah Jenkins",
-      avatar:
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop",
-      since: "2023",
-    },
-    checkIn: "Feb 14, 2026",
-    checkOut: "Feb 17, 2026",
-    nights: 3,
-    roomType: "Deluxe King Room",
-    roomNumber: "Room 105",
-    ratePerNight: 280,
-    serviceFee: 110,
-    tourismTax: 50,
-    status: "CHECK IN",
-    payment: "Paid",
-    phone: "+1 (555) 987-6543",
-    email: "sarah@example.com",
-    specialRequests: "None.",
-    guests: "1 Guest",
-  },
-  {
-    id: "#BK-1034",
-    customer: {
-      name: "Sarah Jenkins",
-      avatar:
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop",
-      since: "2023",
-    },
-    checkIn: "Feb 14, 2026",
-    checkOut: "Feb 17, 2026",
-    nights: 3,
-    roomType: "Deluxe King Room",
-    roomNumber: "Room 106",
-    ratePerNight: 280,
-    serviceFee: 110,
-    tourismTax: 50,
-    status: "COMPLETE",
-    payment: "Paid",
-    phone: "+1 (555) 987-6543",
-    email: "sarah@example.com",
-    specialRequests: "None.",
-    guests: "2 Guests",
-  },
-];
+    checkIn: String(raw.check_in_date ?? raw.scheduled_date ?? "—"),
+    checkOut: String(raw.check_out_date ?? "—"),
+    nights: nights || 1,
+    roomType: String(raw.room_type ?? raw.service ?? raw.listing_type ?? "Room"),
+    roomNumber: String(raw.room_number ?? raw.room_name ?? "—"),
+    ratePerNight: ratePerNight || (totalAmount - serviceFee - tourismTax) / (nights || 1),
+    serviceFee,
+    tourismTax,
+    status: mapStatus(String(raw.status ?? "")),
+    payment: (raw.payment_status === "paid" || raw.payment === "Paid") ? "Paid" : "Unpaid",
+    phone: String(raw.customer_phone ?? "—"),
+    email: String(raw.customer_email ?? "—"),
+    specialRequests: String(raw.special_requests ?? raw.notes ?? ""),
+    guests: `${guests} Guest${Number(guests) !== 1 ? "s" : ""}`,
+  };
+}
 
 export default function HotelBookingsPage() {
+  const [bookings, setBookings] = useState<HotelBooking[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
-  const [selectedBooking, setSelectedBooking] = useState<HotelBooking | null>(
-    null,
-  );
-  const [dateRange, setDateRange] = useState<{
-    start: Date | null;
-    end: Date | null;
-  }>({
+  const [selectedBooking, setSelectedBooking] = useState<HotelBooking | null>(null);
+  const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({
     start: null,
     end: null,
   });
 
-  const handleSearchChange = (query: string) => {
-    setSearchQuery(query);
-    setCurrentPage(1);
-  };
-
-  const handleStatusChange = (status: string) => {
-    setStatusFilter(status);
-    setCurrentPage(1);
-  };
-
-  const handleDateRangeChange = (range: {
-    start: Date | null;
-    end: Date | null;
-  }) => {
-    setDateRange(range);
-    setCurrentPage(1);
-  };
-
-  const filteredBookings = HOTEL_BOOKINGS.filter((booking) => {
-    const matchesSearch =
-      booking.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      booking.customer.name.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesStatus =
-      statusFilter === "All" || booking.status === statusFilter.toUpperCase();
-
-    let matchesDate = true;
-    if (dateRange.start && dateRange.end) {
-      const checkInDate = parse(booking.checkIn, "MMM dd, yyyy", new Date());
-      matchesDate = isWithinInterval(startOfDay(checkInDate), {
-        start: startOfDay(dateRange.start),
-        end: startOfDay(dateRange.end),
-      });
+  const fetchBookings = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params: Parameters<typeof vendorListBookings>[0] = {
+        limit: ITEMS_PER_PAGE,
+        skip: (currentPage - 1) * ITEMS_PER_PAGE,
+        search: searchQuery || undefined,
+        status: statusFilter !== "All" ? statusFilter : undefined,
+        date_from: dateRange.start ? dateRange.start.toISOString().split("T")[0] : undefined,
+        date_to: dateRange.end ? dateRange.end.toISOString().split("T")[0] : undefined,
+      };
+      const raw = await vendorListBookings(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined)) as typeof params,
+      ) as { items?: Record<string, unknown>[]; total?: number };
+      setBookings((raw?.items ?? []).map(toHotelBooking));
+      setTotal(raw?.total ?? 0);
+    } catch {
+      setBookings([]);
+    } finally {
+      setLoading(false);
     }
+  }, [currentPage, searchQuery, statusFilter, dateRange]);
 
-    return matchesSearch && matchesStatus && matchesDate;
-  });
+  useEffect(() => { void fetchBookings(); }, [fetchBookings]);
 
-  const totalItems = filteredBookings.length;
-  const itemsPerPage = 10;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
-  const handlePageChange = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
+  const handleSearchChange = (query: string) => { setSearchQuery(query); setCurrentPage(1); };
+  const handleStatusChange = (s: string) => { setStatusFilter(s); setCurrentPage(1); };
+  const handleDateRangeChange = (range: { start: Date | null; end: Date | null }) => {
+    setDateRange(range); setCurrentPage(1);
   };
-
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedBookings = filteredBookings.slice(
-    startIndex,
-    startIndex + itemsPerPage,
-  );
 
   return (
     <div className="min-h-screen p-4 md:p-10 overflow-x-hidden">
@@ -232,16 +112,21 @@ export default function HotelBookingsPage() {
           dateRange={dateRange}
           onDateRangeChange={handleDateRangeChange}
         />
-        <HotelBookingsTable
-          bookings={paginatedBookings}
-          onViewDetails={setSelectedBooking}
-        />
+
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <HotelBookingsTable bookings={bookings} onViewDetails={setSelectedBooking} />
+        )}
+
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
-          totalItems={totalItems}
-          itemsPerPage={itemsPerPage}
-          onPageChange={handlePageChange}
+          totalItems={total}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={(page) => { if (page >= 1 && page <= totalPages) setCurrentPage(page); }}
         />
       </div>
 

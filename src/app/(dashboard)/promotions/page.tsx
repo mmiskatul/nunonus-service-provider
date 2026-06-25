@@ -141,8 +141,11 @@ export default function PromotionsPage() {
 
   const fetchPromotions = useCallback(async () => {
     try {
-      const raw = await vendorListPromotions() as { items?: Record<string, unknown>[] };
-      const items = raw?.items ?? [];
+      const raw = await vendorListPromotions() as {
+        items?: Record<string, unknown>[];
+        business_promotions?: Record<string, unknown>[];
+      };
+      const items = raw?.business_promotions ?? raw?.items ?? [];
       const normalized: Promotion[] = items.map((p) => ({
         id: (p.id ?? p._id ?? "") as string,
         name: (p.name ?? p.title ?? "") as string,
