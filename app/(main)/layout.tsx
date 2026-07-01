@@ -17,7 +17,7 @@ export default function MainLayout({
     const token = getVendorToken();
     if (!token) {
       const currentPath = typeof window !== "undefined" ? window.location.pathname + window.location.search : "";
-      const redirectUrl = currentPath ? `/login?next=${encodeURIComponent(currentPath)}` : "/login";
+      const redirectUrl = currentPath ? `/auth/login?next=${encodeURIComponent(currentPath)}` : "/auth/login";
       router.replace(redirectUrl);
       return;
     }
