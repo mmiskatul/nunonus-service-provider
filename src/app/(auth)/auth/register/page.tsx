@@ -601,11 +601,11 @@ export default function RegisterPage() {
               />
               <span className="text-sm font-bold text-slate-500">
                 I agree to the{" "}
-                <Link href="#" className="text-[#1e2a5e] hover:underline">
+                <Link href="/auth/legal/terms" className="text-[#1e2a5e] hover:underline">
                   Terms of Service
                 </Link>{" "}
                 and{" "}
-                <Link href="#" className="text-[#1e2a5e] hover:underline">
+                <Link href="/auth/legal/privacy" className="text-[#1e2a5e] hover:underline">
                   Privacy Policy
                 </Link>
                 .

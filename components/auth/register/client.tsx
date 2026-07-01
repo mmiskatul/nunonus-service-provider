@@ -360,7 +360,17 @@ export function RegisterView() {
               onChange={handleInputChange}
               className="h-5 w-5 rounded-lg border-2 border-slate-200 text-[#c85b3b] focus:ring-[#c85b3b]"
             />
-            <span className="text-sm font-bold text-slate-500">I agree to the Terms of Service and Privacy Policy.</span>
+            <span className="text-sm font-bold text-slate-500">
+              I agree to the{" "}
+              <Link href="/auth/legal/terms" className="text-[#c85b3b] transition hover:underline">
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link href="/auth/legal/privacy" className="text-[#c85b3b] transition hover:underline">
+                Privacy Policy
+              </Link>
+              .
+            </span>
           </label>
 
           {submitMessage ? <p className="px-2 text-sm font-bold text-[#b24d30]">{submitMessage}</p> : null}

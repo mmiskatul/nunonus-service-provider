@@ -73,6 +73,29 @@ export async function vendorRequest<T>(
   return result;
 }
 
+export async function vendorPublicRequest<T>(path: string): Promise<T> {
+  const response = await fetch(`${V}${path}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+  });
+
+  const result = (await response.json().catch(() => ({}))) as T & {
+    detail?: string;
+    message?: string;
+  };
+
+  if (!response.ok) {
+    throw new Error(
+      (result as { detail?: string }).detail ||
+        (result as { message?: string }).message ||
+        `Request failed (${response.status})`,
+    );
+  }
+
+  return result;
+}
+
 function q(params: Record<string, unknown>): string {
   const entries = Object.entries(params).filter(
     ([, v]) => v !== null && v !== undefined && v !== "",
@@ -118,6 +141,11 @@ export async function vendorRegister(payload: Record<string, unknown>) {
 /** GET /vendor/auth/registration-status */
 export async function vendorGetRegistrationStatus() {
   return vendorRequest(`/vendor/auth/registration-status`);
+}
+
+/** GET /vendor/legal/:doc_type */
+export async function vendorGetPublicLegalDoc(docType: "terms" | "privacy") {
+  return vendorPublicRequest<Record<string, unknown>>(`/vendor/legal/${docType}`);
 }
 
 /** POST /vendor/auth/login */

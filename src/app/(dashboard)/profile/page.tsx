@@ -1,42 +1,124 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Header } from "@/components/Header";
 import {
   Camera,
   Lock,
   Headphones,
-  FileText,
-  Shield,
   ChevronRight,
   Save,
   MapPin,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { uploadVendorFile, vendorJson } from "@/lib/vendor-api";
+import {
+  uploadVendorFile,
+  vendorGetProfileSettings,
+  vendorUpdateProfileSettings,
+} from "@/lib/vendor-api";
+
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+
+function asText(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function asNumberText(value: unknown): string {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+  if (typeof value === "string" && value.trim()) {
+    return value;
+  }
+  return "";
+}
+
+function buildStaticMapUrl(latitude: string, longitude: string): string | null {
+  if (!GOOGLE_MAPS_API_KEY || !latitude || !longitude) {
+    return null;
+  }
+  const params = new URLSearchParams({
+    center: `${latitude},${longitude}`,
+    zoom: "15",
+    size: "1200x700",
+    scale: "2",
+    maptype: "roadmap",
+    key: GOOGLE_MAPS_API_KEY,
+  });
+  params.append("markers", `color:red|${latitude},${longitude}`);
+  return `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`;
+}
 
 export default function ProfilePage() {
   const [formData, setFormData] = useState({
-    businessName: "TechFlow Solutions",
-    category: "Retail",
-    email: "business@example.com",
-    phone: "+1 (555) 000-0000",
-    about:
-      "TechFlow Solutions is an industry-leading IT consulting firm dedicated to helping businesses leverage technology for sustainable growth. With over 10 years of experience, we provide end-to-end solutions in cloud architecture, network security, and custom software development. Our team of certified professionals ensures your infrastructure is robust, scalable, and secure.",
-    contactPhone: "+1 (555) 123-4567",
-    contactEmail: "hello@techflow.com",
-    website: "https://techflow.com",
-    address:
-      "123 Innovation Drive, Financial District, San Francisco, CA 94105",
+    businessName: "",
+    category: "Restaurant",
+    contactPhone: "",
+    contactEmail: "",
+    about: "",
+    website: "",
+    address: "",
+    latitude: "",
+    longitude: "",
+    locationLabel: "",
+    placeId: "",
     avatarUrl: "",
   });
   const [statusMessage, setStatusMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isResolvingLocation, setIsResolvingLocation] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadProfile() {
+      try {
+        const data = await vendorGetProfileSettings();
+        if (!mounted) {
+          return;
+        }
+        setFormData({
+          businessName: asText(data.business_name),
+          category: asText(data.category) || "Restaurant",
+          contactPhone: asText(data.phone_number),
+          contactEmail: asText(data.email_address),
+          about: asText(data.about_business),
+          website: asText(data.website),
+          address: asText(data.office_address),
+          latitude: asNumberText(data.latitude),
+          longitude: asNumberText(data.longitude),
+          locationLabel: asText(data.location_label),
+          placeId: asText(data.place_id),
+          avatarUrl: asText(data.avatar_url),
+        });
+      } catch (error) {
+        if (mounted) {
+          setStatusMessage(
+            error instanceof Error ? error.message : "Failed to load profile settings.",
+          );
+        }
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadProfile();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const staticMapUrl = useMemo(
+    () => buildStaticMapUrl(formData.latitude, formData.longitude),
+    [formData.latitude, formData.longitude],
+  );
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
     setStatusMessage("");
@@ -68,20 +150,78 @@ export default function ProfilePage() {
     }
   };
 
+  const handleResolveLocation = async () => {
+    if (!GOOGLE_MAPS_API_KEY) {
+      setStatusMessage("Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to the service-provider app.");
+      return;
+    }
+    if (!formData.address.trim()) {
+      setStatusMessage("Enter the business address before finding coordinates.");
+      return;
+    }
+
+    setIsResolvingLocation(true);
+    setStatusMessage("");
+
+    try {
+      const params = new URLSearchParams({
+        address: formData.address.trim(),
+        key: GOOGLE_MAPS_API_KEY,
+      });
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?${params.toString()}`,
+      );
+      const payload = (await response.json()) as {
+        status?: string;
+        results?: Array<{
+          formatted_address?: string;
+          place_id?: string;
+          geometry?: { location?: { lat?: number; lng?: number } };
+        }>;
+      };
+      const result = payload.results?.[0];
+      const location = result?.geometry?.location;
+
+      if (!response.ok || payload.status !== "OK" || !location) {
+        throw new Error("Google Maps could not find coordinates for this address.");
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        address: result.formatted_address || prev.address,
+        latitude: String(location.lat ?? ""),
+        longitude: String(location.lng ?? ""),
+        locationLabel: result.formatted_address || prev.locationLabel,
+        placeId: result.place_id || prev.placeId,
+      }));
+      setStatusMessage("Coordinates updated from the business address.");
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "Failed to resolve location.",
+      );
+    } finally {
+      setIsResolvingLocation(false);
+    }
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     setStatusMessage("");
 
     try {
-      await vendorJson("/vendor/settings/profile", "PATCH", {
-        business_name: formData.businessName,
-        category: formData.category,
-        email_address: formData.contactEmail,
-        phone_number: formData.contactPhone,
-        about_business: formData.about,
-        office_address: formData.address,
-        website: formData.website,
-        map_embed_url: null,
+      await vendorUpdateProfileSettings({
+        business_name: formData.businessName.trim(),
+        category: formData.category.trim(),
+        email_address: formData.contactEmail.trim(),
+        phone_number: formData.contactPhone.trim(),
+        about_business: formData.about.trim(),
+        office_address: formData.address.trim() || null,
+        latitude: formData.latitude.trim() ? Number(formData.latitude) : null,
+        longitude: formData.longitude.trim() ? Number(formData.longitude) : null,
+        location_label: formData.locationLabel.trim() || null,
+        place_id: formData.placeId.trim() || null,
+        website: formData.website.trim() || null,
+        map_embed_url: staticMapUrl,
         avatar_url: formData.avatarUrl || null,
       });
       setStatusMessage("Profile settings saved.");
@@ -93,6 +233,17 @@ export default function ProfilePage() {
       setIsSaving(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#f8fafc] flex flex-col">
+        <Header title="Business Profile" />
+        <main className="flex-1 grid place-items-center p-6">
+          <p className="text-sm font-bold text-slate-500">Loading profile...</p>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col">
@@ -111,7 +262,7 @@ export default function ProfilePage() {
             </div>
             <button
               onClick={handleSave}
-              disabled={isSaving || isUploadingAvatar}
+              disabled={isSaving || isUploadingAvatar || isResolvingLocation}
               className="px-8 py-3.5 bg-[#1e2a5e] hover:bg-[#1a234d] disabled:opacity-60 text-white rounded-[24px] text-sm font-black flex items-center gap-2 shadow-xl shadow-[#1e2a5e]/20 transition-all"
             >
               <Save className="h-4 w-4" />
@@ -124,7 +275,6 @@ export default function ProfilePage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
-              {/* Profile Card */}
               <div className="bg-white rounded-[40px] p-10 shadow-sm border border-slate-100">
                 <div className="flex flex-col items-center mb-10">
                   <div className="relative group">
@@ -177,43 +327,21 @@ export default function ProfilePage() {
                     <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-4">
                       Category
                     </label>
-                    <select className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-[24px] focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-sm font-bold text-slate-700 appearance-none">
+                    <select
+                      name="category"
+                      value={formData.category}
+                      onChange={handleInputChange}
+                      className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-[24px] focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-sm font-bold text-slate-700 appearance-none"
+                    >
                       <option>Retail</option>
                       <option>Restaurant</option>
                       <option>Hotel</option>
                       <option>Spa & Wellness</option>
                     </select>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-4">
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-[24px] focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-sm font-bold text-slate-700"
-                      placeholder="business@example.com"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-4">
-                      Phone Number
-                    </label>
-                    <input
-                      type="text"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-[24px] focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-sm font-bold text-slate-700"
-                      placeholder="+1 (555) 000-0000"
-                    />
-                  </div>
                 </div>
               </div>
 
-              {/* About Section */}
               <div className="bg-white rounded-[40px] p-10 shadow-sm border border-slate-100">
                 <div className="mb-8">
                   <h3 className="text-xl font-black text-slate-800 mb-1">
@@ -221,32 +349,16 @@ export default function ProfilePage() {
                   </h3>
                 </div>
 
-                <div className="bg-slate-50/50 border border-slate-100 rounded-[32px] overflow-hidden">
-                  <div className="px-6 py-3 border-b border-slate-100 flex items-center gap-4 text-slate-400">
-                    <button className="hover:text-slate-800 font-serif font-black">
-                      B
-                    </button>
-                    <button className="hover:text-slate-800 italic font-serif">
-                      I
-                    </button>
-                    <button className="hover:text-slate-800 text-lg leading-none transition-transform hover:scale-110">
-                      •
-                    </button>
-                    <button className="hover:text-slate-800 text-lg leading-none transition-transform hover:scale-110">
-                      ∞
-                    </button>
-                  </div>
-                  <textarea
-                    name="about"
-                    value={formData.about}
-                    onChange={handleInputChange}
-                    rows={6}
-                    className="w-full p-8 bg-transparent focus:outline-none text-sm font-bold text-slate-500 leading-relaxed resize-none"
-                  />
-                </div>
+                <textarea
+                  name="about"
+                  value={formData.about}
+                  onChange={handleInputChange}
+                  rows={6}
+                  className="w-full p-8 bg-slate-50/50 border border-slate-100 rounded-[32px] focus:outline-none text-sm font-bold text-slate-500 leading-relaxed resize-none"
+                  placeholder="Describe the business, the experience, and the services you provide."
+                />
               </div>
 
-              {/* Contact & Location */}
               <div className="bg-white rounded-[40px] p-10 shadow-sm border border-slate-100">
                 <div className="mb-8">
                   <h3 className="text-xl font-black text-slate-800 mb-1">
@@ -266,6 +378,7 @@ export default function ProfilePage() {
                         value={formData.contactPhone}
                         onChange={handleInputChange}
                         className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-[24px] transition-all text-sm font-bold text-slate-700"
+                        placeholder="+1 (555) 000-0000"
                       />
                     </div>
                     <div className="space-y-2">
@@ -278,6 +391,7 @@ export default function ProfilePage() {
                         value={formData.contactEmail}
                         onChange={handleInputChange}
                         className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-[24px] transition-all text-sm font-bold text-slate-700"
+                        placeholder="business@example.com"
                       />
                     </div>
                     <div className="space-y-2">
@@ -290,41 +404,113 @@ export default function ProfilePage() {
                         value={formData.website}
                         onChange={handleInputChange}
                         className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-[24px] transition-all text-sm font-bold text-slate-700"
+                        placeholder="https://example.com"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-6">
                     <div className="space-y-2">
-                      <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-4 font-bold">
+                      <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-4">
                         Office Address
                       </label>
-                      <div className="p-6 bg-slate-50/50 border border-slate-100 rounded-[24px]">
-                        <p className="text-sm font-bold text-slate-600 leading-relaxed">
-                          {formData.address}
-                        </p>
+                      <textarea
+                        name="address"
+                        value={formData.address}
+                        onChange={handleInputChange}
+                        rows={4}
+                        className="w-full p-6 bg-slate-50/50 border border-slate-100 rounded-[24px] focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-sm font-bold text-slate-700 resize-none"
+                        placeholder="Enter the full business address"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-4">
+                        Location Label
+                      </label>
+                      <input
+                        type="text"
+                        name="locationLabel"
+                        value={formData.locationLabel}
+                        onChange={handleInputChange}
+                        className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-[24px] transition-all text-sm font-bold text-slate-700"
+                        placeholder="e.g. West Bay, Doha"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-4">
+                          Latitude
+                        </label>
+                        <input
+                          type="text"
+                          name="latitude"
+                          value={formData.latitude}
+                          onChange={handleInputChange}
+                          className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-[24px] transition-all text-sm font-bold text-slate-700"
+                          placeholder="25.2854"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-4">
+                          Longitude
+                        </label>
+                        <input
+                          type="text"
+                          name="longitude"
+                          value={formData.longitude}
+                          onChange={handleInputChange}
+                          className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-[24px] transition-all text-sm font-bold text-slate-700"
+                          placeholder="51.5310"
+                        />
                       </div>
                     </div>
 
-                    <div className="relative group rounded-[32px] overflow-hidden bg-slate-100 aspect-video flex items-center justify-center">
-                      <img
-                        src="https://images.unsplash.com/photo-1524661135-423995f22d0b?w=800&q=80"
-                        className="absolute inset-0 w-full h-full object-cover opacity-60 grayscale"
-                        alt="Map"
+                    <button
+                      type="button"
+                      onClick={handleResolveLocation}
+                      disabled={isResolvingLocation}
+                      className="w-full px-5 py-3 bg-[#1e2a5e] hover:bg-[#1a234d] disabled:opacity-60 text-white rounded-[18px] text-sm font-black transition-all"
+                    >
+                      {isResolvingLocation ? "Finding coordinates..." : "Use address to find coordinates"}
+                    </button>
+
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-4">
+                        Google Place ID
+                      </label>
+                      <input
+                        type="text"
+                        name="placeId"
+                        value={formData.placeId}
+                        onChange={handleInputChange}
+                        className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-[24px] transition-all text-sm font-bold text-slate-700"
+                        placeholder="Auto-filled after location lookup"
                       />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <MapPin className="h-8 w-8 text-[#1e2a5e]" />
-                      </div>
-                      <button className="absolute bottom-4 right-4 px-4 py-2 bg-white text-[10px] font-black text-slate-800 rounded-xl shadow-lg hover:bg-[#1e2a5e] hover:text-white transition-all">
-                        Expand Map
-                      </button>
+                    </div>
+
+                    <div className="relative group rounded-[32px] overflow-hidden bg-slate-100 aspect-video flex items-center justify-center">
+                      {staticMapUrl ? (
+                        <img
+                          src={staticMapUrl}
+                          className="absolute inset-0 w-full h-full object-cover"
+                          alt="Business location map"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-100">
+                          <MapPin className="h-8 w-8 text-[#1e2a5e]" />
+                          <p className="px-6 text-center text-xs font-bold text-slate-500">
+                            Add coordinates to preview the business location on the map.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Sidebar Settings */}
             <div className="space-y-8">
               <div className="bg-white rounded-[40px] p-8 shadow-sm border border-slate-100">
                 <h3 className="text-lg font-black text-slate-800 mb-6 px-4">
