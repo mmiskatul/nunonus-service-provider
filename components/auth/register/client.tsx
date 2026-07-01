@@ -89,6 +89,9 @@ function getErrorMessage(error: unknown, fallback: string) {
   try {
     const parsed = JSON.parse(error.message) as ApiErrorResponse;
     if (typeof parsed.detail === "string" && parsed.detail.trim()) {
+      if (parsed.detail === "Invalid phone number format." || parsed.detail === "phone must be a phone number.") {
+        return "Phone number must be 8 to 15 digits and can start with +.";
+      }
       return parsed.detail;
     }
     if (Array.isArray(parsed.detail) && parsed.detail[0]?.msg) {
@@ -102,6 +105,10 @@ function getErrorMessage(error: unknown, fallback: string) {
   }
 
   return fallback;
+}
+
+function normalizePhone(value: string) {
+  return value.replace(/[\s().-]/g, "").trim();
 }
 
 async function getExistingVendorMessage(emailOrPhone: string): Promise<string> {
@@ -146,6 +153,12 @@ function validateRegisterForm(formData: RegisterFormData) {
   if (formData.businessName.trim().length < 2) return "Business name must be at least 2 characters.";
   if (formData.ownerFullName.trim().length < 2) return "Owner full name must be at least 2 characters.";
   if (!formData.email.trim()) return "Email address is required.";
+  if (formData.phone.trim()) {
+    const normalizedPhone = normalizePhone(formData.phone);
+    if (!/^\+?\d{8,15}$/.test(normalizedPhone)) {
+      return "Phone number must be 8 to 15 digits and can start with +.";
+    }
+  }
   if (formData.password.length < 8) return "Password must be at least 8 characters.";
   if (formData.address.trim().length < 5) return "Address must be at least 5 characters.";
   if (formData.city.trim().length < 2) return "City must be at least 2 characters.";
@@ -333,6 +346,7 @@ export function RegisterView() {
     setShowAccountHelp(false);
 
     try {
+      const normalizedPhone = normalizePhone(formData.phone);
       const requestCodeResult = await postJson<{ validation_code?: string | null }>("/vendor/auth/register/request-code", {
         email_or_phone: formData.email.trim(),
       });
@@ -343,7 +357,7 @@ export function RegisterView() {
           business_name: formData.businessName.trim(),
           owner_full_name: formData.ownerFullName.trim(),
           email_or_phone: formData.email.trim(),
-          phone: formData.phone.trim() || null,
+          phone: normalizedPhone || null,
           address: formData.address.trim(),
           city: formData.city.trim(),
           website: formData.website.trim() || null,

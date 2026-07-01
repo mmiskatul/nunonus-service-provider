@@ -146,6 +146,7 @@ function VerifyCodeInner() {
   }, [mode, router]);
 
   const handleChange = (index: number, value: string) => {
+    value = value.replace(/\D/g, "");
     if (value.length > 1) value = value[0];
     const newOtp = [...otp];
     newOtp[index] = value;
@@ -160,6 +161,25 @@ function VerifyCodeInner() {
   const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
     if (e.key === "Backspace" && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, otp.length);
+    if (!pasted) {
+      return;
+    }
+
+    e.preventDefault();
+    const nextOtp = Array(otp.length).fill("");
+    pasted.split("").forEach((digit, index) => {
+      nextOtp[index] = digit;
+    });
+    setOtp(nextOtp);
+
+    const focusIndex = Math.min(pasted.length, otp.length) - 1;
+    if (focusIndex >= 0) {
+      inputRefs.current[focusIndex]?.focus();
     }
   };
 
@@ -293,6 +313,7 @@ function VerifyCodeInner() {
                 }}
                 onChange={(e) => handleChange(i, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(i, e)}
+                onPaste={handlePaste}
                 className="w-[72px] h-[72px] bg-white border-2 border-slate-100 rounded-2xl text-center text-3xl font-black text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e] transition-all"
               />
             ))}

@@ -116,6 +116,25 @@ export function VerifyCodeView() {
     }
   };
 
+  const handlePaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
+    const pasted = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, codeLength);
+    if (!pasted) {
+      return;
+    }
+
+    event.preventDefault();
+    const next = Array(codeLength).fill("");
+    pasted.split("").forEach((digit, index) => {
+      next[index] = digit;
+    });
+    setValues(next);
+
+    const focusIndex = Math.min(pasted.length, codeLength) - 1;
+    if (focusIndex >= 0) {
+      inputsRef.current[focusIndex]?.focus();
+    }
+  };
+
   const handleKeyDown = (index: number, event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Backspace" && !values[index] && index > 0) {
       inputsRef.current[index - 1]?.focus();
@@ -250,6 +269,7 @@ export function VerifyCodeView() {
             value={value}
             onChange={(event) => handleChange(index, event.target.value)}
             onKeyDown={(event) => handleKeyDown(index, event)}
+            onPaste={handlePaste}
             maxLength={1}
             className={`h-12 w-12 rounded-xl border text-center text-[18px] font-bold ${
               value ? "border-[#1f3d8f]" : "border-[#e6ecf7]"
