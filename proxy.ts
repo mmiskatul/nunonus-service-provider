@@ -3,6 +3,8 @@ import type { NextRequest } from "next/server";
 
 const publicPaths = [
   "/login",
+  "/register",
+  "/registration-submitted",
   "/forgot-password",
   "/verify-code",
   "/reset-password",

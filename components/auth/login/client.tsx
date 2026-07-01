@@ -53,6 +53,13 @@ export function LoginView() {
         Log in to manage bookings, services, and daily operations from one place.
       </p>
 
+      <p className="mt-3 text-sm text-[#866c62]">
+        New partner?{" "}
+        <Link href="/register" className="font-semibold text-[#c85b3b] transition hover:text-[#a94729]">
+          Create your business account
+        </Link>
+      </p>
+
       <div className="mt-7 space-y-5">
         <div>
           <label className="ml-1 text-[11px] font-bold uppercase tracking-[0.2em] text-[#5c433a]">Email</label>
