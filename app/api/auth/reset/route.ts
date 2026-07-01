@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 
+const DEFAULT_BACKEND_BASE_URL = "https://nunos-backend.vercel.app";
+
 function getBackendBaseUrl() {
-  const value = process.env.NEXT_PUBLIC_AUTH_API_BASE?.trim();
-  if (!value) {
-    throw new Error("NEXT_PUBLIC_AUTH_API_BASE is not configured.");
-  }
-  return value.replace(/\/+$/, "");
+  return (process.env.NEXT_PUBLIC_AUTH_API_BASE?.trim() || DEFAULT_BACKEND_BASE_URL).replace(/\/+$/, "");
 }
 
 export async function POST(request: Request) {
@@ -15,7 +13,7 @@ export async function POST(request: Request) {
     const resetToken = request.headers.get("cookie")
       ?.split(";")
       .map((part) => part.trim())
-      .find((part) => part.startsWith("nunos_dashboard_reset_token="))
+      .find((part) => part.startsWith("nunos_vendor_reset_token="))
       ?.split("=")[1];
 
     if (!password) {
@@ -25,7 +23,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: "Verification required." }, { status: 401 });
     }
 
-    const response = await fetch(`${getBackendBaseUrl()}/api/v1/platform-admin/auth/forgot-password/reset`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/v1/vendor/auth/forgot-password/reset`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -44,7 +42,7 @@ export async function POST(request: Request) {
     }
 
     const nextResponse = NextResponse.json({ ok: true }, { status: 200 });
-    nextResponse.cookies.set("nunos_dashboard_reset_token", "", {
+    nextResponse.cookies.set("nunos_vendor_reset_token", "", {
       httpOnly: true,
       sameSite: "lax",
       path: "/",

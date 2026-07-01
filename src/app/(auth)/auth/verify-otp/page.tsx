@@ -35,12 +35,10 @@ type ApiErrorResponse = {
   message?: string;
 };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim()?.replace(/\/+$/, "");
+const DEFAULT_BACKEND_BASE_URL = "https://nunos-backend.vercel.app";
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || DEFAULT_BACKEND_BASE_URL).replace(/\/+$/, "");
 
 function getApiBaseUrl(): string {
-  if (!API_BASE_URL) {
-    throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured.");
-  }
   return API_BASE_URL;
 }
 

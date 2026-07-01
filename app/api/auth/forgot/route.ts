@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 
+const DEFAULT_BACKEND_BASE_URL = "https://nunos-backend.vercel.app";
+
 function getBackendBaseUrl() {
-  const value = process.env.NEXT_PUBLIC_AUTH_API_BASE?.trim();
-  if (!value) {
-    throw new Error("NEXT_PUBLIC_AUTH_API_BASE is not configured.");
-  }
-  return value.replace(/\/+$/, "");
+  return (process.env.NEXT_PUBLIC_AUTH_API_BASE?.trim() || DEFAULT_BACKEND_BASE_URL).replace(/\/+$/, "");
 }
 
 export async function POST(request: Request) {
@@ -17,7 +15,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: "Email required." }, { status: 400 });
     }
 
-    const response = await fetch(`${getBackendBaseUrl()}/api/v1/platform-admin/auth/forgot-password/request`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/v1/vendor/auth/forgot-password/request`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email_or_phone: email }),

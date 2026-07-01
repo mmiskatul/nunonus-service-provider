@@ -4,12 +4,10 @@
  * Reads token from localStorage (set during login).
  */
 
+const DEFAULT_BACKEND_BASE_URL = "https://nunos-backend.vercel.app";
+
 function getApiBase(): string {
-  const value = process.env.NEXT_PUBLIC_AUTH_API_BASE?.trim();
-  if (!value) {
-    throw new Error("NEXT_PUBLIC_AUTH_API_BASE is not configured.");
-  }
-  return value.replace(/\/+$/, "");
+  return (process.env.NEXT_PUBLIC_AUTH_API_BASE?.trim() || DEFAULT_BACKEND_BASE_URL).replace(/\/+$/, "");
 }
 
 const V1 = `${getApiBase()}/api/v1`;

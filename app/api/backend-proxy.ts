@@ -1,17 +1,15 @@
 /**
  * backend-proxy.ts
  * Helper to proxy Next.js API route requests to the FastAPI backend.
- * Forwards Authorization headers or falls back to nunos_dashboard_access_token cookie.
+ * Forwards Authorization headers or falls back to nunos_vendor_access_token cookie.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 
+const DEFAULT_BACKEND_BASE_URL = "https://nunos-backend.vercel.app";
+
 function getBackendBase(): string {
-  const value = process.env.NEXT_PUBLIC_AUTH_API_BASE?.trim();
-  if (!value) {
-    throw new Error("NEXT_PUBLIC_AUTH_API_BASE is not configured.");
-  }
-  return value.replace(/\/+$/, "");
+  return (process.env.NEXT_PUBLIC_AUTH_API_BASE?.trim() || DEFAULT_BACKEND_BASE_URL).replace(/\/+$/, "");
 }
 
 export function backendUrl(path: string): string {
@@ -24,13 +22,13 @@ export function resolveAuthHeader(request: Request | NextRequest): string | null
   if (auth) return auth;
 
   const cookieHeader = request.headers.get("cookie") || "";
-  const match = cookieHeader.match(/nunos_dashboard_access_token=([^;]+)/);
+  const match = cookieHeader.match(/nunos_vendor_access_token=([^;]+)/);
   if (match && match[1]) {
     return `Bearer ${decodeURIComponent(match[1])}`;
   }
 
   if ("cookies" in request && typeof (request as any).cookies?.get === "function") {
-    const token = (request as any).cookies.get("nunos_dashboard_access_token")?.value;
+    const token = (request as any).cookies.get("nunos_vendor_access_token")?.value;
     if (token) {
       return `Bearer ${token}`;
     }
