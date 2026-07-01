@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { User, MapPin, FileText, Upload, ChevronDown } from "lucide-react";
+import { vendorGetPublicLegalDoc } from "@/lib/vendor-api";
+import AuthFeedbackModal from "@/components/auth/auth-feedback-modal";
 
 type RegisterFormData = {
   businessName: string;
@@ -25,15 +27,18 @@ type ApiErrorResponse = {
   message?: string;
 };
 
-type LegalDocResponse = {
-  title?: string;
+type VendorRegistrationStatusResponse = {
+  status?: string;
+  kyc_status?: string;
+  rejection_reason?: string | null;
 };
 
 const DEFAULT_BACKEND_BASE_URL = "https://nunos-backend.vercel.app";
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || DEFAULT_BACKEND_BASE_URL).replace(/\/+$/, "");
+const API_V1_BASE_URL = `${API_BASE_URL}/api/v1`;
 
 function getApiBaseUrl(): string {
-  return API_BASE_URL;
+  return API_V1_BASE_URL;
 }
 
 const initialFormData: RegisterFormData = {
@@ -96,6 +101,44 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+async function getExistingVendorMessage(emailOrPhone: string): Promise<string> {
+  try {
+    const response = await fetch(
+      `${getApiBaseUrl()}/vendor/auth/registration-status?email_or_phone=${encodeURIComponent(emailOrPhone)}`,
+      {
+        method: "GET",
+      },
+    );
+
+    if (!response.ok) {
+      return "This email already exists. Please log in or use forgot password instead.";
+    }
+
+    const payload = (await response.json()) as VendorRegistrationStatusResponse;
+    const status = (payload.status || "").toLowerCase();
+
+    if (status === "pending_approval") {
+      return "This service provider account already exists and is pending admin approval.";
+    }
+
+    if (status === "approved") {
+      return "This email is already registered as a service provider. Please log in instead.";
+    }
+
+    if (status === "rejected") {
+      return "This service provider account was rejected. Please contact support before registering again.";
+    }
+
+    if (status === "blocked") {
+      return "This service provider account is blocked. Please contact support.";
+    }
+  } catch {
+    return "This email already exists. Please log in or use forgot password instead.";
+  }
+
+  return "This email already exists. Please log in or use forgot password instead.";
+}
+
 function validateRegisterForm(formData: RegisterFormData) {
   if (formData.businessName.trim().length < 2) {
     return "Business name must be at least 2 characters.";
@@ -129,18 +172,10 @@ function validateRegisterForm(formData: RegisterFormData) {
 }
 
 async function getPublicLegalDocTitle(docType: "terms" | "privacy") {
-  const response = await fetch(`${getApiBaseUrl()}/api/v1/vendor/legal/${docType}`, {
-    method: "GET",
-    headers: { "Content-Type": "application/json" },
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to load ${docType} title.`);
-  }
-
-  const payload = (await response.json()) as LegalDocResponse;
-  return payload.title || defaultLegalLabels[docType];
+  const payload = await vendorGetPublicLegalDoc(docType);
+  return (typeof payload.title === "string" && payload.title.trim())
+    ? payload.title
+    : defaultLegalLabels[docType];
 }
 
 async function postJson<T>(path: string, body: Record<string, unknown>): Promise<T> {
@@ -194,6 +229,7 @@ export default function RegisterPage() {
   const [formData, setFormData] = useState(initialFormData);
   const [legalLabels, setLegalLabels] = useState(defaultLegalLabels);
   const [submitMessage, setSubmitMessage] = useState("");
+  const [showAccountHelp, setShowAccountHelp] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tradeLicenseDocumentName, setTradeLicenseDocumentName] = useState("");
   const [ownerIdDocumentName, setOwnerIdDocumentName] = useState("");
@@ -241,6 +277,7 @@ export default function RegisterPage() {
     const { name } = e.target;
 
     setSubmitMessage("");
+    setShowAccountHelp(false);
 
     if (name === "agreeToTerms" && e.target instanceof HTMLInputElement) {
       const inputEl = e.target;
@@ -339,6 +376,7 @@ export default function RegisterPage() {
 
     setIsSubmitting(true);
     setSubmitMessage("");
+    setShowAccountHelp(false);
 
     try {
       const requestCodeResult = await postJson<{
@@ -370,44 +408,79 @@ export default function RegisterPage() {
         `/auth/verify-otp?mode=register&contact=${encodeURIComponent(formData.email.trim())}`,
       );
     } catch (error) {
-      setSubmitMessage(getErrorMessage(error, "Registration failed."));
+      const errorMessage = getErrorMessage(error, "Registration failed.");
+
+      if (errorMessage === "This email is already in use by another account.") {
+        setShowAccountHelp(true);
+        setSubmitMessage(await getExistingVendorMessage(formData.email.trim()));
+      } else {
+        setSubmitMessage(errorMessage);
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f4f6] flex flex-col items-center py-12 px-6">
-      <div className="w-full max-w-[800px] flex items-center justify-between mb-12">
-        <div className="h-10 w-10 bg-[#1e2a5e] rounded-xl flex items-center justify-center">
-          <div className="h-5 w-5 bg-white rounded-sm transform rotate-45" />
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-slate-500">
-            Already have an account?
-          </span>
-          <Link
-            href="/auth/login"
-            className="bg-[#1e2a5e] text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg shadow-[#1e2a5e]/20 hover:bg-[#1a2552] transition-all"
-          >
-            Log in
-          </Link>
-        </div>
-      </div>
+    <>
+      <AuthFeedbackModal
+        message={submitMessage}
+        onClose={() => {
+          setSubmitMessage("");
+          setShowAccountHelp(false);
+        }}
+        title={showAccountHelp ? "Registration blocked" : "Please check this"}
+        actions={
+          showAccountHelp ? (
+            <>
+              <Link
+                href="/auth/login"
+                className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/auth/forgot-password"
+                className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+              >
+                Reset password
+              </Link>
+            </>
+          ) : undefined
+        }
+      />
 
-      <div className="w-full max-w-[800px] space-y-12">
-        <div className="text-left">
-          <h1 className="text-4xl font-black text-slate-800 tracking-tight">
-            Register Your Business
-          </h1>
-          <p className="text-base text-slate-400 mt-2 font-medium">
-            Join our platform and reach more customers with our enterprise
-            tools.
-          </p>
+      <div className="min-h-screen bg-[#f3f4f6] flex flex-col items-center py-12 px-6">
+        <div className="w-full max-w-[800px] flex items-center justify-between mb-12">
+          <div className="h-10 w-10 bg-[#1e2a5e] rounded-xl flex items-center justify-center">
+            <div className="h-5 w-5 bg-white rounded-sm transform rotate-45" />
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-slate-500">
+              Already have an account?
+            </span>
+            <Link
+              href="/auth/login"
+              className="bg-[#1e2a5e] text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg shadow-[#1e2a5e]/20 hover:bg-[#1a2552] transition-all"
+            >
+              Log in
+            </Link>
+          </div>
         </div>
 
-        <form className="space-y-8" onSubmit={handleSubmit}>
-          <div className="bg-white rounded-[32px] p-8 md:p-10 shadow-xl shadow-slate-200/40 border border-slate-50">
+        <div className="w-full max-w-[800px] space-y-12">
+          <div className="text-left">
+            <h1 className="text-4xl font-black text-slate-800 tracking-tight">
+              Register Your Business
+            </h1>
+            <p className="text-base text-slate-400 mt-2 font-medium">
+              Join our platform and reach more customers with our enterprise
+              tools.
+            </p>
+          </div>
+
+          <form className="space-y-8" onSubmit={handleSubmit}>
+            <div className="bg-white rounded-[32px] p-8 md:p-10 shadow-xl shadow-slate-200/40 border border-slate-50">
             <div className="flex items-center gap-3 mb-8">
               <div className="h-10 w-10 bg-indigo-50 rounded-xl flex items-center justify-center text-[#1e2a5e]">
                 <User className="h-5 w-5" />
@@ -646,56 +719,51 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          <div className="space-y-8 pt-4">
-            <div className="flex items-start gap-3 group px-2">
-              <input
-                id="agreeToTerms"
-                type="checkbox"
-                name="agreeToTerms"
-                checked={formData.agreeToTerms}
-                onChange={handleInputChange}
-                className="h-5 w-5 rounded-lg border-2 border-slate-200 text-[#1e2a5e] focus:ring-[#1e2a5e] cursor-pointer"
-              />
-              <p className="text-sm font-bold text-slate-500">
-                <label htmlFor="agreeToTerms" className="cursor-pointer">
-                  I agree to the{" "}
-                </label>
-                <Link href="/auth/legal/terms" className="text-[#1e2a5e] hover:underline">
-                  {legalLabels.terms}
-                </Link>{" "}
-                and{" "}
-                <Link href="/auth/legal/privacy" className="text-[#1e2a5e] hover:underline">
-                  {legalLabels.privacy}
-                </Link>
-                .
-              </p>
+            <div className="space-y-8 pt-4">
+              <div className="flex items-start gap-3 group px-2">
+                <input
+                  id="agreeToTerms"
+                  type="checkbox"
+                  name="agreeToTerms"
+                  checked={formData.agreeToTerms}
+                  onChange={handleInputChange}
+                  className="h-5 w-5 rounded-lg border-2 border-slate-200 text-[#1e2a5e] focus:ring-[#1e2a5e] cursor-pointer"
+                />
+                <p className="text-sm font-bold text-slate-500">
+                  <label htmlFor="agreeToTerms" className="cursor-pointer">
+                    I agree to the{" "}
+                  </label>
+                  <Link href="/legal/terms" className="font-black !text-blue-700 underline transition hover:!text-blue-800">
+                    <span className="!text-blue-700">{legalLabels.terms}</span>
+                  </Link>{" "}
+                  and{" "}
+                  <Link href="/legal/privacy" className="font-black !text-blue-700 underline transition hover:!text-blue-800">
+                    <span className="!text-blue-700">{legalLabels.privacy}</span>
+                  </Link>
+                  .
+                </p>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-[#1e2a5e] hover:bg-[#1a2552] disabled:opacity-60 text-white py-5 rounded-[24px] text-lg font-bold shadow-2xl shadow-[#1e2a5e]/30 transition-all active:scale-[0.98]"
+              >
+                {isSubmitting ? "Creating Account..." : "Create Account"}
+              </button>
+
+              <div className="text-center">
+                <p className="text-sm font-bold text-slate-400">
+                  Need help?{" "}
+                  <Link href="#" className="text-[#1e2a5e] hover:underline">
+                    Contact Support
+                  </Link>
+                </p>
+              </div>
             </div>
-
-            {submitMessage ? (
-              <p className="text-sm font-bold text-[#1e2a5e] px-2">
-                {submitMessage}
-              </p>
-            ) : null}
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-[#1e2a5e] hover:bg-[#1a2552] disabled:opacity-60 text-white py-5 rounded-[24px] text-lg font-bold shadow-2xl shadow-[#1e2a5e]/30 transition-all active:scale-[0.98]"
-            >
-              {isSubmitting ? "Creating Account..." : "Create Account"}
-            </button>
-
-            <div className="text-center">
-              <p className="text-sm font-bold text-slate-400">
-                Need help?{" "}
-                <Link href="#" className="text-[#1e2a5e] hover:underline">
-                  Contact Support
-                </Link>
-              </p>
-            </div>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

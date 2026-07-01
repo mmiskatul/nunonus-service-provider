@@ -3,12 +3,21 @@ import type { NextRequest } from "next/server";
 
 const publicPaths = [
   "/login",
+  "/auth/login",
   "/register",
+  "/auth/register",
   "/registration-submitted",
+  "/auth/registration-submitted",
   "/forgot-password",
+  "/auth/forgot-password",
   "/verify-code",
+  "/auth/verify-code",
   "/reset-password",
-  "/password-changed"
+  "/auth/reset-password",
+  "/password-changed",
+  "/auth/password-changed",
+  "/legal",
+  "/auth/legal"
 ];
 
 export function proxy(request: NextRequest) {

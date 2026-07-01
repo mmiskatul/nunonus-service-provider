@@ -78,6 +78,7 @@ export function VerifyCodeView() {
   const [values, setValues] = useState<string[]>(Array(codeLength).fill(""));
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
 
   const code = useMemo(() => values.join(""), [values]);
@@ -179,6 +180,8 @@ export function VerifyCodeView() {
   };
 
   const resend = async () => {
+    setError("");
+
     if (mode === "register") {
       const pendingRaw = sessionStorage.getItem("pending_vendor_registration");
       if (!pendingRaw) {
@@ -187,29 +190,57 @@ export function VerifyCodeView() {
       }
 
       try {
+        setIsResending(true);
         const pending = JSON.parse(pendingRaw) as PendingVendorRegistration;
-        await postBackendJson("/vendor/auth/register/request-code", {
-          email_or_phone: pending.email_or_phone,
-        });
+        const resendResult = await postBackendJson<{ validation_code?: string | null }>(
+          "/vendor/auth/register/request-code",
+          {
+            email_or_phone: pending.email_or_phone,
+          },
+        );
+        sessionStorage.setItem(
+          "pending_vendor_registration",
+          JSON.stringify({
+            ...pending,
+            debug_code: resendResult.validation_code ?? null,
+          }),
+        );
+        setValues(Array(codeLength).fill(""));
+        inputsRef.current[0]?.focus();
+        setError("A new verification code has been sent.");
       } catch (resendError) {
         setError(getErrorMessage(resendError, "Failed to resend the code."));
+      } finally {
+        setIsResending(false);
       }
       return;
     }
 
-    await requestReset(email);
+    setIsResending(true);
+    try {
+      const result = await requestReset(email);
+      if (!result.ok) {
+        setError(result.message ?? "Failed to resend the code.");
+        return;
+      }
+      setValues(Array(codeLength).fill(""));
+      inputsRef.current[0]?.focus();
+      setError("A new verification code has been sent.");
+    } finally {
+      setIsResending(false);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full rounded-2xl bg-white px-6 py-6 text-center shadow-sm">
-      <h2 className="m-0 text-[16px] font-semibold text-[#1d2a43]">Verify Code</h2>
-      <p className="m-0 mt-1 text-[10px] text-[#8b96ad]">
+    <form onSubmit={handleSubmit} className="w-full rounded-[28px] bg-white px-8 py-8 text-center shadow-sm">
+      <h2 className="m-0 text-[20px] font-bold text-[#1d2a43]">Verify Code</h2>
+      <p className="m-0 mt-2 text-[13px] leading-6 text-[#8b96ad]">
         We sent OTP code to your email
         <br />
-        <span className="text-[#1f2d46]">{contact}</span>
+        <span className="text-[14px] font-semibold text-[#1f2d46]">{contact}</span>
       </p>
 
-      <div className="mt-4 flex items-center justify-center gap-2">
+      <div className="mt-6 flex items-center justify-center gap-3">
         {values.map((value, index) => (
           <input
             key={index}
@@ -220,34 +251,39 @@ export function VerifyCodeView() {
             onChange={(event) => handleChange(index, event.target.value)}
             onKeyDown={(event) => handleKeyDown(index, event)}
             maxLength={1}
-            className={`h-10 w-10 rounded-lg border text-center text-[14px] font-semibold ${
+            className={`h-12 w-12 rounded-xl border text-center text-[18px] font-bold ${
               value ? "border-[#1f3d8f]" : "border-[#e6ecf7]"
             }`}
           />
         ))}
       </div>
 
-      {error && <p className="m-0 mt-3 text-[11px] text-[#dc2626]">{error}</p>}
+      {error && <p className="m-0 mt-4 text-[13px] text-[#dc2626]">{error}</p>}
 
       <button
         type="submit"
         disabled={loading}
-        className="mt-4 w-full rounded-lg bg-[#1f3d8f] py-2 text-[12px] font-semibold text-white disabled:opacity-60"
+        className="mt-6 w-full rounded-xl bg-[#1f3d8f] py-3.5 text-[15px] font-bold text-white disabled:opacity-60"
       >
         {loading ? "Verifying..." : "Next"}
       </button>
 
-      <p className="m-0 mt-3 text-[10px] text-[#8b96ad]">
+      <p className="m-0 mt-4 text-[12px] text-[#8b96ad]">
         Don&apos;t receive OTP?{" "}
-        <button type="button" onClick={resend} className="text-[#d64545]">
-          Resend again
+        <button
+          type="button"
+          onClick={resend}
+          disabled={isResending}
+          className="font-semibold text-[#d64545] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isResending ? "Sending..." : "Resend again"}
         </button>
       </p>
 
       <button
         type="button"
         onClick={() => router.push("/login")}
-        className="mt-3 flex w-full items-center justify-center gap-2 text-[11px] text-[#1f2d46]"
+        className="mt-4 flex w-full items-center justify-center gap-2 text-[13px] text-[#1f2d46]"
       >
         <span>&larr;</span> Back to Login
       </button>

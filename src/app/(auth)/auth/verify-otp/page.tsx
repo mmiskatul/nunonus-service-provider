@@ -37,9 +37,10 @@ type ApiErrorResponse = {
 
 const DEFAULT_BACKEND_BASE_URL = "https://nunos-backend.vercel.app";
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || DEFAULT_BACKEND_BASE_URL).replace(/\/+$/, "");
+const API_V1_BASE_URL = `${API_BASE_URL}/api/v1`;
 
 function getApiBaseUrl(): string {
-  return API_BASE_URL;
+  return API_V1_BASE_URL;
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -265,22 +266,22 @@ function VerifyCodeInner() {
 
   return (
     <div className="min-h-screen bg-[#f3f4f6] flex items-center justify-center p-6">
-      <div className="w-full max-w-[480px] bg-white rounded-[32px] p-10 md:p-14 shadow-2xl shadow-slate-200/50 border border-slate-50">
-        <div className="text-center mb-10">
-          <h1 className="text-3xl font-black text-slate-800 tracking-tight">
+      <div className="w-full max-w-[560px] bg-white rounded-[36px] p-12 md:p-16 shadow-2xl shadow-slate-200/50 border border-slate-50">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-black text-slate-800 tracking-tight">
             Verify Code
           </h1>
-          <p className="text-sm text-slate-400 mt-2 font-medium leading-relaxed">
+          <p className="mt-3 text-base text-slate-400 font-medium leading-7">
             We Sent OTP code to your email <br />
-            <span className="text-slate-600 font-bold">
+            <span className="text-lg text-slate-600 font-bold">
               {contact}
             </span>{" "}
             Enter the code below to verify
           </p>
         </div>
 
-        <form className="space-y-10" onSubmit={handleVerify}>
-          <div className="flex justify-center gap-4">
+        <form className="space-y-12" onSubmit={handleVerify}>
+          <div className="flex justify-center gap-5">
             {otp.map((digit, i) => (
               <input
                 key={i}
@@ -292,28 +293,28 @@ function VerifyCodeInner() {
                 }}
                 onChange={(e) => handleChange(i, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(i, e)}
-                className="w-16 h-16 bg-white border-2 border-slate-100 rounded-2xl text-center text-2xl font-black text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e] transition-all"
+                className="w-[72px] h-[72px] bg-white border-2 border-slate-100 rounded-2xl text-center text-3xl font-black text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e] transition-all"
               />
             ))}
           </div>
 
           <div className="space-y-6">
             {message ? (
-              <p className="text-sm font-bold text-[#1e2a5e] text-center">
+              <p className="text-base font-bold text-[#1e2a5e] text-center">
                 {message}
               </p>
             ) : null}
 
             <button
               type="submit"
-              className="w-full bg-[#1e2a5e] hover:bg-[#1a2552] text-white py-4 rounded-2xl text-base font-bold shadow-xl shadow-[#1e2a5e]/20 transition-all active:scale-[0.98] disabled:opacity-60"
+              className="w-full bg-[#1e2a5e] hover:bg-[#1a2552] text-white py-5 rounded-2xl text-lg font-bold shadow-xl shadow-[#1e2a5e]/20 transition-all active:scale-[0.98] disabled:opacity-60"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Verifying..." : "Next"}
             </button>
 
             <div className="text-center space-y-4">
-              <p className="text-xs font-bold text-slate-400">
+              <p className="text-sm font-bold text-slate-400">
                 Don&apos;t receive OTP?{" "}
                 <button
                   type="button"
@@ -327,7 +328,7 @@ function VerifyCodeInner() {
 
               <Link
                 href="/auth/login"
-                className="flex items-center justify-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors pt-2"
+                className="flex items-center justify-center gap-2 pt-2 text-base font-bold text-slate-500 transition-colors hover:text-slate-800"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to Login

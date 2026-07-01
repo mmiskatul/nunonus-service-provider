@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FileText, MapPin, Upload, User } from "lucide-react";
 import { vendorGetPublicLegalDoc } from "@/lib/vendor-api";
+import AuthFeedbackModal from "@/components/auth/auth-feedback-modal";
 
 type RegisterFormData = {
   businessName: string;
@@ -24,6 +25,12 @@ type RegisterFormData = {
 type ApiErrorResponse = {
   detail?: string | { msg?: string }[] | null;
   message?: string;
+};
+
+type VendorRegistrationStatusResponse = {
+  status?: string;
+  kyc_status?: string;
+  rejection_reason?: string | null;
 };
 
 const DEFAULT_BACKEND_BASE_URL = "https://nunos-backend.vercel.app";
@@ -87,6 +94,44 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+async function getExistingVendorMessage(emailOrPhone: string): Promise<string> {
+  try {
+    const response = await fetch(
+      `${API_V1_BASE_URL}/vendor/auth/registration-status?email_or_phone=${encodeURIComponent(emailOrPhone)}`,
+      {
+        method: "GET",
+      },
+    );
+
+    if (!response.ok) {
+      return "This email already exists. Please log in or use forgot password instead.";
+    }
+
+    const payload = (await response.json()) as VendorRegistrationStatusResponse;
+    const status = (payload.status || "").toLowerCase();
+
+    if (status === "pending_approval") {
+      return "This service provider account already exists and is pending admin approval.";
+    }
+
+    if (status === "approved") {
+      return "This email is already registered as a service provider. Please log in instead.";
+    }
+
+    if (status === "rejected") {
+      return "This service provider account was rejected. Please contact support before registering again.";
+    }
+
+    if (status === "blocked") {
+      return "This service provider account is blocked. Please contact support.";
+    }
+  } catch {
+    return "This email already exists. Please log in or use forgot password instead.";
+  }
+
+  return "This email already exists. Please log in or use forgot password instead.";
+}
+
 function validateRegisterForm(formData: RegisterFormData) {
   if (formData.businessName.trim().length < 2) return "Business name must be at least 2 characters.";
   if (formData.ownerFullName.trim().length < 2) return "Owner full name must be at least 2 characters.";
@@ -141,6 +186,7 @@ export function RegisterView() {
   const [formData, setFormData] = useState(initialFormData);
   const [legalLabels, setLegalLabels] = useState(defaultLegalLabels);
   const [submitMessage, setSubmitMessage] = useState("");
+  const [showAccountHelp, setShowAccountHelp] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tradeLicenseDocumentName, setTradeLicenseDocumentName] = useState("");
   const [ownerIdDocumentName, setOwnerIdDocumentName] = useState("");
@@ -191,6 +237,7 @@ export function RegisterView() {
   ) => {
     const { name } = event.target;
     setSubmitMessage("");
+    setShowAccountHelp(false);
 
     if (name === "agreeToTerms" && event.target instanceof HTMLInputElement) {
       const inputElement = event.target as HTMLInputElement;
@@ -225,7 +272,7 @@ export function RegisterView() {
 
       try {
         const uploadedUrl = await uploadRegistrationDocument(file);
-        if (field === "tradeLicenseDocument") {
+      if (field === "tradeLicenseDocument") {
           setTradeLicenseDocumentUrl(uploadedUrl);
         } else {
           setOwnerIdDocumentUrl(uploadedUrl);
@@ -273,6 +320,7 @@ export function RegisterView() {
 
     setIsSubmitting(true);
     setSubmitMessage("");
+    setShowAccountHelp(false);
 
     try {
       const requestCodeResult = await postJson<{ validation_code?: string | null }>("/vendor/auth/register/request-code", {
@@ -302,136 +350,170 @@ export function RegisterView() {
 
       router.push(`/verify-code?mode=register&contact=${encodeURIComponent(formData.email.trim())}`);
     } catch (error) {
-      setSubmitMessage(getErrorMessage(error, "Registration failed."));
+      const errorMessage = getErrorMessage(error, "Registration failed.");
+
+      if (errorMessage === "This email is already in use by another account.") {
+        setShowAccountHelp(true);
+        setSubmitMessage(await getExistingVendorMessage(formData.email.trim()));
+      } else {
+        setSubmitMessage(errorMessage);
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="w-full max-w-[800px] space-y-10">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-4xl font-black tracking-tight text-slate-800">Register Your Business</h1>
-          <p className="mt-2 text-base font-medium text-slate-400">
-            Join the service partner portal and manage bookings, services, and operations in one place.
-          </p>
-        </div>
-        <p className="text-sm font-medium text-slate-500">
-          Already have an account?{" "}
-          <Link href="/login" className="font-bold text-[#c85b3b] hover:underline">
-            Log in
-          </Link>
-        </p>
-      </div>
-
-      <form className="space-y-8" onSubmit={handleSubmit}>
-        <div className="rounded-[32px] border border-slate-50 bg-white p-8 shadow-xl shadow-slate-200/40 md:p-10">
-          <div className="mb-8 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#fff3ea] text-[#c85b3b]">
-              <User className="h-5 w-5" />
-            </div>
-            <h2 className="text-xl font-bold text-slate-800">Basic Information</h2>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <InputField name="businessName" label="Business Name" value={formData.businessName} onChange={handleInputChange} placeholder="e.g. Acme Services" />
-            <InputField
-              name="ownerFullName"
-              label="Owner Full Name"
-              value={formData.ownerFullName}
-              onChange={handleInputChange}
-              placeholder="e.g. Alex Morgan"
-            />
-            <InputField name="email" label="Email Address" value={formData.email} onChange={handleInputChange} placeholder="business@example.com" type="email" />
-            <InputField name="phone" label="Phone Number" value={formData.phone} onChange={handleInputChange} placeholder="+8801XXXXXXXXX" type="tel" />
-            <InputField name="password" label="Password" value={formData.password} onChange={handleInputChange} placeholder="********" type="password" />
-            <InputField name="confirmPassword" label="Confirm Password" value={formData.confirmPassword} onChange={handleInputChange} placeholder="********" type="password" />
-          </div>
-        </div>
-
-        <div className="rounded-[32px] border border-slate-50 bg-white p-8 shadow-xl shadow-slate-200/40 md:p-10">
-          <div className="mb-8 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#fff3ea] text-[#c85b3b]">
-              <MapPin className="h-5 w-5" />
-            </div>
-            <h2 className="text-xl font-bold text-slate-800">Business Details</h2>
-          </div>
-
-          <div className="space-y-6">
-            <InputField name="address" label="Address" value={formData.address} onChange={handleInputChange} placeholder="123 Business Way" />
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <InputField name="city" label="City" value={formData.city} onChange={handleInputChange} placeholder="Dhaka" />
-              <InputField name="website" label="Website" value={formData.website} onChange={handleInputChange} placeholder="https://www.yourbusiness.com" type="url" />
-            </div>
-            <div className="space-y-2">
-              <label className="ml-1 block text-xs font-black uppercase tracking-widest text-slate-800">Business Description</label>
-              <textarea
-                rows={4}
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                placeholder="Tell us about your services..."
-                className="w-full resize-none rounded-2xl border border-slate-100 bg-[#fdf8f8] px-6 py-4 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#c85b3b]/20 focus:outline-none focus:ring-4 focus:ring-[#c85b3b]/5"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-[32px] border border-slate-50 bg-white p-8 shadow-xl shadow-slate-200/40 md:p-10">
-          <div className="mb-8 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#fff3ea] text-[#c85b3b]">
-              <FileText className="h-5 w-5" />
-            </div>
-            <h2 className="text-xl font-bold text-slate-800">Verification</h2>
-          </div>
-
-          <div className="space-y-8">
-            <InputField name="tradeLicenseNumber" label="Trade License Number" value={formData.tradeLicenseNumber} onChange={handleInputChange} placeholder="TX-12345678" />
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-              <UploadCard label="Trade License Document" status={isUploadingTradeLicense ? "Uploading..." : tradeLicenseDocumentUrl ? tradeLicenseDocumentName || "Uploaded" : "Upload PDF or JPG"} onChange={handleFileChange("tradeLicenseDocument")} />
-              <UploadCard label="Owner/Manager ID" status={isUploadingOwnerId ? "Uploading..." : ownerIdDocumentUrl ? ownerIdDocumentName || "Uploaded" : "Upload Passport/ID"} onChange={handleFileChange("ownerIdDocument")} />
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-6 pt-2">
-          <div className="flex items-start gap-3 px-2">
-            <input
-              id="agreeToTerms"
-              type="checkbox"
-              name="agreeToTerms"
-              checked={formData.agreeToTerms}
-              onChange={handleInputChange}
-              className="h-5 w-5 rounded-lg border-2 border-slate-200 text-[#c85b3b] focus:ring-[#c85b3b]"
-            />
-            <p className="text-sm font-bold text-slate-500">
-              <label htmlFor="agreeToTerms" className="cursor-pointer">
-                I agree to the{" "}
-              </label>
-              <Link href="/auth/legal/terms" className="text-[#1e2a5e] transition hover:underline">
-                {legalLabels.terms}
-              </Link>{" "}
-              and{" "}
-              <Link href="/auth/legal/privacy" className="text-[#1e2a5e] transition hover:underline">
-                {legalLabels.privacy}
+    <>
+      <AuthFeedbackModal
+        message={submitMessage}
+        onClose={() => {
+          setSubmitMessage("");
+          setShowAccountHelp(false);
+        }}
+        title={showAccountHelp ? "Registration blocked" : "Please check this"}
+        actions={
+          showAccountHelp ? (
+            <>
+              <Link
+                href="/login"
+                className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+              >
+                Log in
               </Link>
-              .
+              <Link
+                href="/forgot-password"
+                className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+              >
+                Reset password
+              </Link>
+            </>
+          ) : undefined
+        }
+      />
+
+      <div className="w-full max-w-[800px] space-y-10">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-4xl font-black tracking-tight text-slate-800">Register Your Business</h1>
+            <p className="mt-2 text-base font-medium text-slate-400">
+              Join the service partner portal and manage bookings, services, and operations in one place.
             </p>
           </div>
-
-          {submitMessage ? <p className="px-2 text-sm font-bold text-[#b24d30]">{submitMessage}</p> : null}
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-[24px] bg-[#c85b3b] py-5 text-lg font-bold text-white shadow-2xl shadow-[#c85b3b]/30 transition-all hover:bg-[#b24d30] disabled:opacity-60"
-          >
-            {isSubmitting ? "Creating Account..." : "Create Account"}
-          </button>
+          <p className="text-sm font-medium text-slate-500">
+            Already have an account?{" "}
+            <Link href="/login" className="font-bold text-[#c85b3b] hover:underline">
+              Log in
+            </Link>
+          </p>
         </div>
-      </form>
-    </div>
+
+        <form className="space-y-8" onSubmit={handleSubmit}>
+          <div className="rounded-[32px] border border-slate-50 bg-white p-8 shadow-xl shadow-slate-200/40 md:p-10">
+            <div className="mb-8 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#fff3ea] text-[#c85b3b]">
+                <User className="h-5 w-5" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800">Basic Information</h2>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <InputField name="businessName" label="Business Name" value={formData.businessName} onChange={handleInputChange} placeholder="e.g. Acme Services" />
+              <InputField
+                name="ownerFullName"
+                label="Owner Full Name"
+                value={formData.ownerFullName}
+                onChange={handleInputChange}
+                placeholder="e.g. Alex Morgan"
+              />
+              <InputField name="email" label="Email Address" value={formData.email} onChange={handleInputChange} placeholder="business@example.com" type="email" />
+              <InputField name="phone" label="Phone Number" value={formData.phone} onChange={handleInputChange} placeholder="+8801XXXXXXXXX" type="tel" />
+              <InputField name="password" label="Password" value={formData.password} onChange={handleInputChange} placeholder="********" type="password" />
+              <InputField name="confirmPassword" label="Confirm Password" value={formData.confirmPassword} onChange={handleInputChange} placeholder="********" type="password" />
+            </div>
+          </div>
+
+          <div className="rounded-[32px] border border-slate-50 bg-white p-8 shadow-xl shadow-slate-200/40 md:p-10">
+            <div className="mb-8 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#fff3ea] text-[#c85b3b]">
+                <MapPin className="h-5 w-5" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800">Business Details</h2>
+            </div>
+
+            <div className="space-y-6">
+              <InputField name="address" label="Address" value={formData.address} onChange={handleInputChange} placeholder="123 Business Way" />
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <InputField name="city" label="City" value={formData.city} onChange={handleInputChange} placeholder="Dhaka" />
+                <InputField name="website" label="Website" value={formData.website} onChange={handleInputChange} placeholder="https://www.yourbusiness.com" type="url" />
+              </div>
+              <div className="space-y-2">
+                <label className="ml-1 block text-xs font-black uppercase tracking-widest text-slate-800">Business Description</label>
+                <textarea
+                  rows={4}
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  placeholder="Tell us about your services..."
+                  className="w-full resize-none rounded-2xl border border-slate-100 bg-[#fdf8f8] px-6 py-4 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#c85b3b]/20 focus:outline-none focus:ring-4 focus:ring-[#c85b3b]/5"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[32px] border border-slate-50 bg-white p-8 shadow-xl shadow-slate-200/40 md:p-10">
+            <div className="mb-8 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#fff3ea] text-[#c85b3b]">
+                <FileText className="h-5 w-5" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800">Verification</h2>
+            </div>
+
+            <div className="space-y-8">
+              <InputField name="tradeLicenseNumber" label="Trade License Number" value={formData.tradeLicenseNumber} onChange={handleInputChange} placeholder="TX-12345678" />
+              <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+                <UploadCard label="Trade License Document" status={isUploadingTradeLicense ? "Uploading..." : tradeLicenseDocumentUrl ? tradeLicenseDocumentName || "Uploaded" : "Upload PDF or JPG"} onChange={handleFileChange("tradeLicenseDocument")} />
+                <UploadCard label="Owner/Manager ID" status={isUploadingOwnerId ? "Uploading..." : ownerIdDocumentUrl ? ownerIdDocumentName || "Uploaded" : "Upload Passport/ID"} onChange={handleFileChange("ownerIdDocument")} />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-6 pt-2">
+            <div className="flex items-start gap-3 px-2">
+              <input
+                id="agreeToTerms"
+                type="checkbox"
+                name="agreeToTerms"
+                checked={formData.agreeToTerms}
+                onChange={handleInputChange}
+                className="h-5 w-5 rounded-lg border-2 border-slate-200 text-[#c85b3b] focus:ring-[#c85b3b]"
+              />
+              <p className="text-sm font-bold text-slate-500">
+                <label htmlFor="agreeToTerms" className="cursor-pointer">
+                  I agree to the{" "}
+                </label>
+                <Link href="/legal/terms" className="font-black !text-blue-700 underline transition hover:!text-blue-800">
+                  <span className="!text-blue-700">{legalLabels.terms}</span>
+                </Link>{" "}
+                and{" "}
+                <Link href="/legal/privacy" className="font-black !text-blue-700 underline transition hover:!text-blue-800">
+                  <span className="!text-blue-700">{legalLabels.privacy}</span>
+                </Link>
+                .
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full rounded-[24px] bg-[#c85b3b] py-5 text-lg font-bold text-white shadow-2xl shadow-[#c85b3b]/30 transition-all hover:bg-[#b24d30] disabled:opacity-60"
+            >
+              {isSubmitting ? "Creating Account..." : "Create Account"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </>
   );
 }
 

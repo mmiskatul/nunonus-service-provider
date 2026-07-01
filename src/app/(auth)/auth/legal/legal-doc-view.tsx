@@ -67,7 +67,7 @@ export function LegalDocView({ docType }: LegalDocViewProps) {
     <main className="min-h-screen bg-[#f8fafc] px-6 py-10 md:px-10">
       <div className="mx-auto max-w-4xl">
         <Link
-          href="/auth/register"
+          href="/register"
           className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#1e2a5e] transition hover:opacity-80"
         >
           <ArrowLeft className="h-4 w-4" />

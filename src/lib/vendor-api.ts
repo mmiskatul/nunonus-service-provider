@@ -74,7 +74,7 @@ export async function vendorRequest<T>(
 }
 
 export async function vendorPublicRequest<T>(path: string): Promise<T> {
-  const response = await fetch(`${V}${path}`, {
+  const response = await fetch(path.startsWith("/api/") ? path : `${V}${path}`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
@@ -145,7 +145,7 @@ export async function vendorGetRegistrationStatus() {
 
 /** GET /vendor/legal/:doc_type */
 export async function vendorGetPublicLegalDoc(docType: "terms" | "privacy") {
-  return vendorPublicRequest<Record<string, unknown>>(`/vendor/legal/${docType}`);
+  return vendorPublicRequest<Record<string, unknown>>(`/api/public-legal/${docType}`);
 }
 
 /** POST /vendor/auth/login */
