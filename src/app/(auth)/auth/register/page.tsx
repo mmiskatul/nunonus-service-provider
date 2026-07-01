@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { User, MapPin, FileText, Upload, ChevronDown } from "lucide-react";
@@ -25,6 +25,10 @@ type ApiErrorResponse = {
   message?: string;
 };
 
+type LegalDocResponse = {
+  title?: string;
+};
+
 const DEFAULT_BACKEND_BASE_URL = "https://nunos-backend.vercel.app";
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || DEFAULT_BACKEND_BASE_URL).replace(/\/+$/, "");
 
@@ -45,6 +49,11 @@ const initialFormData: RegisterFormData = {
   description: "",
   tradeLicenseNumber: "",
   agreeToTerms: false,
+};
+
+const defaultLegalLabels = {
+  terms: "Terms of Service",
+  privacy: "Privacy Policy",
 };
 
 const textFieldNames = new Set<keyof Omit<RegisterFormData, "agreeToTerms">>([
@@ -119,6 +128,21 @@ function validateRegisterForm(formData: RegisterFormData) {
   return null;
 }
 
+async function getPublicLegalDocTitle(docType: "terms" | "privacy") {
+  const response = await fetch(`${getApiBaseUrl()}/api/v1/vendor/legal/${docType}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to load ${docType} title.`);
+  }
+
+  const payload = (await response.json()) as LegalDocResponse;
+  return payload.title || defaultLegalLabels[docType];
+}
+
 async function postJson<T>(path: string, body: Record<string, unknown>): Promise<T> {
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
     method: "POST",
@@ -168,6 +192,7 @@ async function uploadRegistrationDocument(file: File) {
 export default function RegisterPage() {
   const router = useRouter();
   const [formData, setFormData] = useState(initialFormData);
+  const [legalLabels, setLegalLabels] = useState(defaultLegalLabels);
   const [submitMessage, setSubmitMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tradeLicenseDocumentName, setTradeLicenseDocumentName] = useState("");
@@ -176,6 +201,37 @@ export default function RegisterPage() {
   const [ownerIdDocumentUrl, setOwnerIdDocumentUrl] = useState("");
   const [isUploadingTradeLicense, setIsUploadingTradeLicense] = useState(false);
   const [isUploadingOwnerId, setIsUploadingOwnerId] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadLegalLabels() {
+      try {
+        const [termsTitle, privacyTitle] = await Promise.all([
+          getPublicLegalDocTitle("terms"),
+          getPublicLegalDocTitle("privacy"),
+        ]);
+
+        if (!mounted) {
+          return;
+        }
+
+        setLegalLabels({
+          terms: termsTitle,
+          privacy: privacyTitle,
+        });
+      } catch {
+        if (mounted) {
+          setLegalLabels(defaultLegalLabels);
+        }
+      }
+    }
+
+    void loadLegalLabels();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -602,11 +658,11 @@ export default function RegisterPage() {
               <span className="text-sm font-bold text-slate-500">
                 I agree to the{" "}
                 <Link href="/auth/legal/terms" className="text-[#1e2a5e] hover:underline">
-                  Terms of Service
+                  {legalLabels.terms}
                 </Link>{" "}
                 and{" "}
                 <Link href="/auth/legal/privacy" className="text-[#1e2a5e] hover:underline">
-                  Privacy Policy
+                  {legalLabels.privacy}
                 </Link>
                 .
               </span>

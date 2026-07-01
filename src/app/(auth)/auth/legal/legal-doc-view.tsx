@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { vendorGetPublicLegalDoc } from "@/lib/vendor-api";
+
+type LegalDocViewProps = {
+  docType: "terms" | "privacy";
+};
 
 type LegalDocState = {
   title: string;
@@ -12,18 +15,11 @@ type LegalDocState = {
   last_updated: string;
 };
 
-function normalizeDocType(value: string | string[] | undefined): "terms" | "privacy" {
-  const nextValue = Array.isArray(value) ? value[0] : value;
-  return nextValue === "privacy" ? "privacy" : "terms";
-}
-
 function asText(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
 }
 
-export default function AuthLegalDocPage() {
-  const params = useParams<{ docType: string }>();
-  const docType = useMemo(() => normalizeDocType(params?.docType), [params]);
+export function LegalDocView({ docType }: LegalDocViewProps) {
   const [data, setData] = useState<LegalDocState>({
     title: docType === "privacy" ? "Privacy Policy" : "Terms of Service",
     content: "",

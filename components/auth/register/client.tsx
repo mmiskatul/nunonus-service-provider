@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FileText, MapPin, Upload, User } from "lucide-react";
+import { vendorGetPublicLegalDoc } from "@/lib/vendor-api";
 
 type RegisterFormData = {
   businessName: string;
@@ -42,6 +43,11 @@ const initialFormData: RegisterFormData = {
   description: "",
   tradeLicenseNumber: "",
   agreeToTerms: false,
+};
+
+const defaultLegalLabels = {
+  terms: "Terms of Service",
+  privacy: "Privacy Policy",
 };
 
 const textFieldNames = new Set<keyof Omit<RegisterFormData, "agreeToTerms">>([
@@ -133,6 +139,7 @@ async function uploadRegistrationDocument(file: File) {
 export function RegisterView() {
   const router = useRouter();
   const [formData, setFormData] = useState(initialFormData);
+  const [legalLabels, setLegalLabels] = useState(defaultLegalLabels);
   const [submitMessage, setSubmitMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tradeLicenseDocumentName, setTradeLicenseDocumentName] = useState("");
@@ -141,6 +148,43 @@ export function RegisterView() {
   const [ownerIdDocumentUrl, setOwnerIdDocumentUrl] = useState("");
   const [isUploadingTradeLicense, setIsUploadingTradeLicense] = useState(false);
   const [isUploadingOwnerId, setIsUploadingOwnerId] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadLegalLabels() {
+      try {
+        const [termsDoc, privacyDoc] = await Promise.all([
+          vendorGetPublicLegalDoc("terms"),
+          vendorGetPublicLegalDoc("privacy"),
+        ]);
+
+        if (!mounted) {
+          return;
+        }
+
+        setLegalLabels({
+          terms:
+            typeof termsDoc.title === "string" && termsDoc.title.trim()
+              ? termsDoc.title
+              : defaultLegalLabels.terms,
+          privacy:
+            typeof privacyDoc.title === "string" && privacyDoc.title.trim()
+              ? privacyDoc.title
+              : defaultLegalLabels.privacy,
+        });
+      } catch {
+        if (mounted) {
+          setLegalLabels(defaultLegalLabels);
+        }
+      }
+    }
+
+    void loadLegalLabels();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleInputChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
@@ -362,12 +406,12 @@ export function RegisterView() {
             />
             <span className="text-sm font-bold text-slate-500">
               I agree to the{" "}
-              <Link href="/auth/legal/terms" className="text-[#c85b3b] transition hover:underline">
-                Terms of Service
+              <Link href="/auth/legal/terms" className="text-[#1e2a5e] transition hover:underline">
+                {legalLabels.terms}
               </Link>{" "}
               and{" "}
-              <Link href="/auth/legal/privacy" className="text-[#c85b3b] transition hover:underline">
-                Privacy Policy
+              <Link href="/auth/legal/privacy" className="text-[#1e2a5e] transition hover:underline">
+                {legalLabels.privacy}
               </Link>
               .
             </span>
