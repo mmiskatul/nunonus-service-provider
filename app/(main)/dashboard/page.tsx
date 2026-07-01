@@ -1,5 +1,5 @@
-import { DashboardViewServer } from "@/components/dashboard/server";
+import HomePage from "../page";
 
 export default function DashboardPage() {
-  return <DashboardViewServer />;
+  return <HomePage />;
 }

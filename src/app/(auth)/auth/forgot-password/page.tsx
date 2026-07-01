@@ -1,10 +1,35 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Mail, ArrowLeft } from "lucide-react";
+import { requestReset } from "@/components/auth/auth-client";
 
 export default function ForgotPasswordPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setMessage("");
+    setIsSubmitting(true);
+
+    try {
+      const result = await requestReset(email.trim());
+      if (!result.ok) {
+        setMessage(result.message ?? "Unable to send verification code.");
+        return;
+      }
+
+      router.push(`/auth/verify-otp?email=${encodeURIComponent(email.trim())}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#f3f4f6] flex items-center justify-center p-6">
       <div className="w-full max-w-[480px] bg-white rounded-[32px] p-10 md:p-14 shadow-2xl shadow-slate-200/50 border border-slate-50">
@@ -13,12 +38,11 @@ export default function ForgotPasswordPage() {
             Forgot Password
           </h1>
           <p className="text-sm text-slate-400 mt-2 font-medium">
-            Enter your email to reset password
+            Enter your email to receive a verification code
           </p>
         </div>
 
-        <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
-          {/* Email Field */}
+        <form className="space-y-8" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <label className="text-xs font-black text-slate-800 uppercase tracking-widest block ml-1">
               Email
@@ -29,22 +53,29 @@ export default function ForgotPasswordPage() {
               </div>
               <input
                 type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter email"
                 className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 pl-14 pr-6 text-sm font-medium text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all placeholder:text-slate-400"
+                required
               />
             </div>
           </div>
 
-          {/* Next Button */}
           <div className="space-y-6 pt-4">
-            <Link href="/auth/verify-otp" className="block w-full">
-              <button
-                type="button"
-                className="w-full bg-[#1e2a5e] hover:bg-[#1a2552] text-white py-4 rounded-2xl text-base font-bold shadow-xl shadow-[#1e2a5e]/20 transition-all active:scale-[0.98]"
-              >
-                Next
-              </button>
-            </Link>
+            {message ? (
+              <p className="text-sm font-bold text-[#1e2a5e] text-center">
+                {message}
+              </p>
+            ) : null}
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-[#1e2a5e] hover:bg-[#1a2552] text-white py-4 rounded-2xl text-base font-bold shadow-xl shadow-[#1e2a5e]/20 transition-all active:scale-[0.98] disabled:opacity-60"
+            >
+              {isSubmitting ? "Sending..." : "Next"}
+            </button>
 
             <Link
               href="/auth/login"

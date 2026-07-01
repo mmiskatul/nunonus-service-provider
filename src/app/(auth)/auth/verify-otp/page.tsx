@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { requestReset, verifyCode } from "@/components/auth/auth-client";
 
 type PendingVendorRegistration = {
   business_name: string;
@@ -38,6 +39,7 @@ type ApiErrorResponse = {
 const DEFAULT_BACKEND_BASE_URL = "https://nunos-backend.vercel.app";
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || DEFAULT_BACKEND_BASE_URL).replace(/\/+$/, "");
 const API_V1_BASE_URL = `${API_BASE_URL}/api/v1`;
+const REGISTER_DRAFT_STORAGE_KEY = "vendor_registration_draft";
 
 function getApiBaseUrl(): string {
   return API_V1_BASE_URL;
@@ -116,7 +118,10 @@ function normalizePhone(value: string | null | undefined) {
     return null;
   }
   const normalized = value.replace(/[\s().-]/g, "").trim();
-  return normalized || null;
+  if (!normalized) {
+    return null;
+  }
+  return /^\+?\d{8,15}$/.test(normalized) ? normalized : null;
 }
 
 function normalizePendingRegistration(pending: PendingVendorRegistration) {
@@ -148,6 +153,7 @@ function VerifyCodeInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode");
+  const email = searchParams.get("email") ?? "";
   const contact = searchParams.get("contact") ?? "your email";
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [message, setMessage] = useState("");
@@ -215,16 +221,20 @@ function VerifyCodeInner() {
 
   const handleVerify = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
-    if (mode !== "register") {
-      router.push("/auth/reset-password");
-      return;
-    }
-
     const code = otp.join("").trim();
 
     if (code.length !== otp.length) {
       setMessage("Enter the complete verification code.");
+      return;
+    }
+
+    if (mode !== "register") {
+      const result = await verifyCode(email, code);
+      if (!result.ok) {
+        setMessage(result.message ?? "Invalid verification code.");
+        return;
+      }
+      router.push(`/auth/reset-password?email=${encodeURIComponent(email)}`);
       return;
     }
 
@@ -255,7 +265,7 @@ function VerifyCodeInner() {
         );
       }
 
-      const registerResult = await postJson<{
+      await postJson<{
         access_token: string;
         vendor?: { status?: string };
       }>("/vendor/auth/register", {
@@ -263,9 +273,9 @@ function VerifyCodeInner() {
         signup_token: verifyResult.signup_token,
       });
 
-      localStorage.setItem("vendor_access_token", registerResult.access_token);
       sessionStorage.removeItem("pending_vendor_registration");
-      router.push("/dashboard");
+      sessionStorage.removeItem(REGISTER_DRAFT_STORAGE_KEY);
+      router.push("/registration-submitted");
     } catch (error) {
       setMessage(getErrorMessage(error, "Verification failed."));
     } finally {
@@ -275,6 +285,25 @@ function VerifyCodeInner() {
 
   const handleResend = async () => {
     if (mode !== "register") {
+      if (!email) {
+        setMessage("Email address is required.");
+        return;
+      }
+
+      setIsResending(true);
+      setMessage("");
+      try {
+        const result = await requestReset(email);
+        if (!result.ok) {
+          setMessage(result.message ?? "Failed to resend the code.");
+          return;
+        }
+        setOtp(["", "", "", "", "", ""]);
+        inputRefs.current[0]?.focus();
+        setMessage("A new verification code has been sent.");
+      } finally {
+        setIsResending(false);
+      }
       return;
     }
 
@@ -324,7 +353,7 @@ function VerifyCodeInner() {
           <p className="mt-3 text-base text-slate-400 font-medium leading-7">
             We Sent OTP code to your email <br />
             <span className="text-lg text-slate-600 font-bold">
-              {contact}
+              {mode === "register" ? contact : email || contact}
             </span>{" "}
             Enter the code below to verify
           </p>

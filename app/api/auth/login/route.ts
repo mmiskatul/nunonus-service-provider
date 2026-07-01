@@ -38,10 +38,14 @@ export async function POST(request: Request) {
     }
 
     const nextResponse = NextResponse.json(
-      { ok: true, user: { email: payload.vendor?.email ?? email } },
+      {
+        ok: true,
+        user: { email: payload.vendor?.email ?? email },
+        access_token: payload.access_token
+      },
       { status: 200 }
     );
-    nextResponse.cookies.set("nunos_auth", "true", {
+    nextResponse.cookies.set("nunos_vendor_auth", "true", {
       httpOnly: true,
       sameSite: "lax",
       path: "/"

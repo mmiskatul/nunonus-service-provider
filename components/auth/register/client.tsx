@@ -46,6 +46,7 @@ function isAccountConflictMessage(message: string) {
 const DEFAULT_BACKEND_BASE_URL = "https://nunos-backend.vercel.app";
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || DEFAULT_BACKEND_BASE_URL).replace(/\/+$/, "");
 const API_V1_BASE_URL = `${API_BASE_URL}/api/v1`;
+const REGISTER_DRAFT_STORAGE_KEY = "vendor_registration_draft";
 
 const initialFormData: RegisterFormData = {
   businessName: "",
@@ -109,6 +110,17 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 function normalizePhone(value: string) {
   return value.replace(/[\s().-]/g, "").trim();
+}
+
+function sanitizePhoneInput(value: string) {
+  const compact = value.replace(/[^\d+]/g, "");
+  if (!compact) {
+    return "";
+  }
+  if (compact.startsWith("+")) {
+    return `+${compact.slice(1).replace(/\+/g, "")}`;
+  }
+  return compact.replace(/\+/g, "");
 }
 
 async function getExistingVendorMessage(emailOrPhone: string): Promise<string> {
@@ -219,6 +231,37 @@ export function RegisterView() {
   const [isUploadingOwnerId, setIsUploadingOwnerId] = useState(false);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const savedDraft = sessionStorage.getItem(REGISTER_DRAFT_STORAGE_KEY);
+    if (!savedDraft) {
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(savedDraft) as {
+        formData?: Partial<RegisterFormData>;
+        tradeLicenseDocumentName?: string;
+        ownerIdDocumentName?: string;
+        tradeLicenseDocumentUrl?: string;
+        ownerIdDocumentUrl?: string;
+      };
+
+      if (parsed.formData) {
+        setFormData((prev) => ({ ...prev, ...parsed.formData }));
+      }
+      setTradeLicenseDocumentName(parsed.tradeLicenseDocumentName ?? "");
+      setOwnerIdDocumentName(parsed.ownerIdDocumentName ?? "");
+      setTradeLicenseDocumentUrl(parsed.tradeLicenseDocumentUrl ?? "");
+      setOwnerIdDocumentUrl(parsed.ownerIdDocumentUrl ?? "");
+    } catch {
+      sessionStorage.removeItem(REGISTER_DRAFT_STORAGE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
     let mounted = true;
 
     async function loadLegalLabels() {
@@ -255,6 +298,23 @@ export function RegisterView() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    sessionStorage.setItem(
+      REGISTER_DRAFT_STORAGE_KEY,
+      JSON.stringify({
+        formData,
+        tradeLicenseDocumentName,
+        ownerIdDocumentName,
+        tradeLicenseDocumentUrl,
+        ownerIdDocumentUrl,
+      }),
+    );
+  }, [formData, tradeLicenseDocumentName, ownerIdDocumentName, tradeLicenseDocumentUrl, ownerIdDocumentUrl]);
+
   const handleInputChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {
@@ -272,7 +332,8 @@ export function RegisterView() {
       return;
     }
 
-    setFormData((prev) => ({ ...prev, [name]: event.target.value }));
+    const nextValue = name === "phone" ? sanitizePhoneInput(event.target.value) : event.target.value;
+    setFormData((prev) => ({ ...prev, [name]: nextValue }));
   };
 
   const handleFileChange =

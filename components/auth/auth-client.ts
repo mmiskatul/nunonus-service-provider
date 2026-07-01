@@ -19,7 +19,11 @@ export async function login(email: string, password: string) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password })
   });
-  const data = (await res.json().catch(() => ({}))) as { user?: { email: string }; message?: string };
+  const data = (await res.json().catch(() => ({}))) as {
+    user?: { email: string };
+    access_token?: string;
+    message?: string;
+  };
   if (!res.ok) {
     return { ok: false, message: data.message ?? "Login failed." };
   }

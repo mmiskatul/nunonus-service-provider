@@ -8,6 +8,7 @@ const codeLength = 6;
 const DEFAULT_BACKEND_BASE_URL = "https://nunos-backend.vercel.app";
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || DEFAULT_BACKEND_BASE_URL).replace(/\/+$/, "");
 const API_V1_BASE_URL = `${API_BASE_URL}/api/v1`;
+const REGISTER_DRAFT_STORAGE_KEY = "vendor_registration_draft";
 
 type PendingVendorRegistration = {
   business_name: string;
@@ -92,7 +93,10 @@ function normalizePhone(value: string | null | undefined) {
     return null;
   }
   const normalized = value.replace(/[\s().-]/g, "").trim();
-  return normalized || null;
+  if (!normalized) {
+    return null;
+  }
+  return /^\+?\d{8,15}$/.test(normalized) ? normalized : null;
 }
 
 function normalizePendingRegistration(pending: PendingVendorRegistration) {
@@ -227,6 +231,7 @@ export function VerifyCodeView() {
         });
 
         sessionStorage.removeItem("pending_vendor_registration");
+        sessionStorage.removeItem(REGISTER_DRAFT_STORAGE_KEY);
         router.push("/registration-submitted");
       } catch (registerError) {
         setError(getErrorMessage(registerError, "Verification failed."));

@@ -5,11 +5,12 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FiEye, FiEyeOff, FiLock, FiMail } from "react-icons/fi";
 import { login } from "@/components/auth/auth-client";
+import { saveVendorToken } from "@/lib/vendor-api";
 
 export function LoginView() {
   const router = useRouter();
   const params = useSearchParams();
-  const nextUrl = params.get("next") || "/";
+  const nextUrl = params.get("next") || "/dashboard";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -25,6 +26,9 @@ export function LoginView() {
     if (!result.ok) {
       setError(result.message ?? "Login failed.");
       return;
+    }
+    if (result.data?.access_token) {
+      saveVendorToken(result.data.access_token);
     }
     router.push(nextUrl);
   };
