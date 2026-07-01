@@ -52,6 +52,9 @@ function getErrorMessage(error: unknown, fallback: string) {
     const parsed = JSON.parse(error.message) as ApiErrorResponse;
 
     if (typeof parsed.detail === "string" && parsed.detail.trim()) {
+      if (parsed.detail === "Invalid phone number format." || parsed.detail === "phone must be a phone number.") {
+        return "Phone number must be 8 to 15 digits and can start with +.";
+      }
       return parsed.detail;
     }
 
@@ -83,6 +86,18 @@ function getErrorMessage(error: unknown, fallback: string) {
         return "Password must be at least 8 characters.";
       }
 
+      if (fieldName === "owner_full_name") {
+        return "Owner full name must be at least 2 characters.";
+      }
+
+      if (fieldName === "phone") {
+        return "Phone number must be 8 to 15 digits and can start with +.";
+      }
+
+      if (fieldName === "signup_token") {
+        return "Verification session expired. Please request a new code.";
+      }
+
       return firstError.msg ?? fallback;
     }
 
@@ -94,6 +109,21 @@ function getErrorMessage(error: unknown, fallback: string) {
   }
 
   return fallback;
+}
+
+function normalizePhone(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+  const normalized = value.replace(/[\s().-]/g, "").trim();
+  return normalized || null;
+}
+
+function normalizePendingRegistration(pending: PendingVendorRegistration) {
+  return {
+    ...pending,
+    phone: normalizePhone(pending.phone),
+  };
 }
 
 async function postJson<T>(path: string, body: Record<string, unknown>): Promise<T> {
@@ -210,7 +240,7 @@ function VerifyCodeInner() {
     setMessage("");
 
     try {
-      const pending = JSON.parse(pendingRaw) as PendingVendorRegistration;
+      const pending = normalizePendingRegistration(JSON.parse(pendingRaw) as PendingVendorRegistration);
       const verifyResult = await postJson<{ signup_token?: string | null }>(
         "/vendor/auth/register/verify-code",
         {
@@ -270,7 +300,7 @@ function VerifyCodeInner() {
       sessionStorage.setItem(
         "pending_vendor_registration",
         JSON.stringify({
-          ...pending,
+          ...normalizePendingRegistration(pending),
           debug_code: resendResult.validation_code ?? null,
         }),
       );

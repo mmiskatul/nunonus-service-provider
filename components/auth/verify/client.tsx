@@ -27,7 +27,7 @@ type PendingVendorRegistration = {
 };
 
 type ApiErrorResponse = {
-  detail?: string | { msg?: string }[] | null;
+  detail?: string | { msg?: string; loc?: (string | number)[] }[] | null;
   message?: string;
 };
 
@@ -39,10 +39,43 @@ function getErrorMessage(error: unknown, fallback: string) {
   try {
     const parsed = JSON.parse(error.message) as ApiErrorResponse;
     if (typeof parsed.detail === "string" && parsed.detail.trim()) {
+      if (parsed.detail === "Invalid phone number format." || parsed.detail === "phone must be a phone number.") {
+        return "Phone number must be 8 to 15 digits and can start with +.";
+      }
       return parsed.detail;
     }
     if (Array.isArray(parsed.detail) && parsed.detail[0]?.msg) {
-      return parsed.detail[0].msg ?? fallback;
+      const firstError = parsed.detail[0];
+      const fieldName = firstError.loc?.[firstError.loc.length - 1];
+
+      if (fieldName === "owner_full_name") {
+        return "Owner full name must be at least 2 characters.";
+      }
+      if (fieldName === "business_name") {
+        return "Business name must be at least 2 characters.";
+      }
+      if (fieldName === "address") {
+        return "Address must be at least 5 characters.";
+      }
+      if (fieldName === "city") {
+        return "City must be at least 2 characters.";
+      }
+      if (fieldName === "business_description") {
+        return "Business description must be at least 10 characters.";
+      }
+      if (fieldName === "trade_license_number") {
+        return "Trade license number must be at least 4 characters.";
+      }
+      if (fieldName === "password" || fieldName === "confirm_password") {
+        return "Password must be at least 8 characters.";
+      }
+      if (fieldName === "phone") {
+        return "Phone number must be 8 to 15 digits and can start with +.";
+      }
+      if (fieldName === "signup_token") {
+        return "Verification session expired. Please request a new code.";
+      }
+      return firstError.msg ?? fallback;
     }
     if (typeof parsed.message === "string" && parsed.message.trim()) {
       return parsed.message;
@@ -52,6 +85,21 @@ function getErrorMessage(error: unknown, fallback: string) {
   }
 
   return fallback;
+}
+
+function normalizePhone(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+  const normalized = value.replace(/[\s().-]/g, "").trim();
+  return normalized || null;
+}
+
+function normalizePendingRegistration(pending: PendingVendorRegistration) {
+  return {
+    ...pending,
+    phone: normalizePhone(pending.phone),
+  };
 }
 
 async function postBackendJson<T>(path: string, body: Record<string, unknown>): Promise<T> {
@@ -160,7 +208,7 @@ export function VerifyCodeView() {
 
       setLoading(true);
       try {
-        const pending = JSON.parse(pendingRaw) as PendingVendorRegistration;
+        const pending = normalizePendingRegistration(JSON.parse(pendingRaw) as PendingVendorRegistration);
         const verifyResult = await postBackendJson<{ signup_token?: string | null }>(
           "/vendor/auth/register/verify-code",
           {
@@ -220,7 +268,7 @@ export function VerifyCodeView() {
         sessionStorage.setItem(
           "pending_vendor_registration",
           JSON.stringify({
-            ...pending,
+            ...normalizePendingRegistration(pending),
             debug_code: resendResult.validation_code ?? null,
           }),
         );
