@@ -647,16 +647,19 @@ export default function RegisterPage() {
           </div>
 
           <div className="space-y-8 pt-4">
-            <label className="flex items-center gap-3 cursor-pointer group px-2">
+            <div className="flex items-start gap-3 group px-2">
               <input
+                id="agreeToTerms"
                 type="checkbox"
                 name="agreeToTerms"
                 checked={formData.agreeToTerms}
                 onChange={handleInputChange}
                 className="h-5 w-5 rounded-lg border-2 border-slate-200 text-[#1e2a5e] focus:ring-[#1e2a5e] cursor-pointer"
               />
-              <span className="text-sm font-bold text-slate-500">
-                I agree to the{" "}
+              <p className="text-sm font-bold text-slate-500">
+                <label htmlFor="agreeToTerms" className="cursor-pointer">
+                  I agree to the{" "}
+                </label>
                 <Link href="/auth/legal/terms" className="text-[#1e2a5e] hover:underline">
                   {legalLabels.terms}
                 </Link>{" "}
@@ -665,8 +668,8 @@ export default function RegisterPage() {
                   {legalLabels.privacy}
                 </Link>
                 .
-              </span>
-            </label>
+              </p>
+            </div>
 
             {submitMessage ? (
               <p className="text-sm font-bold text-[#1e2a5e] px-2">

@@ -396,16 +396,19 @@ export function RegisterView() {
         </div>
 
         <div className="space-y-6 pt-2">
-          <label className="flex items-center gap-3 px-2">
+          <div className="flex items-start gap-3 px-2">
             <input
+              id="agreeToTerms"
               type="checkbox"
               name="agreeToTerms"
               checked={formData.agreeToTerms}
               onChange={handleInputChange}
               className="h-5 w-5 rounded-lg border-2 border-slate-200 text-[#c85b3b] focus:ring-[#c85b3b]"
             />
-            <span className="text-sm font-bold text-slate-500">
-              I agree to the{" "}
+            <p className="text-sm font-bold text-slate-500">
+              <label htmlFor="agreeToTerms" className="cursor-pointer">
+                I agree to the{" "}
+              </label>
               <Link href="/auth/legal/terms" className="text-[#1e2a5e] transition hover:underline">
                 {legalLabels.terms}
               </Link>{" "}
@@ -414,8 +417,8 @@ export function RegisterView() {
                 {legalLabels.privacy}
               </Link>
               .
-            </span>
-          </label>
+            </p>
+          </div>
 
           {submitMessage ? <p className="px-2 text-sm font-bold text-[#b24d30]">{submitMessage}</p> : null}
 
