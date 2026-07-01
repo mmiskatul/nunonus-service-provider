@@ -3,13 +3,13 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { User, MapPin, FileText, Upload, ChevronDown } from "lucide-react";
+import { User, MapPin, FileText, Upload } from "lucide-react";
 import { vendorGetPublicLegalDoc } from "@/lib/vendor-api";
 import AuthFeedbackModal from "@/components/auth/auth-feedback-modal";
 
 type RegisterFormData = {
   businessName: string;
-  category: string;
+  ownerFullName: string;
   email: string;
   phone: string;
   password: string;
@@ -33,6 +33,16 @@ type VendorRegistrationStatusResponse = {
   rejection_reason?: string | null;
 };
 
+function isAccountConflictMessage(message: string) {
+  return [
+    "This email is already in use by another account.",
+    "A service provider account for this email already exists and is pending admin approval.",
+    "This email is already registered as a service provider.",
+    "This service provider account was rejected. Contact support before registering again.",
+    "This service provider account is blocked. Contact support.",
+  ].includes(message);
+}
+
 const DEFAULT_BACKEND_BASE_URL = "https://nunos-backend.vercel.app";
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || DEFAULT_BACKEND_BASE_URL).replace(/\/+$/, "");
 const API_V1_BASE_URL = `${API_BASE_URL}/api/v1`;
@@ -43,7 +53,7 @@ function getApiBaseUrl(): string {
 
 const initialFormData: RegisterFormData = {
   businessName: "",
-  category: "Hotel",
+  ownerFullName: "",
   email: "",
   phone: "",
   password: "",
@@ -63,7 +73,7 @@ const defaultLegalLabels = {
 
 const textFieldNames = new Set<keyof Omit<RegisterFormData, "agreeToTerms">>([
   "businessName",
-  "category",
+  "ownerFullName",
   "email",
   "phone",
   "password",
@@ -144,6 +154,10 @@ function validateRegisterForm(formData: RegisterFormData) {
     return "Business name must be at least 2 characters.";
   }
 
+  if (formData.ownerFullName.trim().length < 2) {
+    return "Owner full name must be at least 2 characters.";
+  }
+
   if (!formData.email.trim()) {
     return "Email address is required.";
   }
@@ -199,7 +213,7 @@ async function uploadRegistrationDocument(file: File) {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`${API_BASE_URL}/vendor/auth/upload-document`, {
+  const response = await fetch(`${API_V1_BASE_URL}/vendor/auth/upload-document`, {
     method: "POST",
     body: formData,
   });
@@ -388,7 +402,7 @@ export default function RegisterPage() {
         "pending_vendor_registration",
         JSON.stringify({
           business_name: formData.businessName.trim(),
-          owner_full_name: formData.businessName.trim(),
+          owner_full_name: formData.ownerFullName.trim(),
           email_or_phone: formData.email.trim(),
           phone: formData.phone.trim() || null,
           address: formData.address.trim(),
@@ -410,7 +424,7 @@ export default function RegisterPage() {
     } catch (error) {
       const errorMessage = getErrorMessage(error, "Registration failed.");
 
-      if (errorMessage === "This email is already in use by another account.") {
+      if (isAccountConflictMessage(errorMessage)) {
         setShowAccountHelp(true);
         setSubmitMessage(await getExistingVendorMessage(formData.email.trim()));
       } else {
@@ -506,21 +520,16 @@ export default function RegisterPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-black text-slate-800 uppercase tracking-widest block ml-1">
-                  Category
+                  Owner Full Name
                 </label>
-                <div className="relative">
-                  <select
-                    name="category"
-                    value={formData.category}
-                    onChange={handleInputChange}
-                    className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 appearance-none text-sm font-medium text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all cursor-pointer"
-                  >
-                    <option>Hotel</option>
-                    <option>Restaurant</option>
-                    <option>Spa</option>
-                  </select>
-                  <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                </div>
+                <input
+                  type="text"
+                  name="ownerFullName"
+                  value={formData.ownerFullName}
+                  onChange={handleInputChange}
+                  placeholder="e.g. Alex Morgan"
+                  className="w-full bg-[#fdf8f8] border border-slate-100 rounded-2xl py-4 px-6 text-sm font-medium text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e]/20 transition-all placeholder:text-slate-400"
+                />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-black text-slate-800 uppercase tracking-widest block ml-1">

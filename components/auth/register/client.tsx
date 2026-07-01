@@ -33,6 +33,16 @@ type VendorRegistrationStatusResponse = {
   rejection_reason?: string | null;
 };
 
+function isAccountConflictMessage(message: string) {
+  return [
+    "This email is already in use by another account.",
+    "A service provider account for this email already exists and is pending admin approval.",
+    "This email is already registered as a service provider.",
+    "This service provider account was rejected. Contact support before registering again.",
+    "This service provider account is blocked. Contact support.",
+  ].includes(message);
+}
+
 const DEFAULT_BACKEND_BASE_URL = "https://nunos-backend.vercel.app";
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || DEFAULT_BACKEND_BASE_URL).replace(/\/+$/, "");
 const API_V1_BASE_URL = `${API_BASE_URL}/api/v1`;
@@ -352,7 +362,7 @@ export function RegisterView() {
     } catch (error) {
       const errorMessage = getErrorMessage(error, "Registration failed.");
 
-      if (errorMessage === "This email is already in use by another account.") {
+      if (isAccountConflictMessage(errorMessage)) {
         setShowAccountHelp(true);
         setSubmitMessage(await getExistingVendorMessage(formData.email.trim()));
       } else {
