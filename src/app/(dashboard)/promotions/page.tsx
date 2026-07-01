@@ -16,135 +16,142 @@ import { PromotionsTable, Promotion } from "@/components/PromotionsTable";
 import { CampaignCard } from "@/components/CampaignCard";
 import {
   vendorListPromotions,
-  vendorUpdatePromotionStatus,
   vendorJoinPlatformCampaign,
 } from "@/lib/vendor-api";
 
+type PromotionSummary = {
+  totalPromotions: number;
+  activePromotions: number;
+  campaignReach: number;
+  averageConversionPercent: number | null;
+  totalPromoRevenue: string | null;
+};
 
-const STATS = [
-  {
-    label: "TOTAL PROMO REVENUE",
-    value: "$24,482",
-    trend: "+12%",
-    trendColor: "text-emerald-500",
-    icon: TrendingUp,
-    bg: "bg-white",
-  },
-  {
-    label: "ACTIVE PROMOTIONS",
-    value: "8",
-    subtext: "Across 3 locations",
-    icon: Tag,
-    bg: "bg-white",
-  },
-  {
-    label: "CAMPAIGN REACH",
-    value: "142.5k",
-    icon: Users,
-    bg: "bg-white",
-  },
-  {
-    label: "AVG. CONVERSION",
-    value: "18.4%",
-    trend: "0%",
-    trendColor: "text-slate-400",
-    icon: MousePointer2,
-    bg: "bg-white",
-  },
-];
+type PlatformCampaign = {
+  id: string;
+  title: string;
+  description: string;
+  requirement: string;
+  requirementValue: string;
+  duration: string;
+  durationValue: string;
+  boostType: "visibility" | "acquisition" | "premium";
+  boostText: string;
+  boostSubtext: string;
+  commission: string;
+  isActive: boolean;
+};
 
-const BUSINESS_PROMOTIONS: Promotion[] = [
-  {
-    id: "1",
-    name: "Weekend Brunch Special",
-    description: "Available at Main Dining Hall",
-    type: "PERCENTAGE",
-    value: "20% Off",
-    schedule: "Sat - Sun",
-    usageCount: 342,
-    usageMax: 500,
-    isActive: true,
-  },
-  {
-    id: "2",
-    name: "Late Night Happy Hour",
-    description: "Bar & Lounge Area",
-    type: "HAPPY HOUR",
-    value: "BOGO Drinks",
-    schedule: "10 PM - 1 AM",
-    usageCount: 892,
-    usageMax: 960,
-    isActive: true,
-  },
-  {
-    id: "3",
-    name: "Spa Day Package",
-    description: "Wellness Center",
-    type: "FIXED",
-    value: "$150 Total",
-    schedule: "Weekdays",
-    usageCount: 12,
-    usageMax: 240,
-    isActive: false,
-  },
-];
+type PromotionsResponse = {
+  items?: Record<string, unknown>[];
+  summary?: Record<string, unknown>;
+  business_promotions?: Record<string, unknown>[];
+  platform_campaigns?: Record<string, unknown>[];
+};
 
-const PLATFORM_CAMPAIGNS = [
-  {
-    id: "c1",
-    title: "Flash Sale Friday",
-    description: "Sitewide 24-hour frenzy event.",
+function toNumber(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(/[^\d.-]/g, ""));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
+function formatCompactNumber(value: number): string {
+  return new Intl.NumberFormat("en", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
+function formatPercent(value: number | null): string {
+  return value === null ? "--" : `${value}%`;
+}
+
+function formatMoney(value: unknown): string | null {
+  if (typeof value === "string" && value.trim()) {
+    return value;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    }).format(value);
+  }
+  return null;
+}
+
+function normalizeBoostType(value: unknown): PlatformCampaign["boostType"] {
+  if (typeof value === "string") {
+    const normalized = value.toLowerCase();
+    if (normalized === "acquisition" || normalized === "premium") {
+      return normalized;
+    }
+  }
+  return "visibility";
+}
+
+function normalizePlatformCampaign(
+  campaign: Record<string, unknown>,
+): PlatformCampaign {
+  const requirementValue =
+    (campaign.requirement_value ??
+      campaign.requirementValue ??
+      campaign.min_discount ??
+      campaign.discount ??
+      campaign.offer_value) as string | number | undefined;
+  const durationValue =
+    (campaign.duration_value ??
+      campaign.durationValue ??
+      campaign.duration ??
+      campaign.validity ??
+      campaign.date_range) as string | undefined;
+  const commissionPercent = campaign.commission_percent ?? campaign.commission;
+
+  return {
+    id: String(campaign.id ?? campaign._id ?? ""),
+    title: String(campaign.campaign_name ?? campaign.title ?? campaign.name ?? "Campaign"),
+    description: String(campaign.description ?? ""),
     requirement: "Requirement",
-    requirementValue: "30% Min Discount",
+    requirementValue:
+      requirementValue !== undefined && requirementValue !== null && `${requirementValue}`.trim()
+        ? `${requirementValue}`
+        : "--",
     duration: "Duration",
-    durationValue: "24 Hours (Fri)",
-    boostType: "visibility" as const,
-    boostText: "+40% VISIBILITY BOOST",
-    boostSubtext: "Search & Category placement",
-    commission: "+2.0%",
-    isActive: false,
-  },
-  {
-    id: "c2",
-    title: "New User Specials",
-    description: "Targeting customers' first orders.",
-    requirement: "Requirement",
-    requirementValue: "$10 Fixed Off",
-    duration: "Duration",
-    durationValue: "Continuous",
-    boostType: "acquisition" as const,
-    boostText: "+25% ACQUISITION",
-    boostSubtext: "Priority in 'Offers for you'",
-    commission: "Standard",
-    isActive: true,
-  },
-  {
-    id: "c3",
-    title: "Gourmet Week 2026",
-    description: "Premium dining collection promo.",
-    requirement: "Requirement",
-    requirementValue: "Set Menu Only",
-    duration: "Duration",
-    durationValue: "Feb 12 - Feb 20",
-    boostType: "premium" as const,
-    boostText: "PREMIUM BADGE",
-    boostSubtext: "Social media promotion included",
-    commission: "+1.5%",
-    isActive: false,
-  },
-];
+    durationValue: durationValue && durationValue.trim() ? durationValue : "--",
+    boostType: normalizeBoostType(campaign.boost_type ?? campaign.type),
+    boostText: String(campaign.boost_text ?? campaign.boost_label ?? "PLATFORM BOOST"),
+    boostSubtext: String(campaign.boost_subtext ?? campaign.boost_description ?? "Live campaign visibility from the platform."),
+    commission:
+      commissionPercent !== undefined && commissionPercent !== null && `${commissionPercent}`.trim()
+        ? `${commissionPercent}${typeof commissionPercent === "number" ? "%" : ""}`
+        : "--",
+    isActive: Boolean(campaign.joined ?? campaign.is_active ?? campaign.active),
+  };
+}
+
+const EMPTY_SUMMARY: PromotionSummary = {
+  totalPromotions: 0,
+  activePromotions: 0,
+  campaignReach: 0,
+  averageConversionPercent: null,
+  totalPromoRevenue: null,
+};
 
 export default function PromotionsPage() {
   const [businessPromotions, setBusinessPromotions] = useState<Promotion[]>([]);
+  const [summary, setSummary] = useState<PromotionSummary>(EMPTY_SUMMARY);
+  const [platformCampaigns, setPlatformCampaigns] = useState<PlatformCampaign[]>([]);
   const [campaignStates, setCampaignStates] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
 
   const fetchPromotions = useCallback(async () => {
     try {
-      const raw = await vendorListPromotions() as {
-        items?: Record<string, unknown>[];
-        business_promotions?: Record<string, unknown>[];
-      };
+      const raw = (await vendorListPromotions()) as PromotionsResponse;
       const items = raw?.business_promotions ?? raw?.items ?? [];
       const normalized: Promotion[] = items.map((p) => ({
         id: (p.id ?? p._id ?? "") as string,
@@ -157,7 +164,29 @@ export default function PromotionsPage() {
         usageMax: (p.usage_max ?? p.usageMax ?? 100) as number,
         isActive: (p.is_active ?? p.isActive ?? false) as boolean,
       }));
+      const rawSummary = raw.summary ?? {};
+      const normalizedCampaigns = (raw.platform_campaigns ?? []).map(normalizePlatformCampaign);
+
+      setSummary({
+        totalPromotions: toNumber(rawSummary.total_promotions),
+        activePromotions: toNumber(rawSummary.active_promotions),
+        campaignReach: toNumber(rawSummary.campaign_reach),
+        averageConversionPercent:
+          rawSummary.avg_conversion_percent === undefined ||
+          rawSummary.avg_conversion_percent === null
+            ? null
+            : toNumber(rawSummary.avg_conversion_percent),
+        totalPromoRevenue: formatMoney(
+          rawSummary.total_promo_revenue ?? rawSummary.promo_revenue,
+        ),
+      });
       setBusinessPromotions(normalized);
+      setPlatformCampaigns(normalizedCampaigns);
+      setCampaignStates(
+        Object.fromEntries(
+          normalizedCampaigns.map((campaign) => [campaign.id, campaign.isActive]),
+        ),
+      );
     } catch (err) {
       console.warn("Failed to load promotions:", err);
     } finally {
@@ -178,10 +207,29 @@ export default function PromotionsPage() {
       setCampaignStates((prev) => ({ ...prev, [id]: !newState }));
     }
   };
-
-  // Keep platform campaigns as static since they come from the platform
-  const platformCampaigns = PLATFORM_CAMPAIGNS;
-
+  const stats = [
+    {
+      label: "TOTAL PROMO REVENUE",
+      value: summary.totalPromoRevenue ?? "--",
+      icon: TrendingUp,
+    },
+    {
+      label: "ACTIVE PROMOTIONS",
+      value: `${summary.activePromotions}`,
+      subtext: `${summary.totalPromotions} total promotions`,
+      icon: Tag,
+    },
+    {
+      label: "CAMPAIGN REACH",
+      value: formatCompactNumber(summary.campaignReach),
+      icon: Users,
+    },
+    {
+      label: "AVG. CONVERSION",
+      value: formatPercent(summary.averageConversionPercent),
+      icon: MousePointer2,
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col pb-10">
@@ -211,7 +259,7 @@ export default function PromotionsPage() {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {STATS.map((stat, idx) => (
+            {stats.map((stat, idx) => (
               <div
                 key={idx}
                 className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 relative overflow-hidden group hover:shadow-md transition-shadow"
@@ -224,13 +272,6 @@ export default function PromotionsPage() {
                     <span className="text-2xl font-bold text-slate-800">
                       {stat.value}
                     </span>
-                    {stat.trend && (
-                      <span
-                        className={cn("text-[10px] font-bold", stat.trendColor)}
-                      >
-                        {stat.trend}
-                      </span>
-                    )}
                   </div>
                   {stat.subtext && (
                     <p className="text-[10px] font-medium text-slate-400 mt-1">
@@ -272,14 +313,20 @@ export default function PromotionsPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {platformCampaigns.map((campaign) => (
-                <CampaignCard
-                  key={campaign.id}
-                  {...campaign}
-                  isActive={campaignStates[campaign.id] ?? campaign.isActive}
-                  onToggle={() => toggleCampaign(campaign.id)}
-                />
-              ))}
+              {platformCampaigns.length > 0 ? (
+                platformCampaigns.map((campaign) => (
+                  <CampaignCard
+                    key={campaign.id}
+                    {...campaign}
+                    isActive={campaignStates[campaign.id] ?? campaign.isActive}
+                    onToggle={() => toggleCampaign(campaign.id)}
+                  />
+                ))
+              ) : (
+                <div className="md:col-span-2 lg:col-span-3 rounded-[32px] border border-dashed border-slate-200 bg-white p-8 text-sm text-slate-500">
+                  No platform campaigns available.
+                </div>
+              )}
             </div>
           </section>
         </div>

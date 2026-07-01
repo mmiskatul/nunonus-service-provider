@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   format,
@@ -16,10 +16,19 @@ import {
   isToday,
 } from "date-fns";
 import { cn } from "@/lib/utils";
+import { vendorGetCalendarPreview } from "@/lib/vendor-api";
+
+type CalendarPreviewPayload = {
+  month?: string;
+  busy_days?: Array<{ day?: number; count?: number }>;
+};
 
 export function CalendarPreview() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [busyDays, setBusyDays] = useState<Record<number, number>>({});
+  const [apiMonth, setApiMonth] = useState<string>("");
+  const [loading, setLoading] = useState(true);
 
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
   const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
@@ -35,6 +44,29 @@ export function CalendarPreview() {
     start: startDate,
     end: endDate,
   });
+
+  useEffect(() => {
+    vendorGetCalendarPreview()
+      .then((payload) => {
+        const data = payload as CalendarPreviewPayload;
+        setApiMonth(String(data.month ?? ""));
+        setBusyDays(
+          Object.fromEntries(
+            (data.busy_days ?? [])
+              .filter((entry) => typeof entry.day === "number")
+              .map((entry) => [Number(entry.day), Number(entry.count ?? 0)]),
+          ),
+        );
+      })
+      .catch(() => {
+        setApiMonth("");
+        setBusyDays({});
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const visibleMonthKey = useMemo(() => format(currentMonth, "yyyy-MM"), [currentMonth]);
+  const showBusyDays = apiMonth === visibleMonthKey;
 
   return (
     <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-100 h-full">
@@ -55,43 +87,56 @@ export function CalendarPreview() {
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center mb-4">
-        {days.map((d, i) => (
-          <div
-            key={i}
-            className="text-[10px] font-semibold text-slate-400 py-1"
-          >
-            {d}
+      {loading ? (
+        <div className="flex h-[220px] items-center justify-center">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-sky-500 border-t-transparent" />
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-7 gap-1 text-center mb-4">
+            {days.map((d, i) => (
+              <div
+                key={i}
+                className="text-[10px] font-semibold text-slate-400 py-1"
+              >
+                {d}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      <div className="grid grid-cols-7 gap-1">
-        {calendarDays.map((day) => {
-          const isSelected = isSameDay(day, selectedDate);
-          const isCurrentMonth = isSameMonth(day, monthStart);
-          const isTodayDate = isToday(day);
+          <div className="grid grid-cols-7 gap-1">
+            {calendarDays.map((day) => {
+              const isSelected = isSameDay(day, selectedDate);
+              const isCurrentMonth = isSameMonth(day, monthStart);
+              const isTodayDate = isToday(day);
+              const dayNumber = Number(format(day, "d"));
+              const busyCount = showBusyDays ? busyDays[dayNumber] ?? 0 : 0;
 
-          return (
-            <div
-              key={day.toString()}
-              onClick={() => setSelectedDate(day)}
-              className={cn(
-                "relative flex h-8 items-center justify-center rounded-lg text-xs font-semibold cursor-pointer transition-all",
-                !isCurrentMonth && "text-slate-200",
-                isCurrentMonth &&
-                  !isSelected &&
-                  !isTodayDate &&
-                  "text-slate-600 hover:bg-slate-50",
-                isTodayDate && !isSelected && "bg-sky-50 text-sky-500",
-                isSelected && "bg-[#38bdf8] text-white",
-              )}
-            >
-              {format(day, "d")}
-            </div>
-          );
-        })}
-      </div>
+              return (
+                <div
+                  key={day.toString()}
+                  onClick={() => setSelectedDate(day)}
+                  className={cn(
+                    "relative flex h-8 items-center justify-center rounded-lg text-xs font-semibold cursor-pointer transition-all",
+                    !isCurrentMonth && "text-slate-200",
+                    isCurrentMonth &&
+                      !isSelected &&
+                      !isTodayDate &&
+                      "text-slate-600 hover:bg-slate-50",
+                    isTodayDate && !isSelected && "bg-sky-50 text-sky-500",
+                    isSelected && "bg-[#38bdf8] text-white",
+                  )}
+                >
+                  {format(day, "d")}
+                  {isCurrentMonth && busyCount > 0 && !isSelected ? (
+                    <span className="absolute bottom-1 h-1.5 w-1.5 rounded-full bg-sky-500" />
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }
