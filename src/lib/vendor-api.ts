@@ -61,7 +61,7 @@ export async function vendorRequest<T>(
     if (response.status === 401) {
       clearVendorTokens();
       if (typeof window !== "undefined") {
-        window.location.href = "/auth/login";
+        window.location.href = "/login";
       }
     }
     throw new Error(
