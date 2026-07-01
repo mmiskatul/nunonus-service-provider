@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Nunos Dashboard",
-  description: "Platform overview dashboard built with Next.js and TypeScript"
+  title: "Nunonus Service Provider",
+  description: "Service provider portal for bookings, services, promotions, and account management."
 };
 
 export default function RootLayout({

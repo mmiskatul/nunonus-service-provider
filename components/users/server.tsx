@@ -7,12 +7,7 @@ type UsersData = {
   users: UserProfile[];
 };
 
-const fallbackData: UsersData = {
-  summaryCards: [],
-  users: []
-};
-
 export async function UsersServer() {
-  const data = await fetchApiData<UsersData>("/api/users", fallbackData);
+  const data = await fetchApiData<UsersData>("/api/users");
   return <UsersClient initialData={data} />;
 }

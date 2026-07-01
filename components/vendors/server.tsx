@@ -22,12 +22,7 @@ type DataPayload = {
   }>;
 };
 
-const fallbackData: DataPayload = {
-  summaryCards: [],
-  vendors: []
-};
-
 export async function VendorsManagementViewServer() {
-  const data = await fetchApiData<DataPayload>("/api/vendors", fallbackData);
+  const data = await fetchApiData<DataPayload>("/api/vendors");
   return <VendorsManagementView data={data} />;
 }

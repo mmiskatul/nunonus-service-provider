@@ -37,35 +37,18 @@ async function resolveBaseUrl() {
   return `http://127.0.0.1:${port}`;
 }
 
-export async function fetchApiData<T extends object>(path: string, fallback: T): Promise<T> {
+export async function fetchApiData<T extends object>(path: string): Promise<T> {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const baseUrl = await resolveBaseUrl();
+  const response = await fetch(`${baseUrl}${normalizedPath}`, {
+    cache: "no-store",
+    next: { revalidate: 0 }
+  });
 
-  try {
-    const baseUrl = await resolveBaseUrl();
-    const response = await fetch(`${baseUrl}${normalizedPath}`, {
-      cache: "no-store",
-      next: { revalidate: 0 }
-    });
-
-    if (!response.ok) {
-      return fallback;
-    }
-
-    const raw = (await response.json()) as Record<string, unknown>;
-
-    // Merge with fallback so any missing key from a stub/partial response is filled.
-    // Only spread the response if it shares at least one key with the fallback.
-    const fallbackKeys = Object.keys(fallback as object);
-    const responseKeys = Object.keys(raw ?? {});
-    const hasMatchingKey = fallbackKeys.some((k) => responseKeys.includes(k));
-
-    if (!hasMatchingKey) {
-      // The response is completely different shape (e.g. a stub) — use fallback
-      return fallback;
-    }
-
-    return { ...fallback, ...raw } as T;
-  } catch {
-    return fallback;
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as { detail?: string; message?: string };
+    throw new Error(payload.detail || payload.message || `Failed to load ${normalizedPath}`);
   }
+
+  return (await response.json()) as T;
 }

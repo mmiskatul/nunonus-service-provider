@@ -16,22 +16,7 @@ type DataPayload = {
   vendors: Array<{ code: string; name: string; category: string; rating: string; revenue: string; status: string }>;
 };
 
-const fallbackData: DataPayload = {
-  stats: [],
-  monthlyData: [],
-  weeklyData: [],
-  bookingByRange: {
-    weekly: [],
-    monthly: []
-  },
-  bookingTotals: {
-    weekly: 0,
-    monthly: 0
-  },
-  vendors: []
-};
-
 export async function DashboardViewServer() {
-  const data = await fetchApiData<DataPayload>("/api/dashboard", fallbackData);
+  const data = await fetchApiData<DataPayload>("/api/dashboard");
   return <DashboardView data={data} />;
 }

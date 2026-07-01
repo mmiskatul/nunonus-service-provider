@@ -17,12 +17,7 @@ type DataPayload = {
   }>;
 };
 
-const fallbackData: DataPayload = {
-  totalSubmissions: 0,
-  items: []
-};
-
 export async function ContentManagementViewServer() {
-  const data = await fetchApiData<DataPayload>("/api/content-moderation", fallbackData);
+  const data = await fetchApiData<DataPayload>("/api/content-moderation");
   return <ContentManagementView data={data} />;
 }

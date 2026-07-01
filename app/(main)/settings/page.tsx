@@ -1,5 +1,1 @@
-import { SettingsViewServer } from "@/components/settings/server";
-
-export default function SettingsPage() {
-  return <SettingsViewServer />;
-}
+export { default } from "@/app/(dashboard)/settings/page";

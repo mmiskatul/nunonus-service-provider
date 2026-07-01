@@ -18,12 +18,7 @@ type DataPayload = {
   }>;
 };
 
-const fallbackData: DataPayload = {
-  summaryCards: [],
-  tickets: []
-};
-
 export async function SupportDashboardViewServer() {
-  const data = await fetchApiData<DataPayload>("/api/support", fallbackData);
+  const data = await fetchApiData<DataPayload>("/api/support");
   return <SupportDashboardView data={data} />;
 }

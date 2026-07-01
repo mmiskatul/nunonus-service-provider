@@ -19,13 +19,8 @@ interface TrendPoint {
   count?: number;
 }
 
-const FALLBACK_DATA = [
-  { name: "Jan", value: 0 }, { name: "Feb", value: 0 }, { name: "Mar", value: 0 },
-  { name: "Apr", value: 0 }, { name: "May", value: 0 }, { name: "Jun", value: 0 },
-];
-
 export function BookingTrendsChart() {
-  const [data, setData] = useState<TrendPoint[]>(FALLBACK_DATA);
+  const [data, setData] = useState<TrendPoint[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,20 +28,18 @@ export function BookingTrendsChart() {
       .then((result) => {
         const raw = result as { items?: TrendPoint[]; data?: TrendPoint[]; trends?: TrendPoint[] };
         const items: TrendPoint[] = raw?.items ?? raw?.data ?? raw?.trends ?? [];
-        if (items.length > 0) {
-          setData(
-            items.map((p) => ({
-              name: p.name ?? p.period ?? "",
-              value: p.value ?? p.count ?? 0,
-            })),
-          );
-        }
+        setData(
+          items.map((p) => ({
+            name: p.name ?? p.period ?? "",
+            value: p.value ?? p.count ?? 0,
+          })),
+        );
       })
-      .catch(() => {/* keep fallback */})
+      .catch(() => setData([]))
       .finally(() => setLoading(false));
   }, []);
 
-  const maxValue = Math.max(...data.map((d) => d.value ?? 0), 10);
+  const maxValue = Math.max(...data.map((d) => d.value ?? 0), 1);
 
   return (
     <div className="rounded-2xl bg-white p-8 shadow-sm border border-slate-100 flex flex-col h-full">
@@ -58,33 +51,39 @@ export function BookingTrendsChart() {
       </div>
 
       <div className="flex-1 w-full min-h-[300px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-            <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis
-              dataKey="name"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: "#94a3b8", fontSize: 12 }}
-              dy={10}
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: "#94a3b8", fontSize: 12 }}
-              domain={[0, Math.ceil(maxValue * 1.2)]}
-            />
-            <Tooltip
-              cursor={{ fill: "#f8fafc" }}
-              contentStyle={{
-                borderRadius: "8px",
-                border: "none",
-                boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-              }}
-            />
-            <Bar dataKey="value" fill="#1e2a5e" radius={[4, 4, 0, 0]} barSize={32} />
-          </BarChart>
-        </ResponsiveContainer>
+        {data.length === 0 ? (
+          <div className="flex h-full min-h-[300px] items-center justify-center rounded-2xl border border-dashed border-slate-200 text-sm text-slate-400">
+            No trend data available.
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis
+                dataKey="name"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: "#94a3b8", fontSize: 12 }}
+                dy={10}
+              />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: "#94a3b8", fontSize: 12 }}
+                domain={[0, Math.ceil(maxValue * 1.2)]}
+              />
+              <Tooltip
+                cursor={{ fill: "#f8fafc" }}
+                contentStyle={{
+                  borderRadius: "8px",
+                  border: "none",
+                  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                }}
+              />
+              <Bar dataKey="value" fill="#1e2a5e" radius={[4, 4, 0, 0]} barSize={32} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

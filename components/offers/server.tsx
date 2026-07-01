@@ -29,12 +29,7 @@ type DataPayload = {
   }>;
 };
 
-const fallbackData: DataPayload = {
-  summaryCards: [],
-  offers: []
-};
-
 export async function OffersManagementViewServer() {
-  const data = await fetchApiData<DataPayload>("/api/offers", fallbackData);
+  const data = await fetchApiData<DataPayload>("/api/offers");
   return <OffersManagementView data={data} />;
 }

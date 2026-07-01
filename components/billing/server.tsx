@@ -13,12 +13,7 @@ type DataPayload = {
   }>;
 };
 
-const fallbackData: DataPayload = {
-  summaryCards: [],
-  recentPayments: []
-};
-
 export async function BillingManagementViewServer() {
-  const data = await fetchApiData<DataPayload>("/api/billing", fallbackData);
+  const data = await fetchApiData<DataPayload>("/api/billing");
   return <BillingManagementView data={data} />;
 }
