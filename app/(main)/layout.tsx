@@ -16,7 +16,9 @@ export default function MainLayout({
   useEffect(() => {
     const token = getVendorToken();
     if (!token) {
-      router.replace("/login");
+      const currentPath = typeof window !== "undefined" ? window.location.pathname + window.location.search : "";
+      const redirectUrl = currentPath ? `/login?next=${encodeURIComponent(currentPath)}` : "/login";
+      router.replace(redirectUrl);
       return;
     }
     setAuthorized(true);
