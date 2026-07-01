@@ -6,7 +6,8 @@
 const DEFAULT_BACKEND_BASE_URL = "https://nunos-backend.vercel.app";
 
 function getApiBaseUrl(): string {
-  return (process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || DEFAULT_BACKEND_BASE_URL).replace(/\/+$/, "");
+  const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || DEFAULT_BACKEND_BASE_URL).replace(/\/+$/, "");
+  return baseUrl.endsWith("/api/v1") ? baseUrl : `${baseUrl}/api/v1`;
 }
 
 const V = getApiBaseUrl();
