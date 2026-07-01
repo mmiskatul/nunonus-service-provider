@@ -2,29 +2,38 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const publicPaths = [
-  "/login",
   "/auth/login",
-  "/register",
   "/auth/register",
-  "/registration-submitted",
   "/auth/registration-submitted",
-  "/forgot-password",
   "/auth/forgot-password",
-  "/verify-code",
   "/auth/verify-code",
   "/auth/verify-otp",
-  "/reset-password",
   "/auth/reset-password",
-  "/password-changed",
   "/auth/password-changed",
-  "/legal",
   "/auth/legal"
 ];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith("/api")) {
+  // Redirect legacy root auth routes to nested /auth/ routes
+  if (pathname === "/login") {
+    return NextResponse.redirect(new URL("/auth/login", request.url));
+  }
+  if (pathname === "/register") {
+    return NextResponse.redirect(new URL("/auth/register", request.url));
+  }
+  if (pathname === "/forgot-password") {
+    return NextResponse.redirect(new URL("/auth/forgot-password", request.url));
+  }
+  if (pathname === "/reset-password") {
+    return NextResponse.redirect(new URL("/auth/reset-password", request.url));
+  }
+  if (pathname === "/verify-code" || pathname === "/auth/verify-code") {
+    return NextResponse.redirect(new URL("/auth/verify-otp", request.url));
+  }
+
+  if (pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname === "/favicon.ico") {
     return NextResponse.next();
   }
 
@@ -35,7 +44,7 @@ export function proxy(request: NextRequest) {
   const hasAuth = request.cookies.get("nunos_vendor_auth")?.value === "true";
   if (!hasAuth) {
     const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
+    loginUrl.pathname = "/auth/login";
     loginUrl.searchParams.set("next", pathname + request.nextUrl.search);
     return NextResponse.redirect(loginUrl);
   }
