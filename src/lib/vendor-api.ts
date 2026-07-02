@@ -800,7 +800,7 @@ export async function vendorMarkNotificationRead(notificationId: string) {
   return vendorRequest<Record<string, unknown>>(
     `/vendor/notifications/${notificationId}/action`,
     "POST",
-    { action: "read" },
+    { action: "mark_read" },
   );
 }
 
