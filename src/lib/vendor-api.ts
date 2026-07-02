@@ -3,6 +3,11 @@
  * Covers all vendor blueprint endpoints.
  */
 
+import {
+  cacheVendorCategories,
+  clearCachedVendorCategories,
+} from "@/lib/vendor-access";
+
 const DEFAULT_BACKEND_BASE_URL = "https://nunos-backend.vercel.app";
 
 function getApiBaseUrl(): string {
@@ -34,6 +39,7 @@ export function clearVendorTokens(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem("vendor_access_token");
   localStorage.removeItem("vendor_refresh_token");
+  clearCachedVendorCategories();
 }
 
 // ─── Base request ─────────────────────────────────────────────────────────────
@@ -168,6 +174,26 @@ export interface VendorAuthResult {
   [key: string]: unknown;
 }
 
+export type VendorEventStatus = "draft" | "published" | "archived" | "cancelled";
+
+export interface VendorEventPayload {
+  title: string;
+  category: string;
+  event_type: string;
+  event_date: string;
+  start_time: string;
+  end_time: string;
+  timezone: string;
+  venue: string;
+  capacity: number;
+  ticket_price: number;
+  registration_deadline?: string | null;
+  description: string;
+  banner_image_url?: string | null;
+  active_status: boolean;
+  status: VendorEventStatus;
+}
+
 /** POST /vendor/auth/register/request-code */
 export async function vendorRequestRegisterCode(payload: {
   email_or_phone: string;
@@ -292,6 +318,40 @@ export async function vendorGetUpcomingBookings(limit = 10) {
   return vendorRequest<Record<string, unknown>>(
     `/vendor/dashboard/upcoming-bookings${q({ limit })}`,
   );
+}
+
+export async function vendorListEvents(
+  params: {
+    search?: string;
+    status?: string;
+    category?: string;
+  } = {},
+) {
+  return vendorRequest<Record<string, unknown>>(`/vendor/events${q(params)}`);
+}
+
+export async function vendorCreateEvent(payload: VendorEventPayload) {
+  return vendorRequest<Record<string, unknown>>(`/vendor/events`, "POST", payload as unknown as Record<string, unknown>);
+}
+
+export async function vendorGetEvent(eventId: string) {
+  return vendorRequest<Record<string, unknown>>(`/vendor/events/${eventId}`);
+}
+
+export async function vendorUpdateEvent(eventId: string, payload: VendorEventPayload) {
+  return vendorRequest<Record<string, unknown>>(
+    `/vendor/events/${eventId}`,
+    "PATCH",
+    payload as unknown as Record<string, unknown>,
+  );
+}
+
+export async function vendorUpdateEventStatus(eventId: string, status: VendorEventStatus) {
+  return vendorRequest<Record<string, unknown>>(`/vendor/events/${eventId}/status`, "PATCH", { status });
+}
+
+export async function vendorDeleteEvent(eventId: string) {
+  return vendorRequest<Record<string, unknown>>(`/vendor/events/${eventId}`, "DELETE");
 }
 
 /** GET /vendor/dashboard/recent-reviews */
@@ -692,18 +752,24 @@ export async function vendorUpdateLegalDoc(
 
 /** GET /vendor/settings/profile */
 export async function vendorGetProfileSettings() {
-  return vendorRequest<Record<string, unknown>>(`/vendor/settings/profile`);
+  const result = await vendorRequest<Record<string, unknown>>(`/vendor/settings/profile`);
+  cacheVendorCategories(result.categories ?? result.category);
+  return result;
 }
 
 /** PATCH /vendor/settings/profile */
 export async function vendorUpdateProfileSettings(
   payload: Record<string, unknown>,
 ) {
-  return vendorRequest<Record<string, unknown>>(
+  const result = await vendorRequest<Record<string, unknown>>(
     `/vendor/settings/profile`,
     "PATCH",
     payload,
   );
+  cacheVendorCategories(
+    result.categories ?? payload.categories ?? result.category ?? payload.category,
+  );
+  return result;
 }
 
 /** PATCH /vendor/settings/password */

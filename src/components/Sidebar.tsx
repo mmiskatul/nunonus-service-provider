@@ -4,40 +4,17 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  CalendarRange,
-  UtensilsCrossed,
-  Tag,
-  BarChart3,
-  UserCircle2,
-  Star,
-  Settings,
   LogOut,
-  Hotel,
-  Waves,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  getSidebarItemsForCategories,
+  type VendorCategory,
+} from "@/lib/vendor-access";
 
-const navItems = [
-  { name: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-  {
-    name: "Restaurant Bookings",
-    icon: UtensilsCrossed,
-    href: "/restaurant-bookings",
-  },
-  { name: "Hotel Bookings", icon: CalendarRange, href: "/hotel-bookings" },
-  { name: "Restaurant / Services", icon: UtensilsCrossed, href: "/services" },
-  { name: "Hotel / Services", icon: Hotel, href: "/hotel-services" },
-  { name: "Spa / Services", icon: Waves, href: "/spa-services" },
-  { name: "Promotions", icon: Tag, href: "/promotions" },
-  { name: "Analytics", icon: BarChart3, href: "/analytics" },
-  { name: "Loyalty Program", icon: UserCircle2, href: "/loyalty" },
-  { name: "Reviews", icon: Star, href: "/reviews" },
-  { name: "Settings", icon: Settings, href: "/settings" },
-];
-
-export function Sidebar() {
+export function Sidebar({ categories }: { categories: VendorCategory[] }) {
   const pathname = usePathname();
+  const navItems = getSidebarItemsForCategories(categories);
 
   return (
     <div className="flex bg-[#1e2a5e] h-screen w-20 md:w-64 flex-col text-white transition-all duration-300 ease-in-out border-r border-white/5">

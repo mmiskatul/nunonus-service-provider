@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { getVendorToken } from "@/lib/vendor-api";
+import { readCachedVendorCategories } from "@/lib/vendor-access";
 
 export default function DashboardLayout({
   children,
@@ -32,7 +33,7 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar />
+      <Sidebar categories={readCachedVendorCategories()} />
       <main className="flex-1 overflow-y-auto overflow-x-hidden">
         {children}
       </main>
