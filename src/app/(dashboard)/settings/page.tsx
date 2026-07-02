@@ -17,10 +17,30 @@ type SettingsNotificationData = {
   platform_updates?: boolean;
 };
 
+function isNextRedirect(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "digest" in error &&
+    String((error as { digest?: unknown }).digest).startsWith("NEXT_REDIRECT")
+  );
+}
+
+async function fetchOrDefault<T extends object>(path: string, fallback: T): Promise<T> {
+  try {
+    return await fetchApiData<T>(path);
+  } catch (error) {
+    if (isNextRedirect(error)) {
+      throw error;
+    }
+    return fallback;
+  }
+}
+
 export default async function SettingsPage() {
   const [profile, notifications] = await Promise.all([
-    fetchApiData<SettingsProfileData>("/api/settings/profile"),
-    fetchApiData<SettingsNotificationData>("/api/settings/notifications"),
+    fetchOrDefault<SettingsProfileData>("/api/settings/profile", {}),
+    fetchOrDefault<SettingsNotificationData>("/api/settings/notifications", {}),
   ]);
 
   return (

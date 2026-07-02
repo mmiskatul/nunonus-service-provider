@@ -72,6 +72,16 @@ async function refreshVendorAccessToken(cookieHeader: string | null) {
   return payload.access_token;
 }
 
+function isAuthFailure(response: Response, payload: { detail?: string; message?: string }) {
+  const message = `${payload.detail ?? ""} ${payload.message ?? ""}`.toLowerCase();
+  return (
+    response.status === 401 ||
+    message.includes("invalid access token") ||
+    message.includes("invalid refresh token") ||
+    message.includes("not logged in")
+  );
+}
+
 export async function fetchApiData<T extends object>(path: string): Promise<T> {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   const baseUrl = await resolveBaseUrl();
@@ -100,7 +110,7 @@ export async function fetchApiData<T extends object>(path: string): Promise<T> {
 
   if (!response.ok) {
     const payload = (await response.json().catch(() => ({}))) as { detail?: string; message?: string };
-    if (response.status === 401) {
+    if (isAuthFailure(response, payload)) {
       redirect("/auth/login");
     }
     throw new Error(payload.detail || payload.message || `Failed to load ${normalizedPath}`);
