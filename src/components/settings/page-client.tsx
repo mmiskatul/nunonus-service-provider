@@ -1,15 +1,37 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Header } from "@/components/Header";
-import { Bell, Save, Shield, User } from "lucide-react";
+import { Bell, CalendarPlus2, Save, Shield, User, X } from "lucide-react";
 import {
+  vendorCreateEvent,
+  vendorGetProfileSettings,
   vendorUpdateNotificationSettings,
   vendorUpdatePassword,
   vendorUpdateProfileSettings,
+  type VendorEventPayload,
+  type VendorEventStatus,
 } from "@/lib/vendor-api";
+import { extractVendorCategories, type VendorCategory } from "@/lib/vendor-access";
 
 type SettingsTab = "profile" | "notifications" | "security";
+
+type EventFormState = {
+  title: string;
+  category: VendorCategory;
+  eventType: string;
+  eventDate: string;
+  startTime: string;
+  endTime: string;
+  timezone: string;
+  venue: string;
+  capacity: string;
+  ticketPrice: string;
+  registrationDeadline: string;
+  description: string;
+  bannerImageUrl: string;
+  status: VendorEventStatus;
+};
 
 export type SettingsProfileData = {
   business_name?: string;
@@ -27,6 +49,61 @@ export type SettingsNotificationData = {
   platform_updates?: boolean;
 };
 
+const DEFAULT_CATEGORIES: VendorCategory[] = ["Restaurant"];
+
+function getDefaultEventForm(categories: VendorCategory[]): EventFormState {
+  return {
+    title: "",
+    category: categories[0] ?? "Restaurant",
+    eventType: "",
+    eventDate: "",
+    startTime: "",
+    endTime: "",
+    timezone: "Asia/Dhaka",
+    venue: "",
+    capacity: "",
+    ticketPrice: "",
+    registrationDeadline: "",
+    description: "",
+    bannerImageUrl: "",
+    status: "draft",
+  };
+}
+
+function validateEventForm(form: EventFormState): string | null {
+  if (!form.title.trim()) return "Event title is required.";
+  if (!form.eventType.trim()) return "Event type is required.";
+  if (!form.eventDate) return "Event date is required.";
+  if (!form.startTime) return "Start time is required.";
+  if (!form.endTime) return "End time is required.";
+  if (form.endTime <= form.startTime) return "End time must be later than start time.";
+  if (!form.venue.trim()) return "Venue is required.";
+  if (!form.capacity.trim() || Number(form.capacity) <= 0) return "Capacity must be greater than zero.";
+  if (!form.ticketPrice.trim() || Number(form.ticketPrice) < 0) return "Ticket price must be zero or more.";
+  if (!form.description.trim()) return "Description is required.";
+  return null;
+}
+
+function toEventPayload(form: EventFormState): VendorEventPayload {
+  return {
+    title: form.title.trim(),
+    category: form.category,
+    event_type: form.eventType.trim(),
+    event_date: form.eventDate,
+    start_time: form.startTime,
+    end_time: form.endTime,
+    timezone: form.timezone.trim() || "Asia/Dhaka",
+    venue: form.venue.trim(),
+    capacity: Number(form.capacity),
+    ticket_price: Number(form.ticketPrice),
+    registration_deadline: form.registrationDeadline || null,
+    description: form.description.trim(),
+    banner_image_url: form.bannerImageUrl.trim() || null,
+    active_status: true,
+    status: form.status,
+  };
+}
+
 export function SettingsPageClient({
   initialProfile,
   initialNotifications,
@@ -37,6 +114,11 @@ export function SettingsPageClient({
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [categories, setCategories] = useState<VendorCategory[]>(DEFAULT_CATEGORIES);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
+  const [showCreateEventModal, setShowCreateEventModal] = useState(false);
+  const [eventSaving, setEventSaving] = useState(false);
+  const [eventStatusMessage, setEventStatusMessage] = useState("");
   const [profileForm, setProfileForm] = useState({
     business_name: String(initialProfile.business_name ?? initialProfile.name ?? ""),
     phone: String(initialProfile.phone ?? ""),
@@ -56,6 +138,27 @@ export function SettingsPageClient({
     new_review: Boolean(initialNotifications.new_review ?? true),
     platform_updates: Boolean(initialNotifications.platform_updates ?? false),
   });
+  const [eventForm, setEventForm] = useState<EventFormState>(getDefaultEventForm(DEFAULT_CATEGORIES));
+
+  const ensureCategoriesLoaded = async () => {
+    if (categoriesLoaded) {
+      return;
+    }
+
+    try {
+      const profile = await vendorGetProfileSettings();
+      const nextCategories = extractVendorCategories(profile.categories ?? profile.category);
+      setCategories(nextCategories);
+      setEventForm((current) => ({
+        ...current,
+        category: nextCategories.includes(current.category) ? current.category : nextCategories[0],
+      }));
+    } catch {
+      setCategories(DEFAULT_CATEGORIES);
+    } finally {
+      setCategoriesLoaded(true);
+    }
+  };
 
   const handleSaveProfile = async () => {
     try {
@@ -110,6 +213,43 @@ export function SettingsPageClient({
     }
   };
 
+  const closeCreateEventModal = () => {
+    setShowCreateEventModal(false);
+    setEventStatusMessage("");
+    setEventForm(getDefaultEventForm(categories));
+  };
+
+  const openCreateEventModal = () => {
+    setShowCreateEventModal(true);
+    setEventStatusMessage("");
+    setEventForm(getDefaultEventForm(categories));
+    void ensureCategoriesLoaded();
+  };
+
+  const handleCreateEvent = async () => {
+    const validationError = validateEventForm(eventForm);
+    if (validationError) {
+      setEventStatusMessage(validationError);
+      return;
+    }
+
+    setEventSaving(true);
+    setEventStatusMessage("");
+    try {
+      await vendorCreateEvent(toEventPayload(eventForm));
+      setEventStatusMessage("Event created.");
+      setTimeout(() => {
+        closeCreateEventModal();
+      }, 500);
+    } catch (error) {
+      setEventStatusMessage(
+        error instanceof Error ? error.message : "Failed to create event.",
+      );
+    } finally {
+      setEventSaving(false);
+    }
+  };
+
   const tabs: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
     { id: "profile", label: "Business Profile", icon: User },
     { id: "notifications", label: "Notifications", icon: Bell },
@@ -142,9 +282,18 @@ export function SettingsPageClient({
           <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
             {activeTab === "profile" && (
               <div className="space-y-6">
-                <div>
-                  <h2 className="text-xl font-black text-slate-800 mb-1">Business Profile</h2>
-                  <p className="text-sm text-slate-400">Update your business information visible to customers.</p>
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-800 mb-1">Business Profile</h2>
+                    <p className="text-sm text-slate-400">Update your business information visible to customers.</p>
+                  </div>
+                  <button
+                    onClick={openCreateEventModal}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1e2a5e] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#1a2552]"
+                  >
+                    <CalendarPlus2 className="h-4 w-4" />
+                    Create Event
+                  </button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[
@@ -267,6 +416,291 @@ export function SettingsPageClient({
           </div>
         </div>
       </main>
+
+      {showCreateEventModal ? (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm">
+          <div className="flex h-[100dvh] w-screen flex-col bg-white">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-white px-6 py-5 md:px-10">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+                  Event Creator
+                </p>
+                <h3 className="mt-2 text-3xl font-black text-slate-800">Create Event</h3>
+                <p className="mt-2 max-w-2xl text-sm text-slate-400">
+                  Fill in every event detail here. The preview updates as you type.
+                </p>
+              </div>
+              <button
+                onClick={closeCreateEventModal}
+                className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                aria-label="Close create event modal"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="grid flex-1 gap-0 overflow-hidden lg:grid-cols-[360px,1fr]">
+              <aside className="border-b border-slate-100 bg-slate-50/60 p-6 lg:border-b-0 lg:border-r lg:p-8">
+                <div className="sticky top-0 space-y-6">
+                  {!categoriesLoaded ? (
+                    <div className="rounded-[28px] border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-500">
+                      Loading category options...
+                    </div>
+                  ) : null}
+                  <div className="rounded-[28px] bg-[#1e2a5e] p-6 text-white shadow-xl shadow-slate-900/10">
+                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/60">
+                      Live Preview
+                    </p>
+                    <h4 className="mt-3 text-2xl font-black leading-tight">
+                      {eventForm.title || "Event title will appear here"}
+                    </h4>
+                    <p className="mt-2 text-sm text-white/75">
+                      {eventForm.eventType || "Event type"} in{" "}
+                      {eventForm.venue || "your selected venue"}
+                    </p>
+                    <div className="mt-5 space-y-2 text-sm text-white/80">
+                      <p>Date: {eventForm.eventDate || "Not selected"}</p>
+                      <p>
+                        Time: {eventForm.startTime || "--:--"} to {eventForm.endTime || "--:--"}
+                      </p>
+                      <p>Capacity: {eventForm.capacity || "0"}</p>
+                      <p>Ticket: {eventForm.ticketPrice || "0"}</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                    <h4 className="text-sm font-black uppercase tracking-[0.18em] text-slate-500">
+                      Event Details
+                    </h4>
+                    <div className="mt-4 space-y-3 text-sm text-slate-600">
+                      <SummaryRow label="Category" value={eventForm.category} />
+                      <SummaryRow label="Timezone" value={eventForm.timezone || "Asia/Dhaka"} />
+                      <SummaryRow label="Registration Deadline" value={eventForm.registrationDeadline || "Not set"} />
+                      <SummaryRow label="Status" value={eventForm.status} />
+                      <SummaryRow label="Banner URL" value={eventForm.bannerImageUrl || "Not set"} />
+                    </div>
+                  </div>
+                </div>
+              </aside>
+
+              <div className="flex min-h-0 flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto px-6 py-6 md:px-8 md:py-8">
+                  {eventStatusMessage ? (
+                    <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
+                      {eventStatusMessage}
+                    </div>
+                  ) : null}
+
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <Field label="Event Title">
+                  <input
+                    value={eventForm.title}
+                    onChange={(event) => setEventForm((current) => ({ ...current, title: event.target.value }))}
+                    className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
+                    placeholder="Summer Food Festival"
+                  />
+                </Field>
+                <Field label="Category">
+                  <select
+                    value={eventForm.category}
+                    onChange={(event) =>
+                      setEventForm((current) => ({
+                        ...current,
+                        category: event.target.value as VendorCategory,
+                      }))
+                    }
+                    className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
+                  >
+                    {categories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Event Type">
+                  <input
+                    value={eventForm.eventType}
+                    onChange={(event) => setEventForm((current) => ({ ...current, eventType: event.target.value }))}
+                    className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
+                    placeholder="Dinner, Concert, Workshop"
+                  />
+                </Field>
+                <Field label="Venue">
+                  <input
+                    value={eventForm.venue}
+                    onChange={(event) => setEventForm((current) => ({ ...current, venue: event.target.value }))}
+                    className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
+                    placeholder="Main Hall"
+                  />
+                </Field>
+                <Field label="Event Date">
+                  <input
+                    type="date"
+                    value={eventForm.eventDate}
+                    onChange={(event) => setEventForm((current) => ({ ...current, eventDate: event.target.value }))}
+                    className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
+                  />
+                </Field>
+                <Field label="Timezone">
+                  <input
+                    value={eventForm.timezone}
+                    onChange={(event) => setEventForm((current) => ({ ...current, timezone: event.target.value }))}
+                    className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
+                    placeholder="Asia/Dhaka"
+                  />
+                </Field>
+                <Field label="Start Time">
+                  <input
+                    type="time"
+                    value={eventForm.startTime}
+                    onChange={(event) => setEventForm((current) => ({ ...current, startTime: event.target.value }))}
+                    className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
+                  />
+                </Field>
+                <Field label="End Time">
+                  <input
+                    type="time"
+                    value={eventForm.endTime}
+                    onChange={(event) => setEventForm((current) => ({ ...current, endTime: event.target.value }))}
+                    className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
+                  />
+                </Field>
+                <Field label="Capacity">
+                  <input
+                    type="number"
+                    min="1"
+                    value={eventForm.capacity}
+                    onChange={(event) => setEventForm((current) => ({ ...current, capacity: event.target.value }))}
+                    className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
+                    placeholder="100"
+                  />
+                </Field>
+                <Field label="Ticket Price">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={eventForm.ticketPrice}
+                    onChange={(event) => setEventForm((current) => ({ ...current, ticketPrice: event.target.value }))}
+                    className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
+                    placeholder="25"
+                  />
+                </Field>
+                <Field label="Registration Deadline">
+                  <input
+                    type="datetime-local"
+                    value={eventForm.registrationDeadline}
+                    onChange={(event) =>
+                      setEventForm((current) => ({
+                        ...current,
+                        registrationDeadline: event.target.value,
+                      }))
+                    }
+                    className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
+                  />
+                </Field>
+                <Field label="Banner Image URL">
+                  <input
+                    value={eventForm.bannerImageUrl}
+                    onChange={(event) =>
+                      setEventForm((current) => ({
+                        ...current,
+                        bannerImageUrl: event.target.value,
+                      }))
+                    }
+                    className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
+                    placeholder="https://..."
+                  />
+                </Field>
+                <Field label="Status">
+                  <select
+                    value={eventForm.status}
+                    onChange={(event) =>
+                      setEventForm((current) => ({
+                        ...current,
+                        status: event.target.value as VendorEventStatus,
+                      }))
+                    }
+                    className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="archived">Archived</option>
+                    <option value="cancelled">Cancelled</option>
+                    </select>
+                </Field>
+                  </div>
+
+                  <Field label="Description">
+                    <textarea
+                      value={eventForm.description}
+                      onChange={(event) =>
+                        setEventForm((current) => ({ ...current, description: event.target.value }))
+                      }
+                      rows={8}
+                      className="w-full rounded-[20px] border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-500"
+                      placeholder="Describe the event, guest experience, schedule, and important notes."
+                    />
+                  </Field>
+                </div>
+
+                <div className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-100 bg-white px-6 py-5 md:px-8">
+                  <button
+                    onClick={closeCreateEventModal}
+                    className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => void handleCreateEvent()}
+                    disabled={eventSaving}
+                    className="rounded-2xl bg-[#1e2a5e] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#1a2552] disabled:opacity-60"
+                  >
+                    {eventSaving ? "Creating..." : "Create Event"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+        {label}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+function SummaryRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+        {label}
+      </span>
+      <span className="max-w-[180px] text-right text-sm font-semibold text-slate-700">
+        {value}
+      </span>
     </div>
   );
 }

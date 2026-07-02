@@ -1,208 +1,229 @@
 "use client";
 
-import React, { useState } from "react";
-import { Plus, Search, Filter } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { BedDouble, Filter, Plus, Search, Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { RoomCard, Room } from "@/components/RoomCard";
 import { ServiceCard, ServiceItem } from "@/components/ServiceCard";
 import { cn } from "@/lib/utils";
-
-const DUMMY_ROOMS: Room[] = [
-  {
-    id: "1",
-    name: "Deluxe King Room",
-    image:
-      "https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800&q=80",
-    tag: "MOST POPULAR",
-    price: 180,
-    size: 32,
-    maxGuests: 2,
-    bedType: "King Bed",
-    amenities: ["Wi-Fi", "Smart TV", "Balcony", "AC"],
-    status: "Available",
-  },
-  {
-    id: "2",
-    name: "Executive Suite",
-    image:
-      "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80",
-    price: 350,
-    size: 65,
-    maxGuests: 3,
-    bedType: "Super King",
-    amenities: ["Mini-bar", "Ocean View", "Workstation", "Bathtub"],
-    status: "Available",
-  },
-  {
-    id: "3",
-    name: "Standard Double",
-    image:
-      "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=800&q=80",
-    price: 120,
-    size: 24,
-    maxGuests: 2,
-    bedType: "Double Bed",
-    amenities: ["Wi-Fi", "AC"],
-    status: "Under Maintenance",
-  },
-];
-
-const DUMMY_SERVICES: ServiceItem[] = [
-  {
-    id: "s1",
-    name: "Gourmet Breakfast Tray",
-    category: "Food",
-    price: 25,
-    image:
-      "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=400&q=80",
-    available: true,
-    deliveryTime: "30-45 MIN",
-  },
-  {
-    id: "s2",
-    name: "Express Dry Cleaning",
-    category: "Laundry",
-    price: 45,
-    image:
-      "https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?w=400&q=80",
-    available: true,
-    deliveryTime: "SAME DAY",
-  },
-  {
-    id: "s3",
-    name: "Aromatherapy Massage",
-    category: "Wellness",
-    price: 120,
-    image:
-      "https://images.unsplash.com/photo-1544161515-4af6b1d462c2?w=400&q=80",
-    available: false,
-    deliveryTime: "UPON REQUEST",
-  },
-];
-
 import {
+  vendorDeleteRoom,
+  vendorDeleteService,
   vendorListRooms,
-  vendorUpdateRoomAvailability,
   vendorListServices,
+  vendorUpdateRoomAvailability,
   vendorUpdateServiceStatus,
 } from "@/lib/vendor-api";
-import { useEffect } from "react";
 
 export default function HotelServicesPage() {
   const [activeTab, setActiveTab] = useState<"rooms" | "services">("rooms");
   const [rooms, setRooms] = useState<Room[]>([]);
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadData = async () => {
+    try {
+      const [roomsRes, servicesRes] = await Promise.all([
+        vendorListRooms(),
+        vendorListServices(),
+      ]);
+
+      const mappedRooms = (roomsRes.items || []).map((room: Record<string, unknown>) => ({
+        id: String(room.id ?? ""),
+        name: String(room.name ?? "Room"),
+        image:
+          String((room.images as string[] | undefined)?.[0] ?? "") ||
+          "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80",
+        price: Number(room.base_price ?? 0),
+        size: Number(room.size_sqm ?? 0),
+        maxGuests: Number(room.max_guests ?? 1),
+        bedType: String(room.bed_type ?? "Bed"),
+        amenities: Array.isArray(room.amenities)
+          ? room.amenities.map((item) => String(item))
+          : [],
+        status: (room.available ?? room.active_status ?? true)
+          ? "Available"
+          : "Unavailable",
+      })) as Room[];
+
+      const mappedServices = (servicesRes.items || []).map((service: Record<string, unknown>) => ({
+        id: String(service.id ?? ""),
+        name: String(service.name ?? "Service"),
+        category: String(service.category ?? "Other") as ServiceItem["category"],
+        price: Number(service.price ?? 0),
+        image:
+          String((service.images as string[] | undefined)?.[0] ?? "") ||
+          "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=400&q=80",
+        available: Boolean(service.available ?? service.active_status ?? true),
+        deliveryTime: String(service.delivery_time ?? "UPON REQUEST"),
+      })) as ServiceItem[];
+
+      setRooms(mappedRooms);
+      setServices(mappedServices);
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "Failed to load hotel inventory.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const roomsRes = await vendorListRooms();
-        const mappedRooms = (roomsRes.items || []).map((r: any) => ({
-          id: r.id,
-          name: r.name,
-          image: r.images?.[0] || "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80",
-          price: r.base_price,
-          size: r.size_sqm,
-          maxGuests: r.max_guests,
-          bedType: r.bed_type,
-          amenities: r.amenities || [],
-          status: (r.available ? "Available" : "Unavailable") as "Available" | "Unavailable" | "Under Maintenance",
-        }));
-        setRooms(mappedRooms);
-
-        const servicesRes = await vendorListServices();
-        const mappedServices = (servicesRes.items || []).map((s: any) => ({
-          id: s.id,
-          name: s.name,
-          category: s.category,
-          price: s.price,
-          image: s.images?.[0] || "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=400&q=80",
-          available: s.available ?? s.active_status ?? true,
-          deliveryTime: s.delivery_time || "UPON REQUEST",
-        }));
-        setServices(mappedServices);
-      } catch (err) {
-        console.error("Failed to load rooms and services:", err);
-      }
-    }
     void loadData();
   }, []);
 
   const toggleRoomStatus = async (id: string) => {
-    const room = rooms.find((r) => r.id === id);
-    if (!room) return;
+    const room = rooms.find((item) => item.id === id);
+    if (!room) {
+      return;
+    }
+
     const nextAvailable = room.status !== "Available";
     try {
       await vendorUpdateRoomAvailability(id, nextAvailable);
-      setRooms(
-        rooms.map((r) =>
-          r.id === id
-            ? { ...r, status: nextAvailable ? "Available" : "Unavailable" }
-            : r,
+      setRooms((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? { ...item, status: nextAvailable ? "Available" : "Unavailable" }
+            : item,
         ),
       );
-    } catch (err) {
-      alert("Failed to update room status: " + (err instanceof Error ? err.message : String(err)));
+      setStatusMessage("Room availability updated.");
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "Failed to update room status.",
+      );
     }
   };
 
   const toggleServiceStatus = async (id: string) => {
-    const service = services.find((s) => s.id === id);
-    if (!service) return;
+    const service = services.find((item) => item.id === id);
+    if (!service) {
+      return;
+    }
+
     const nextAvailable = !service.available;
     try {
       await vendorUpdateServiceStatus(id, nextAvailable);
-      setServices(
-        services.map((s) =>
-          s.id === id ? { ...s, available: nextAvailable } : s,
+      setServices((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, available: nextAvailable } : item,
         ),
       );
-    } catch (err) {
-      alert("Failed to update service status: " + (err instanceof Error ? err.message : String(err)));
+      setStatusMessage("Service availability updated.");
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "Failed to update service status.",
+      );
+    }
+  };
+
+  const deleteRoom = async (id: string) => {
+    try {
+      await vendorDeleteRoom(id);
+      setRooms((prev) => prev.filter((item) => item.id !== id));
+      setStatusMessage("Room deleted.");
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Failed to delete room.");
+    }
+  };
+
+  const deleteService = async (id: string) => {
+    try {
+      await vendorDeleteService(id);
+      setServices((prev) => prev.filter((item) => item.id !== id));
+      setStatusMessage("Service deleted.");
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "Failed to delete service.",
+      );
     }
   };
 
   const filteredRooms = rooms.filter((room) =>
-    room.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    `${room.name} ${room.bedType} ${room.amenities.join(" ")}`
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase()),
   );
 
   const filteredServices = services.filter((service) =>
-    service.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    `${service.name} ${service.category} ${service.deliveryTime ?? ""}`
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase()),
   );
 
+  const summaryItems = [
+    {
+      label: "Room Types",
+      value: rooms.length,
+      icon: BedDouble,
+    },
+    {
+      label: "Active Services",
+      value: services.filter((item) => item.available).length,
+      icon: Sparkles,
+    },
+    {
+      label: "Total Listings",
+      value: rooms.length + services.length,
+      icon: Filter,
+    },
+  ];
+
+  const visibleItems = activeTab === "rooms" ? filteredRooms : filteredServices;
+
   return (
-    <div className="min-h-screen p-4 md:p-10 bg-slate-50/50">
-      <div className="max-w-[1400px] mx-auto space-y-10">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="min-h-screen bg-slate-50/50 p-4 md:p-10">
+      <div className="mx-auto max-w-[1400px] space-y-10">
+        {statusMessage ? (
+          <p className="text-sm font-bold text-[#1e2a5e]">{statusMessage}</p>
+        ) : null}
+
+        <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
           <div>
-            <h1 className="text-4xl font-black text-slate-800 tracking-tight">
+            <h1 className="text-4xl font-black tracking-tight text-slate-800">
               Hotel Properties & Services
             </h1>
-            <p className="text-slate-400 font-bold mt-1 uppercase tracking-widest text-[10px]">
-              Manage your room inventory and guest amenity offerings
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              Manage room inventory and guest-facing hotel services
             </p>
           </div>
           <Link
-            href={
-              activeTab === "rooms"
-                ? "/hotel-services/add"
-                : "/hotel-services/add-service"
-            }
-            className="flex items-center justify-center gap-3 bg-[#1e2a5e] text-white px-8 py-5 rounded-[24px] font-black text-sm hover:bg-[#1a234d] transition-all shadow-xl shadow-[#1e2a5e]/20 group"
+            href={activeTab === "rooms" ? "/hotel-services/add" : "/hotel-services/add-service"}
+            className="group flex items-center justify-center gap-3 rounded-[24px] bg-[#1e2a5e] px-8 py-5 text-sm font-black text-white shadow-xl shadow-[#1e2a5e]/20 transition-all hover:bg-[#1a234d]"
           >
             <Plus className="h-5 w-5 transition-transform group-hover:rotate-90" />
             {activeTab === "rooms" ? "Add New Room" : "Add Room Service"}
           </Link>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="flex bg-white/50 p-2 rounded-[32px] border border-slate-100 w-fit">
+        <section className="grid grid-cols-1 gap-5 md:grid-cols-3">
+          {summaryItems.map((item) => (
+            <div
+              key={item.label}
+              className="rounded-[28px] border border-slate-100 bg-white p-6 shadow-sm"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                  {item.label}
+                </span>
+                <item.icon className="h-5 w-5 text-[#1e2a5e]" />
+              </div>
+              <p className="mt-4 text-4xl font-black tracking-tight text-slate-800">
+                {item.value}
+              </p>
+            </div>
+          ))}
+        </section>
+
+        <div className="flex w-fit rounded-[32px] border border-slate-100 bg-white/50 p-2">
           <button
             onClick={() => setActiveTab("rooms")}
             className={cn(
-              "px-8 py-4 rounded-[24px] text-xs font-black uppercase tracking-widest transition-all",
+              "rounded-[24px] px-8 py-4 text-xs font-black uppercase tracking-widest transition-all",
               activeTab === "rooms"
                 ? "bg-[#1e2a5e] text-white shadow-xl shadow-[#1e2a5e]/20"
                 : "text-slate-400 hover:text-slate-600",
@@ -213,7 +234,7 @@ export default function HotelServicesPage() {
           <button
             onClick={() => setActiveTab("services")}
             className={cn(
-              "px-8 py-4 rounded-[24px] text-xs font-black uppercase tracking-widest transition-all",
+              "rounded-[24px] px-8 py-4 text-xs font-black uppercase tracking-widest transition-all",
               activeTab === "services"
                 ? "bg-[#1e2a5e] text-white shadow-xl shadow-[#1e2a5e]/20"
                 : "text-slate-400 hover:text-slate-600",
@@ -223,46 +244,62 @@ export default function HotelServicesPage() {
           </button>
         </div>
 
-        {/* Filters & Search */}
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-1 group">
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-[#1e2a5e] transition-colors" />
+        <div className="flex flex-col gap-4 md:flex-row">
+          <div className="group relative flex-1">
+            <Search className="absolute left-6 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-[#1e2a5e]" />
             <input
               type="text"
               placeholder={
                 activeTab === "rooms"
-                  ? "Search room type, amenities..."
-                  : "Search services, categories..."
+                  ? "Search room type, bed type, amenities..."
+                  : "Search services, categories, delivery time..."
               }
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-16 pr-6 py-5 bg-white border border-slate-100 rounded-[28px] text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-sky-50 transition-all"
+              onChange={(event) => setSearchQuery(event.target.value)}
+              className="w-full rounded-[28px] border border-slate-100 bg-white py-5 pl-16 pr-6 text-sm font-bold text-slate-700 placeholder:text-slate-400 transition-all focus:outline-none focus:ring-4 focus:ring-sky-50"
             />
           </div>
-          <button className="flex items-center gap-3 px-8 py-5 bg-white border border-slate-100 rounded-[28px] text-sm font-black text-slate-700 hover:bg-slate-50 transition-all">
-            <Filter className="h-5 w-5 text-[#1e2a5e]" />
-            Filters
-          </button>
         </div>
 
-        {/* Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-10">
-          {activeTab === "rooms"
-            ? filteredRooms.map((room) => (
-                <RoomCard
-                  key={room.id}
-                  room={room}
-                  onToggleStatus={toggleRoomStatus}
-                />
-              ))
-            : filteredServices.map((service) => (
-                <ServiceCard
-                  key={service.id}
-                  service={service}
-                  onToggleStatus={toggleServiceStatus}
-                />
-              ))}
-        </div>
+        {isLoading ? (
+          <div className="flex min-h-[280px] items-center justify-center rounded-[32px] border border-slate-100 bg-white text-sm font-bold text-slate-400 shadow-sm">
+            Loading inventory...
+          </div>
+        ) : visibleItems.length === 0 ? (
+          <div className="flex min-h-[320px] flex-col items-center justify-center rounded-[32px] border border-dashed border-slate-200 bg-white text-center shadow-sm">
+            <Trash2 className="h-10 w-10 text-slate-300" />
+            <h2 className="mt-4 text-xl font-black text-slate-700">
+              {activeTab === "rooms" ? "No room listings yet" : "No service listings yet"}
+            </h2>
+            <p className="mt-2 max-w-md text-sm text-slate-400">
+              {activeTab === "rooms"
+                ? "Create your room inventory with pricing, amenities, and availability controls."
+                : "Add guest-facing services so your hotel team can manage them from one place."}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-8 pb-10 md:grid-cols-2 lg:grid-cols-3">
+                {activeTab === "rooms"
+              ? filteredRooms.map((room) => (
+                  <RoomCard
+                    key={room.id}
+                    room={room}
+                    onToggleStatus={toggleRoomStatus}
+                    onDelete={(id) => void deleteRoom(id)}
+                    editHref={`/hotel-services/rooms/${room.id}`}
+                  />
+                ))
+              : filteredServices.map((service) => (
+                  <ServiceCard
+                    key={service.id}
+                    service={service}
+                    onToggleStatus={toggleServiceStatus}
+                    onDelete={(id) => void deleteService(id)}
+                    editHref={`/hotel-services/services/${service.id}`}
+                  />
+                ))}
+          </div>
+        )}
       </div>
     </div>
   );

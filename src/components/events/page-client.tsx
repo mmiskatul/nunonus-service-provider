@@ -13,7 +13,7 @@ import {
 } from "@/lib/vendor-api";
 import { cn } from "@/lib/utils";
 import { extractVendorCategories, type VendorCategory } from "@/lib/vendor-access";
-import { CalendarDays, Clock3, MapPin, Pencil, Plus, Search, Trash2, Users } from "lucide-react";
+import { CalendarDays, Clock3, MapPin, Pencil, Plus, Search, Trash2, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -209,6 +209,12 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     setShowForm(false);
   };
 
+  const openCreateForm = () => {
+    setForm(getDefaultForm(categories));
+    setEditingId(null);
+    setShowForm(true);
+  };
+
   const handleSubmit = async () => {
     const validationError = validateForm(form);
     if (validationError) {
@@ -305,21 +311,14 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
               </p>
             </div>
             <div className="flex gap-3">
-              <Link
-                href="/events/new"
+              <button
+                type="button"
+                onClick={openCreateForm}
                 className="inline-flex items-center gap-2 rounded-xl bg-[#1e2a5e] px-5 py-3 text-sm font-bold text-white shadow-xl shadow-slate-900/10 transition hover:bg-[#1a2552]"
               >
                 <Plus className="h-4 w-4" />
                 Create Event
-              </Link>
-              {showForm ? (
-                <button
-                  onClick={resetForm}
-                  className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
-                >
-                  Close Form
-                </button>
-              ) : null}
+              </button>
             </div>
           </div>
 
@@ -363,13 +362,21 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
             <p className="text-sm font-bold text-[#1e2a5e]">{statusMessage}</p>
           ) : null}
 
-          <div className="grid gap-8 xl:grid-cols-[1.2fr,0.8fr]">
-            <section className="rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm md:p-8">
+          <section className="rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm md:p-8">
               <div className="mb-6">
                 <h2 className="text-xl font-bold text-slate-800">Event List</h2>
                 <p className="mt-1 text-sm text-slate-400">
                   Allowed categories for this vendor: {categories.join(", ")}.
                 </p>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button
+                    onClick={openCreateForm}
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#1e2a5e] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#1a2552]"
+                  >
+                    <Plus className="h-4 w-4" />
+                    New Event
+                  </button>
+                </div>
               </div>
 
               {loading ? (
@@ -461,18 +468,35 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                 </div>
               )}
             </section>
+        </div>
+      </main>
 
-            <section className="rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm md:p-8">
-              <div className="mb-6">
-                <h2 className="text-xl font-bold text-slate-800">
+      {showForm ? (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 p-4 backdrop-blur-sm md:p-8">
+          <div className="mx-auto flex h-[100dvh] w-full max-w-6xl flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5 md:px-8">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
                   {editingId ? "Edit Event" : "Create Event"}
+                </p>
+                <h2 className="mt-2 text-3xl font-black text-slate-800">
+                  {editingId ? "Edit Event" : "New Event"}
                 </h2>
-                <p className="mt-1 text-sm text-slate-400">
-                  Category access is enforced by both the dashboard and the backend API.
+                <p className="mt-2 text-sm text-slate-400">
+                  Fill the event details here. This is the same flow for both new and create event.
                 </p>
               </div>
+              <button
+                onClick={resetForm}
+                className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                aria-label="Close event form"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
 
-              {showForm ? (
+            <div className="flex-1 overflow-y-auto px-6 py-6 md:px-8 md:py-8">
+              <div className="grid gap-8 xl:grid-cols-[1.1fr,0.9fr]">
                 <div className="space-y-5">
                   <Field label="Event Title">
                     <input
@@ -482,7 +506,6 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                       placeholder="Founder networking night"
                     />
                   </Field>
-
                   <div className="grid gap-5 md:grid-cols-2">
                     <Field label="Category">
                       <select
@@ -508,7 +531,6 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                       />
                     </Field>
                   </div>
-
                   <div className="grid gap-5 md:grid-cols-2">
                     <Field label="Event Date">
                       <input
@@ -527,7 +549,6 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                       />
                     </Field>
                   </div>
-
                   <div className="grid gap-5 md:grid-cols-2">
                     <Field label="Start Time">
                       <input
@@ -546,7 +567,6 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                       />
                     </Field>
                   </div>
-
                   <Field label="Venue">
                     <input
                       value={form.venue}
@@ -555,7 +575,6 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                       placeholder="Rooftop Hall"
                     />
                   </Field>
-
                   <div className="grid gap-5 md:grid-cols-2">
                     <Field label="Capacity">
                       <input
@@ -579,7 +598,6 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                       />
                     </Field>
                   </div>
-
                   <Field label="Registration Deadline">
                     <input
                       type="datetime-local"
@@ -590,7 +608,6 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                       className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
                     />
                   </Field>
-
                   <Field label="Banner Image URL">
                     <input
                       value={form.bannerImageUrl}
@@ -599,16 +616,14 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                       placeholder="https://..."
                     />
                   </Field>
-
                   <Field label="Description">
                     <textarea
                       value={form.description}
                       onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
-                      className="min-h-[140px] w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-500"
+                      className="min-h-[160px] w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-500"
                       placeholder="Describe the event agenda, audience, and timing."
                     />
                   </Field>
-
                   <Field label="Status">
                     <select
                       value={form.status}
@@ -623,39 +638,78 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                       <option value="cancelled">Cancelled</option>
                     </select>
                   </Field>
+                </div>
 
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => void handleSubmit()}
-                      disabled={saving}
-                      className="rounded-xl bg-[#1e2a5e] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#1a2552] disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {saving ? "Saving..." : editingId ? "Update Event" : "Save Event"}
-                    </button>
-                    <button
-                      onClick={resetForm}
-                      className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
-                    >
-                      Cancel
-                    </button>
+                <div className="rounded-[28px] border border-slate-100 bg-slate-50/70 p-6">
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+                    Preview
+                  </p>
+                  <div className="mt-4 space-y-4 rounded-[24px] bg-white p-5 shadow-sm">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Title</p>
+                      <p className="mt-1 text-lg font-bold text-slate-800">{form.title || "Event title"}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm text-slate-600">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Category</p>
+                        <p className="mt-1">{form.category}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Type</p>
+                        <p className="mt-1">{form.eventType || "Event type"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Date</p>
+                        <p className="mt-1">{form.eventDate || "Not set"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Time</p>
+                        <p className="mt-1">{form.startTime || "--:--"} - {form.endTime || "--:--"}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Venue</p>
+                      <p className="mt-1 text-sm text-slate-700">{form.venue || "Venue"}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm text-slate-600">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Capacity</p>
+                        <p className="mt-1">{form.capacity || "0"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Ticket</p>
+                        <p className="mt-1">{form.ticketPrice || "0"}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Description</p>
+                      <p className="mt-1 text-sm leading-6 text-slate-600">
+                        {form.description || "Event description"}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              ) : (
-                <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-6 py-14 text-center">
-                  <p className="text-base font-bold text-slate-700">Open the form to create a new event.</p>
-                  <button
-                    onClick={() => setShowForm(true)}
-                    className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#1e2a5e] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#1a2552]"
-                  >
-                    <Plus className="h-4 w-4" />
-                    New Event
-                  </button>
-                </div>
-              )}
-            </section>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-5 md:px-8">
+              <button
+                onClick={resetForm}
+                className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => void handleSubmit()}
+                disabled={saving}
+                className="rounded-xl bg-[#1e2a5e] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#1a2552] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {saving ? "Saving..." : editingId ? "Update Event" : "Save Event"}
+              </button>
+            </div>
           </div>
         </div>
-      </main>
+      ) : null}
     </div>
   );
 }

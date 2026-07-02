@@ -5,7 +5,6 @@ import {
   Users,
   BedDouble,
   Maximize2,
-  MoreHorizontal,
   Wifi,
   Wind,
   Tv,
@@ -14,7 +13,10 @@ import {
   ShieldCheck,
   Palmtree,
   Laptop,
+  Pencil,
+  Trash2,
 } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 export interface Room {
@@ -46,9 +48,11 @@ const AMENITY_ICONS: Record<string, any> = {
 interface RoomCardProps {
   room: Room;
   onToggleStatus: (id: string) => void;
+  onDelete?: (id: string) => void;
+  editHref?: string;
 }
 
-export function RoomCard({ room, onToggleStatus }: RoomCardProps) {
+export function RoomCard({ room, onToggleStatus, onDelete, editHref }: RoomCardProps) {
   return (
     <div className="group bg-white rounded-[40px] shadow-sm border border-slate-50 overflow-hidden transition-all hover:shadow-xl hover:shadow-slate-200/50">
       {/* Image Section */}
@@ -74,10 +78,6 @@ export function RoomCard({ room, onToggleStatus }: RoomCardProps) {
             </div>
           )}
         </div>
-
-        <button className="absolute top-6 right-6 h-10 w-10 flex items-center justify-center bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-all">
-          <MoreHorizontal className="h-5 w-5" />
-        </button>
       </div>
 
       {/* Content Section */}
@@ -171,9 +171,24 @@ export function RoomCard({ room, onToggleStatus }: RoomCardProps) {
           </div>
 
           <div className="flex gap-2">
-            <button className="h-4 w-4 rounded-full bg-slate-100" />
-            <button className="h-4 w-4 rounded-full bg-slate-100" />
-            <button className="h-4 w-4 rounded-full bg-slate-100" />
+            {editHref ? (
+              <Link
+                href={editHref}
+                className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 transition hover:bg-[#1e2a5e] hover:text-white"
+                aria-label={`Edit ${room.name}`}
+              >
+                <Pencil className="h-4 w-4" />
+              </Link>
+            ) : null}
+            {onDelete ? (
+              <button
+                onClick={() => onDelete(room.id)}
+                className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 transition hover:bg-rose-100"
+                aria-label={`Delete ${room.name}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            ) : null}
           </div>
         </div>
       </div>

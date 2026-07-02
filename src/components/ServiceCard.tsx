@@ -7,9 +7,11 @@ import {
   Sparkles,
   Utensils,
   Waves,
-  MoreVertical,
   Clock,
+  Pencil,
+  Trash2,
 } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 export interface ServiceItem {
@@ -25,6 +27,8 @@ export interface ServiceItem {
 interface ServiceCardProps {
   service: ServiceItem;
   onToggleStatus: (id: string) => void;
+  onDelete?: (id: string) => void;
+  editHref?: string;
 }
 
 const CATEGORY_ICONS = {
@@ -35,7 +39,12 @@ const CATEGORY_ICONS = {
   Other: Coffee,
 };
 
-export function ServiceCard({ service, onToggleStatus }: ServiceCardProps) {
+export function ServiceCard({
+  service,
+  onToggleStatus,
+  onDelete,
+  editHref,
+}: ServiceCardProps) {
   const Icon = CATEGORY_ICONS[service.category] || CATEGORY_ICONS.Other;
 
   return (
@@ -87,9 +96,26 @@ export function ServiceCard({ service, onToggleStatus }: ServiceCardProps) {
               </div>
             )}
           </div>
-          <button className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:bg-[#1e2a5e] hover:text-white transition-all">
-            <MoreVertical className="h-5 w-5" />
-          </button>
+          <div className="flex gap-2">
+            {editHref ? (
+              <Link
+                href={editHref}
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400 transition-all hover:bg-[#1e2a5e] hover:text-white"
+                aria-label={`Edit ${service.name}`}
+              >
+                <Pencil className="h-5 w-5" />
+              </Link>
+            ) : null}
+            {onDelete ? (
+              <button
+                onClick={() => onDelete(service.id)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-500 transition-all hover:bg-rose-100"
+                aria-label={`Delete ${service.name}`}
+              >
+                <Trash2 className="h-5 w-5" />
+              </button>
+            ) : null}
+          </div>
         </div>
 
         <div className="mt-auto pt-6 border-t border-slate-50 flex items-end justify-between">
@@ -107,9 +133,14 @@ export function ServiceCard({ service, onToggleStatus }: ServiceCardProps) {
             </div>
           </div>
 
-          <button className="h-12 px-6 bg-[#1e2a5e] text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-[#1a234d] transition-all shadow-lg shadow-[#1e2a5e]/20 active:scale-95">
-            Edit Details
-          </button>
+          {editHref ? (
+            <Link
+              href={editHref}
+              className="flex h-12 items-center rounded-2xl bg-[#1e2a5e] px-6 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-[#1e2a5e]/20 transition-all hover:bg-[#1a234d] active:scale-95"
+            >
+              Edit Details
+            </Link>
+          ) : null}
         </div>
       </div>
     </div>
