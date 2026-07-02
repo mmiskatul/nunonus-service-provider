@@ -21,6 +21,7 @@ const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 export type ProfileSettingsData = {
   business_name?: string;
   category?: string;
+  categories?: string[];
   phone_number?: string;
   email_address?: string;
   about_business?: string;
@@ -47,6 +48,17 @@ function asNumberText(value: unknown): string {
   return "";
 }
 
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter((item, index, array) => item && array.indexOf(item) === index);
+}
+
+const CATEGORY_OPTIONS = ["Restaurant", "Hotel", "Spa", "Event Venue"];
+
 function buildStaticMapUrl(latitude: string, longitude: string): string | null {
   if (!GOOGLE_MAPS_API_KEY || !latitude || !longitude) {
     return null;
@@ -70,7 +82,13 @@ export function ProfilePageClient({
 }) {
   const [formData, setFormData] = useState({
     businessName: asText(initialData.business_name),
-    category: asText(initialData.category) || "Restaurant",
+    categories: (() => {
+      const next = asStringArray(initialData.categories);
+      if (next.length > 0) {
+        return next;
+      }
+      return asText(initialData.category) ? [asText(initialData.category)] : ["Restaurant"];
+    })(),
     contactPhone: asText(initialData.phone_number),
     contactEmail: asText(initialData.email_address),
     about: asText(initialData.about_business),
@@ -98,6 +116,19 @@ export function ProfilePageClient({
     const { name, value } = e.target;
     setStatusMessage("");
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const toggleCategory = (category: string) => {
+    setStatusMessage("");
+    setFormData((prev) => {
+      const next = prev.categories.includes(category)
+        ? prev.categories.filter((item) => item !== category)
+        : [...prev.categories, category];
+      return {
+        ...prev,
+        categories: next.length > 0 ? next : prev.categories,
+      };
+    });
   };
 
   const handleAvatarUpload = async (
@@ -185,7 +216,8 @@ export function ProfilePageClient({
     try {
       await vendorUpdateProfileSettings({
         business_name: formData.businessName.trim(),
-        category: formData.category.trim(),
+        category: formData.categories[0] || "Restaurant",
+        categories: formData.categories,
         email_address: formData.contactEmail.trim(),
         phone_number: formData.contactPhone.trim(),
         about_business: formData.about.trim(),
@@ -287,19 +319,28 @@ export function ProfilePageClient({
                   </div>
                   <div className="space-y-2">
                     <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-4">
-                      Category
+                      Categories
                     </label>
-                    <select
-                      name="category"
-                      value={formData.category}
-                      onChange={handleInputChange}
-                      className="w-full h-14 px-6 rounded-2xl border border-slate-200 bg-[#fbfcfe] focus:bg-white focus:border-sky-400 focus:ring-4 focus:ring-sky-100/80 transition-all outline-none text-sm font-medium text-slate-700"
-                    >
-                      <option>Restaurant</option>
-                      <option>Hotel</option>
-                      <option>Spa</option>
-                      <option>Event Venue</option>
-                    </select>
+                    <div className="grid grid-cols-2 gap-3">
+                      {CATEGORY_OPTIONS.map((category) => {
+                        const selected = formData.categories.includes(category);
+                        return (
+                          <button
+                            key={category}
+                            type="button"
+                            onClick={() => toggleCategory(category)}
+                            className={[
+                              "h-14 rounded-2xl border px-4 text-sm font-bold transition-all",
+                              selected
+                                ? "border-sky-400 bg-sky-50 text-sky-700"
+                                : "border-slate-200 bg-[#fbfcfe] text-slate-700 hover:border-sky-200 hover:bg-white",
+                            ].join(" ")}
+                          >
+                            {category}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-4">

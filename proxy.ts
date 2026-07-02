@@ -122,7 +122,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/auth/verify-otp", request.url));
   }
 
-  if (pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname === "/favicon.ico") {
+  if (pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.startsWith("/.well-known") || pathname === "/favicon.ico") {
     return NextResponse.next();
   }
 

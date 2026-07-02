@@ -36,89 +36,73 @@ export function LoginView() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full rounded-[36px] border border-white/80 bg-white/90 p-7 shadow-[0_24px_80px_rgba(148,64,36,0.12)] backdrop-blur sm:p-10"
+      className="w-full rounded-[16px] border border-[#d9d9d9] bg-white px-4 py-8 shadow-[0_8px_24px_rgba(15,23,42,0.08)] sm:px-4"
     >
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#c85b3b] text-white shadow-lg shadow-[#c85b3b]/20">
-            <FiLock size={18} />
-          </div>
-          <div>
-            <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9b6b56]">Service Partner Portal</p>
-            <h2 className="m-0 text-[28px] font-black tracking-tight text-[#2e1e19]">Welcome Back!</h2>
-          </div>
-        </div>
-        <div className="hidden rounded-full bg-[#fff3ea] px-3 py-1 text-[11px] font-semibold text-[#a56244] sm:block">
-          Warm access
-        </div>
+      <div className="text-center">
+        <h2 className="text-[30px] font-bold tracking-tight text-black">Welcome Back!</h2>
+        <p className="mt-1 text-[14px] text-[#555555]">To login, enter your email assress</p>
       </div>
 
-      <p className="mt-3 max-w-[38ch] text-sm leading-6 text-[#866c62]">
-        Log in to manage bookings, services, and daily operations from one place.
-      </p>
-
-      <p className="mt-3 text-sm text-[#866c62]">
-        New partner?{" "}
-        <Link href="/register" className="font-semibold text-[#c85b3b] transition hover:text-[#a94729]">
-          Create your business account
-        </Link>
-      </p>
-
-      <div className="mt-7 space-y-5">
+      <div className="mt-5 space-y-6">
         <div>
-          <label className="ml-1 text-[11px] font-bold uppercase tracking-[0.2em] text-[#5c433a]">Email</label>
-          <div className="mt-2 flex items-center gap-3 rounded-2xl border border-[#f2ded3] bg-[#fffaf7] px-4 py-3 transition focus-within:border-[#c85b3b]/25 focus-within:bg-white focus-within:shadow-[0_0_0_4px_rgba(200,91,59,0.08)]">
-            <FiMail size={16} className="text-[#b38a76]" />
+          <label className="block text-[15px] font-semibold text-black">Email</label>
+          <div className="mt-2 flex items-center gap-3 rounded-[14px] border border-[#ece6e8] bg-[#fbf7f8] px-4 py-3">
+            <FiMail size={18} className="text-[#444444]" />
             <input
               type="email"
               placeholder="Enter email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="w-full border-0 bg-transparent text-sm font-medium text-[#3a2923] outline-none placeholder:text-[#b79c90]"
+              className="w-full border-0 bg-transparent text-[15px] text-[#1f1f1f] outline-none placeholder:text-[#7e7e7e]"
               required
             />
           </div>
         </div>
 
         <div>
-          <label className="ml-1 text-[11px] font-bold uppercase tracking-[0.2em] text-[#5c433a]">Password</label>
-          <div className="mt-2 flex items-center gap-3 rounded-2xl border border-[#f2ded3] bg-[#fffaf7] px-4 py-3 transition focus-within:border-[#c85b3b]/25 focus-within:bg-white focus-within:shadow-[0_0_0_4px_rgba(200,91,59,0.08)]">
-            <FiLock size={16} className="text-[#b38a76]" />
+          <label className="block text-[15px] font-semibold text-black">Password</label>
+          <div className="mt-2 flex items-center gap-3 rounded-[14px] border border-[#ece6e8] bg-[#fbf7f8] px-4 py-3">
+            <FiLock size={18} className="text-[#444444]" />
             <input
               type={showPassword ? "text" : "password"}
               placeholder="Enter password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="w-full border-0 bg-transparent text-sm font-medium text-[#3a2923] outline-none placeholder:text-[#b79c90]"
+              className="w-full border-0 bg-transparent text-[15px] text-[#1f1f1f] outline-none placeholder:text-[#7e7e7e]"
               required
             />
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              className="rounded-full p-1 text-[#b38a76] transition hover:bg-[#fff0e8] hover:text-[#6a4a3f]"
+              className="p-1 text-[#444444]"
               aria-label="Toggle password visibility"
             >
-              {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+              {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
             </button>
+          </div>
+          <div className="mt-3 flex justify-end">
+            <Link href="/forgot-password" className="text-[15px] font-semibold text-[#de5a39]">
+            Forgot Password?
+            </Link>
           </div>
         </div>
 
-        <div className="flex justify-end">
-          <Link href="/forgot-password" className="text-sm font-semibold text-[#c85b3b] transition hover:text-[#a94729]">
-            Forgot Password?
-          </Link>
-        </div>
-
-        {error && <p className="m-0 rounded-xl bg-red-50 px-4 py-3 text-sm text-[#b91c1c]">{error}</p>}
+        {error ? <p className="m-0 text-sm text-[#b91c1c]">{error}</p> : null}
       </div>
 
       <button
         type="submit"
         disabled={loading}
-        className="mt-7 flex w-full items-center justify-center rounded-full bg-[#c85b3b] py-3.5 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(200,91,59,0.26)] transition hover:bg-[#b24d30] disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-7 flex w-full items-center justify-center rounded-[12px] bg-[#2f4799] py-3 text-[18px] font-semibold text-white transition hover:bg-[#273d88] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? "Logging in..." : "Login"}
       </button>
+
+      <div className="mt-4 text-center">
+        <Link href="/auth/register" className="text-[15px] font-semibold text-[#2f4799]">
+          Create business account
+        </Link>
+      </div>
     </form>
   );
 }

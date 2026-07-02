@@ -40,6 +40,7 @@ const DEFAULT_BACKEND_BASE_URL = "https://nunos-backend.vercel.app";
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || DEFAULT_BACKEND_BASE_URL).replace(/\/+$/, "");
 const API_V1_BASE_URL = `${API_BASE_URL}/api/v1`;
 const REGISTER_DRAFT_STORAGE_KEY = "vendor_registration_draft";
+const OTP_SLOT_COUNT = 6;
 
 function getApiBaseUrl(): string {
   return API_V1_BASE_URL;
@@ -155,7 +156,7 @@ function VerifyCodeInner() {
   const mode = searchParams.get("mode");
   const email = searchParams.get("email") ?? "";
   const contact = searchParams.get("contact") ?? "your email";
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otp, setOtp] = useState(() => Array(OTP_SLOT_COUNT).fill(""));
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -298,7 +299,7 @@ function VerifyCodeInner() {
           setMessage(result.message ?? "Failed to resend the code.");
           return;
         }
-        setOtp(["", "", "", "", "", ""]);
+        setOtp(Array(OTP_SLOT_COUNT).fill(""));
         inputRefs.current[0]?.focus();
         setMessage("A new verification code has been sent.");
       } finally {
@@ -333,7 +334,7 @@ function VerifyCodeInner() {
           debug_code: resendResult.validation_code ?? null,
         }),
       );
-      setOtp(["", "", "", "", "", ""]);
+      setOtp(Array(OTP_SLOT_COUNT).fill(""));
       inputRefs.current[0]?.focus();
       setMessage("A new verification code has been sent.");
     } catch (error) {
@@ -344,22 +345,22 @@ function VerifyCodeInner() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f4f6] flex items-center justify-center p-6">
-      <div className="w-full max-w-[560px] bg-white rounded-[36px] p-12 md:p-16 shadow-2xl shadow-slate-200/50 border border-slate-50">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-black text-slate-800 tracking-tight">
+    <div className="min-h-screen bg-white flex items-center justify-center p-6 w-full">
+      <div className="w-full max-w-[540px] bg-white rounded-[24px] p-10 md:p-14 shadow-2xl shadow-slate-100/70 border border-slate-100/60 flex flex-col">
+        <div className="text-center mb-8">
+          <h1 className="text-[28px] font-black text-slate-950 tracking-tight">
             Verify Code
           </h1>
-          <p className="mt-3 text-base text-slate-400 font-medium leading-7">
+          <p className="mt-3 text-xs text-slate-400 font-bold leading-relaxed max-w-[340px] mx-auto">
             We Sent OTP code to your email <br />
-            <span className="text-lg text-slate-600 font-bold">
+            <span className="text-xs text-slate-800 font-black block my-1 truncate">
               {mode === "register" ? contact : email || contact}
             </span>{" "}
             Enter the code below to verify
           </p>
         </div>
 
-        <form className="space-y-12" onSubmit={handleVerify}>
+        <form className="space-y-8" onSubmit={handleVerify}>
           <div className="flex justify-center gap-5">
             {otp.map((digit, i) => (
               <input
@@ -373,45 +374,45 @@ function VerifyCodeInner() {
                 onChange={(e) => handleChange(i, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(i, e)}
                 onPaste={handlePaste}
-                className="w-[72px] h-[72px] bg-white border-2 border-slate-100 rounded-2xl text-center text-3xl font-black text-slate-800 focus:outline-none focus:ring-4 focus:ring-[#1e2a5e]/5 focus:border-[#1e2a5e] transition-all"
+                className="w-18 h-18 bg-white border border-slate-200 rounded-2xl text-center text-3xl font-black text-slate-900 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/5 transition-all"
               />
             ))}
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-5">
             {message ? (
-              <p className="text-base font-bold text-[#1e2a5e] text-center">
+              <p className="text-xs font-bold text-red-500 text-center">
                 {message}
               </p>
             ) : null}
 
             <button
               type="submit"
-              className="w-full bg-[#1e2a5e] hover:bg-[#1a2552] text-white py-5 rounded-2xl text-lg font-bold shadow-xl shadow-[#1e2a5e]/20 transition-all active:scale-[0.98] disabled:opacity-60"
+              className="w-full bg-[#1b2554] hover:bg-[#151c3f] text-white py-4.5 rounded-2xl text-sm font-bold shadow-md transition-all active:scale-[0.98] disabled:opacity-60"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Verifying..." : "Next"}
             </button>
 
             <div className="text-center space-y-4">
-              <p className="text-sm font-bold text-slate-400">
+              <p className="text-xs font-bold text-slate-400">
                 Don&apos;t receive OTP?{" "}
                 <button
                   type="button"
                   onClick={handleResend}
                   disabled={isResending}
-                  className="text-[#e16b4f] hover:text-[#d15b3f] transition-colors"
+                  className="text-[#e26e5a] hover:text-[#d25e4a] transition-colors"
                 >
                   {isResending ? "Sending..." : "Resend again"}
                 </button>
               </p>
 
               <Link
-                href="/auth/login"
-                className="flex items-center justify-center gap-2 pt-2 text-base font-bold text-slate-500 transition-colors hover:text-slate-800"
+                href={mode === "register" ? "/auth/register" : "/auth/login"}
+                className="flex items-center justify-center gap-2 pt-2 text-sm font-bold text-slate-800 transition-colors hover:text-slate-950"
               >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Login
+                <ArrowLeft className="h-4 w-4 text-slate-800" />
+                {mode === "register" ? "Back to Register" : "Back to Login"}
               </Link>
             </div>
           </div>
@@ -425,7 +426,7 @@ export default function VerifyCodePage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#f3f4f6] flex items-center justify-center">
+        <div className="min-h-screen bg-white flex items-center justify-center">
           <div className="w-8 h-8 border-4 border-[#1e2a5e] border-t-transparent rounded-full animate-spin" />
         </div>
       }

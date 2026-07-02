@@ -338,44 +338,44 @@ export function RegisterView() {
 
   const handleFileChange =
     (field: "tradeLicenseDocument" | "ownerIdDocument") =>
-    async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
+      async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
 
-      setSubmitMessage("");
+        setSubmitMessage("");
 
-      if (field === "tradeLicenseDocument") {
-        setTradeLicenseDocumentName(file.name);
-        setTradeLicenseDocumentUrl("");
-        setIsUploadingTradeLicense(true);
-      } else {
-        setOwnerIdDocumentName(file.name);
-        setOwnerIdDocumentUrl("");
-        setIsUploadingOwnerId(true);
-      }
-
-      try {
-        const uploadedUrl = await uploadRegistrationDocument(file);
-      if (field === "tradeLicenseDocument") {
-          setTradeLicenseDocumentUrl(uploadedUrl);
-        } else {
-          setOwnerIdDocumentUrl(uploadedUrl);
-        }
-      } catch (error) {
         if (field === "tradeLicenseDocument") {
-          setTradeLicenseDocumentName("");
+          setTradeLicenseDocumentName(file.name);
+          setTradeLicenseDocumentUrl("");
+          setIsUploadingTradeLicense(true);
         } else {
-          setOwnerIdDocumentName("");
+          setOwnerIdDocumentName(file.name);
+          setOwnerIdDocumentUrl("");
+          setIsUploadingOwnerId(true);
         }
-        setSubmitMessage(getErrorMessage(error, "Failed to upload the selected file."));
-      } finally {
-        if (field === "tradeLicenseDocument") {
-          setIsUploadingTradeLicense(false);
-        } else {
-          setIsUploadingOwnerId(false);
+
+        try {
+          const uploadedUrl = await uploadRegistrationDocument(file);
+          if (field === "tradeLicenseDocument") {
+            setTradeLicenseDocumentUrl(uploadedUrl);
+          } else {
+            setOwnerIdDocumentUrl(uploadedUrl);
+          }
+        } catch (error) {
+          if (field === "tradeLicenseDocument") {
+            setTradeLicenseDocumentName("");
+          } else {
+            setOwnerIdDocumentName("");
+          }
+          setSubmitMessage(getErrorMessage(error, "Failed to upload the selected file."));
+        } finally {
+          if (field === "tradeLicenseDocument") {
+            setIsUploadingTradeLicense(false);
+          } else {
+            setIsUploadingOwnerId(false);
+          }
         }
-      }
-    };
+      };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

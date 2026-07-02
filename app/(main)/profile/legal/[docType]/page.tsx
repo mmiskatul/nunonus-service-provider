@@ -1,1 +1,1 @@
-export { default } from "@/app/(dashboard)/profile/legal/[docType]/page";
+export { default } from "@/src/app/(dashboard)/profile/legal/[docType]/page";
