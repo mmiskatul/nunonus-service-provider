@@ -40,7 +40,10 @@ async function resolveBaseUrl() {
 export async function fetchApiData<T extends object>(path: string): Promise<T> {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   const baseUrl = await resolveBaseUrl();
+  const headerList = await headers();
+  const cookie = headerList.get("cookie");
   const response = await fetch(`${baseUrl}${normalizedPath}`, {
+    headers: cookie ? { cookie } : undefined,
     cache: "no-store",
     next: { revalidate: 0 }
   });
