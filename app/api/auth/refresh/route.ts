@@ -8,45 +8,42 @@ function getBackendBaseUrl() {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const email = String(body?.email ?? "").trim().toLowerCase();
-    const password = String(body?.password ?? "");
+    const body = (await request.json().catch(() => ({}))) as { refresh_token?: string };
+    const refreshToken = String(body.refresh_token ?? "").trim();
 
-    if (!email || !password) {
-      return NextResponse.json({ ok: false, message: "Email and password required." }, { status: 400 });
+    if (!refreshToken) {
+      return NextResponse.json({ ok: false, message: "Refresh token required." }, { status: 400 });
     }
 
-    const response = await fetch(`${getBackendBaseUrl()}/api/v1/vendor/auth/login`, {
+    const response = await fetch(`${getBackendBaseUrl()}/api/v1/vendor/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email_or_phone: email, password }),
-      cache: "no-store"
+      body: JSON.stringify({ refresh_token: refreshToken }),
+      cache: "no-store",
     });
 
     const payload = (await response.json().catch(() => ({}))) as {
       access_token?: string;
       refresh_token?: string;
       session_token?: string;
-      vendor?: { email?: string };
       detail?: string;
       message?: string;
     };
 
     if (!response.ok || !payload.access_token) {
       return NextResponse.json(
-        { ok: false, message: payload.detail ?? payload.message ?? "Login failed." },
-        { status: response.status || 500 }
+        { ok: false, message: payload.detail ?? payload.message ?? "Session refresh failed." },
+        { status: response.status || 401 },
       );
     }
 
     const nextResponse = NextResponse.json(
       {
         ok: true,
-        user: { email: payload.vendor?.email ?? email },
         access_token: payload.access_token,
         refresh_token: payload.refresh_token ?? payload.session_token,
       },
-      { status: 200 }
+      { status: 200 },
     );
     nextResponse.cookies.set("nunos_vendor_auth", "true", {
       httpOnly: true,
@@ -57,18 +54,16 @@ export async function POST(request: Request) {
     nextResponse.cookies.set("nunos_vendor_access_token", payload.access_token, {
       httpOnly: true,
       sameSite: "lax",
-      path: "/"
+      path: "/",
     });
-    if (payload.refresh_token || payload.session_token) {
-      nextResponse.cookies.set("nunos_vendor_refresh_token", payload.refresh_token ?? payload.session_token ?? "", {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        maxAge: 60 * 60 * 24 * 30,
-      });
-    }
+    nextResponse.cookies.set("nunos_vendor_refresh_token", payload.refresh_token ?? payload.session_token ?? "", {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
     return nextResponse;
   } catch {
-    return NextResponse.json({ ok: false, message: "Login failed." }, { status: 500 });
+    return NextResponse.json({ ok: false, message: "Session refresh failed." }, { status: 500 });
   }
 }

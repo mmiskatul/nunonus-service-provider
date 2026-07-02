@@ -22,6 +22,7 @@ export async function login(email: string, password: string) {
   const data = (await res.json().catch(() => ({}))) as {
     user?: { email: string };
     access_token?: string;
+    refresh_token?: string;
     message?: string;
   };
   if (!res.ok) {

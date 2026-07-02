@@ -19,6 +19,11 @@ export function getVendorToken(): string | null {
   return localStorage.getItem("vendor_access_token");
 }
 
+function getVendorRefreshToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("vendor_refresh_token");
+}
+
 export function saveVendorToken(token: string, refreshToken?: string): void {
   if (typeof window === "undefined") return;
   localStorage.setItem("vendor_access_token", token);
@@ -41,10 +46,47 @@ function buildAuthHeaders(extra?: HeadersInit): HeadersInit {
   };
 }
 
+let vendorRefreshPromise: Promise<string | null> | null = null;
+
+async function refreshVendorAccessToken(): Promise<string | null> {
+  const refreshToken = getVendorRefreshToken();
+  if (!refreshToken) {
+    return null;
+  }
+  if (vendorRefreshPromise) {
+    return vendorRefreshPromise;
+  }
+
+  vendorRefreshPromise = (async () => {
+    const response = await fetch("/api/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    const result = (await response.json().catch(() => ({}))) as VendorAuthResult & {
+      detail?: string;
+      message?: string;
+    };
+    if (!response.ok || !result.access_token) {
+      clearVendorTokens();
+      return null;
+    }
+    saveVendorToken(result.access_token, result.refresh_token ?? result.session_token);
+    return result.access_token;
+  })();
+
+  try {
+    return await vendorRefreshPromise;
+  } finally {
+    vendorRefreshPromise = null;
+  }
+}
+
 export async function vendorRequest<T>(
   path: string,
   method: "GET" | "POST" | "PATCH" | "DELETE" = "GET",
   body?: Record<string, unknown>,
+  retryOnAuth = true,
 ): Promise<T> {
   const response = await fetch(`${V}${path}`, {
     method,
@@ -59,9 +101,15 @@ export async function vendorRequest<T>(
 
   if (!response.ok) {
     if (response.status === 401) {
+      if (retryOnAuth) {
+        const refreshedToken = await refreshVendorAccessToken();
+        if (refreshedToken) {
+          return vendorRequest<T>(path, method, body, false);
+        }
+      }
       clearVendorTokens();
       if (typeof window !== "undefined") {
-        window.location.href = "/login";
+        window.location.href = "/auth/login";
       }
     }
     throw new Error(
@@ -115,6 +163,7 @@ function q(params: Record<string, unknown>): string {
 export interface VendorAuthResult {
   access_token?: string;
   refresh_token?: string;
+  session_token?: string;
   vendor?: Record<string, unknown>;
   [key: string]: unknown;
 }
@@ -160,7 +209,21 @@ export async function vendorLogin(payload: {
     payload,
   );
   if (result.access_token) {
-    saveVendorToken(result.access_token, result.refresh_token);
+    saveVendorToken(result.access_token, result.refresh_token ?? result.session_token);
+  }
+  return result;
+}
+
+/** POST /vendor/auth/refresh */
+export async function vendorRefreshSession(refreshToken: string) {
+  const result = await vendorRequest<VendorAuthResult>(
+    `/vendor/auth/refresh`,
+    "POST",
+    { refresh_token: refreshToken },
+    false,
+  );
+  if (result.access_token) {
+    saveVendorToken(result.access_token, result.refresh_token ?? result.session_token);
   }
   return result;
 }
@@ -647,12 +710,21 @@ export async function vendorUpdateProfileSettings(
 export async function vendorUpdatePassword(payload: {
   old_password: string;
   new_password: string;
+  confirm_password?: string;
 }) {
   return vendorRequest<Record<string, unknown>>(
     `/vendor/settings/password`,
     "PATCH",
-    payload,
+    {
+      ...payload,
+      confirm_password: payload.confirm_password ?? payload.new_password,
+    },
   );
+}
+
+/** GET /vendor/settings/commission */
+export async function vendorGetCommissionSettings() {
+  return vendorRequest<Record<string, unknown>>(`/vendor/settings/commission`);
 }
 
 // ─── Support ─────────────────────────────────────────────────────────────────
@@ -743,6 +815,11 @@ export async function vendorUpdateNotificationSettings(
   );
 }
 
+/** GET /vendor/notifications/settings */
+export async function vendorGetNotificationSettings() {
+  return vendorRequest<Record<string, unknown>>(`/vendor/notifications/settings`);
+}
+
 // ─── File Upload ──────────────────────────────────────────────────────────────
 
 /**
@@ -775,6 +852,26 @@ export async function uploadVendorFile(file: File): Promise<string> {
   }
 
   return result.url ?? result.file_url ?? "";
+}
+
+export async function uploadVendorProfileAvatar(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch("/api/settings/profile/avatar", {
+    method: "POST",
+    body: formData,
+  });
+  const payload = (await response.json().catch(() => ({}))) as {
+    avatar_url?: string;
+    profile_image_url?: string;
+    detail?: string;
+    error?: string;
+  };
+  if (!response.ok) {
+    throw new Error(payload.detail || payload.error || "Failed to upload profile image.");
+  }
+  return String(payload.avatar_url || payload.profile_image_url || "");
 }
 
 // ─── Generic JSON Helper ──────────────────────────────────────────────────────

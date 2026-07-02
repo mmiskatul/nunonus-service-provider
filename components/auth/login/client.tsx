@@ -28,7 +28,7 @@ export function LoginView() {
       return;
     }
     if (result.data?.access_token) {
-      saveVendorToken(result.data.access_token);
+      saveVendorToken(result.data.access_token, result.data.refresh_token);
     }
     router.push(nextUrl);
   };
