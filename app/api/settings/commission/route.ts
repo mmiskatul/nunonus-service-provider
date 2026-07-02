@@ -5,9 +5,9 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
-  return proxyGet(request, "/vendor/settings");
+  return proxyGet(request, "/vendor/settings/commission");
 }
 
 export async function PATCH(request: NextRequest) {
-  return proxyPatch(request, "/vendor/settings/general");
+  return proxyPatch(request, "/vendor/settings/commission");
 }

@@ -23,7 +23,7 @@ async function proxyProfile(request: NextRequest, method: "GET" | "PATCH") {
       init.body = JSON.stringify(body);
     }
 
-    const response = await fetch(backendUrl("/platform-admin/settings/profile"), init);
+    const response = await fetch(backendUrl("/vendor/settings/profile"), init);
     const payload = await response.json().catch(() => ({}));
     return NextResponse.json(payload, { status: response.status });
   } catch (error) {

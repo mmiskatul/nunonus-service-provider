@@ -42,18 +42,83 @@ function forwardHeaders(request?: Request | NextRequest) {
   return headers;
 }
 
+type LegalDocPayload = {
+  title?: string;
+  content?: string;
+  last_updated?: string;
+  detail?: string;
+};
+
+async function loadLegalContent(request: Request | NextRequest) {
+  const headers = forwardHeaders(request);
+  const [termsResponse, privacyResponse] = await Promise.all([
+    fetch(backendUrl("/vendor/settings/legal/terms"), {
+      method: "GET",
+      headers,
+      cache: "no-store",
+    }),
+    fetch(backendUrl("/vendor/settings/legal/privacy"), {
+      method: "GET",
+      headers,
+      cache: "no-store",
+    }),
+  ]);
+
+  const [termsPayload, privacyPayload] = (await Promise.all([
+    termsResponse.json().catch(() => ({})),
+    privacyResponse.json().catch(() => ({})),
+  ])) as [LegalDocPayload, LegalDocPayload];
+
+  if (!termsResponse.ok || !privacyResponse.ok) {
+    const detail =
+      termsPayload.detail ||
+      privacyPayload.detail ||
+      "Failed to read legal content data";
+    return NextResponse.json(
+      { detail },
+      { status: termsResponse.ok ? privacyResponse.status : termsResponse.status },
+    );
+  }
+
+  const payload: LegalContentData = {
+    title: "Legal Content Editor",
+    lastUpdated: String(
+      termsPayload.last_updated || privacyPayload.last_updated || "",
+    ),
+    documents: {
+      terms: String(termsPayload.title || "Terms of Service"),
+      privacy: String(privacyPayload.title || "Privacy Policy"),
+    },
+    audiences: {
+      apps: "Apps",
+      business: "Business",
+    },
+    content: {
+      terms: {
+        apps: "",
+        business: String(termsPayload.content || ""),
+      },
+      privacy: {
+        apps: "",
+        business: String(privacyPayload.content || ""),
+      },
+    },
+  };
+
+  return NextResponse.json(payload, { status: 200 });
+}
+
 export async function GET(request: NextRequest) {
   try {
-    const response = await fetch(backendUrl("/platform-admin/settings/legal-content"), {
-      method: "GET",
-      headers: forwardHeaders(request),
-      cache: "no-store",
-    });
-    const payload = (await response.json().catch(() => ({}))) as LegalContentData | { detail?: string };
-    return NextResponse.json(payload, { status: response.status });
+    return await loadLegalContent(request);
   } catch (error) {
     return NextResponse.json(
-      { detail: error instanceof Error ? error.message : "Failed to read legal content data" },
+      {
+        detail:
+          error instanceof Error
+            ? error.message
+            : "Failed to read legal content data",
+      },
       { status: 502 },
     );
   }
@@ -67,14 +132,22 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ detail: "Invalid legal content payload" }, { status: 400 });
     }
 
-    const response = await fetch(backendUrl("/platform-admin/settings/legal-content"), {
+    const response = await fetch(backendUrl(`/vendor/settings/legal/${payload.document}`), {
       method: "PATCH",
       headers: forwardHeaders(request),
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        content: payload.content,
+        audience: payload.audience,
+      }),
       cache: "no-store",
     });
-    const nextLegalContent = (await response.json().catch(() => ({}))) as LegalContentData | { detail?: string };
-    return NextResponse.json(nextLegalContent, { status: response.status });
+    const updatedDoc = (await response.json().catch(() => ({}))) as LegalDocPayload;
+
+    if (!response.ok) {
+      return NextResponse.json(updatedDoc, { status: response.status });
+    }
+
+    return loadLegalContent(request);
   } catch (error) {
     return NextResponse.json(
       { detail: error instanceof Error ? error.message : "Failed to update legal content" },

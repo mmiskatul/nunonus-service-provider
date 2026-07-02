@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     const auth = resolveAuthHeader(request);
     if (auth) headers.Authorization = auth;
 
-    const response = await fetch(backendUrl("/platform-admin/settings/profile/avatar"), {
+    const response = await fetch(backendUrl("/vendor/settings/profile/avatar"), {
       method: "POST",
       headers,
       body: formData
