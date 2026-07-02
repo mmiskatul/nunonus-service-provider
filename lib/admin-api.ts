@@ -20,6 +20,11 @@ function getAdminToken(): string | null {
   return localStorage.getItem("admin_access_token");
 }
 
+function getAdminRefreshToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("admin_refresh_token");
+}
+
 export function saveAdminToken(token: string, refreshToken?: string) {
   if (typeof window === "undefined") return;
   localStorage.setItem("admin_access_token", token);
@@ -34,11 +39,48 @@ export function clearAdminTokens() {
 
 // ─── Base request ───────────────────────────────────────────────────────────
 
+let adminRefreshPromise: Promise<string | null> | null = null;
+
+async function refreshAdminAccessToken(): Promise<string | null> {
+  const refreshToken = getAdminRefreshToken();
+  if (!refreshToken) {
+    return null;
+  }
+  if (adminRefreshPromise) {
+    return adminRefreshPromise;
+  }
+
+  adminRefreshPromise = (async () => {
+    const response = await fetch("/api/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    const result = (await response.json().catch(() => ({}))) as AdminAuthResult & {
+      detail?: string;
+      message?: string;
+    };
+    if (!response.ok || !result.access_token) {
+      clearAdminTokens();
+      return null;
+    }
+    saveAdminToken(result.access_token, result.refresh_token ?? result.session_token);
+    return result.access_token;
+  })();
+
+  try {
+    return await adminRefreshPromise;
+  } finally {
+    adminRefreshPromise = null;
+  }
+}
+
 async function adminRequest<T>(
   path: string,
   method: "GET" | "POST" | "PATCH" | "DELETE" = "GET",
   body?: Record<string, unknown>,
   requireAuth = true,
+  retryOnAuth = true,
 ): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -62,6 +104,18 @@ async function adminRequest<T>(
   };
 
   if (!response.ok) {
+    if (response.status === 401 && requireAuth) {
+      if (retryOnAuth) {
+        const refreshedToken = await refreshAdminAccessToken();
+        if (refreshedToken) {
+          return adminRequest<T>(path, method, body, requireAuth, false);
+        }
+      }
+      clearAdminTokens();
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
+    }
     throw new Error(
       (result as { detail?: string; message?: string }).detail ||
         (result as { detail?: string; message?: string }).message ||
@@ -85,6 +139,7 @@ function q(params: Record<string, unknown>): string {
 export interface AdminAuthResult {
   access_token: string;
   refresh_token?: string;
+  session_token?: string;
   admin?: Record<string, unknown>;
 }
 
@@ -120,7 +175,21 @@ export async function adminLogin(payload: {
     false,
   );
   if (result.access_token) {
-    saveAdminToken(result.access_token, result.refresh_token);
+    saveAdminToken(result.access_token, result.refresh_token ?? result.session_token);
+  }
+  return result;
+}
+
+export async function adminRefreshSession(refreshToken: string) {
+  const result = await adminRequest<AdminAuthResult>(
+    `${PA}/auth/refresh`,
+    "POST",
+    { refresh_token: refreshToken },
+    false,
+    false,
+  );
+  if (result.access_token) {
+    saveAdminToken(result.access_token, result.refresh_token ?? result.session_token);
   }
   return result;
 }
