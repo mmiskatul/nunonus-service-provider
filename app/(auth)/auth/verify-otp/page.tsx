@@ -23,6 +23,13 @@ type PendingVendorRegistration = {
   password: string;
   confirm_password: string;
   debug_code?: string | null;
+  category?: string;
+  categories?: string[];
+  event_types?: string[] | null;
+  venue_capacity?: number | null;
+  ticket_pricing_type?: string | null;
+  business_location_label?: string | null;
+  equipment_availability?: string[] | null;
 };
 
 type ApiErrorResponse = {

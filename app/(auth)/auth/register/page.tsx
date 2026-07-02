@@ -8,13 +8,11 @@ import {
   Upload, 
   Utensils, 
   Bed, 
-  Coffee, 
+  Coffee,
   Sparkles, 
   Check, 
-  Plus, 
   Map, 
-  MapPin, 
-  Sparkle
+  MapPin
 } from "lucide-react";
 import { vendorGetPublicLegalDoc } from "@/lib/vendor-api";
 import AuthFeedbackModal from "@/components/auth/auth-feedback-modal";
@@ -33,11 +31,7 @@ type RegisterFormData = {
   tradeLicenseNumber: string;
   agreeToTerms: boolean;
   categories: string[];
-  eventTypes: string[];
-  venueCapacity: string;
-  ticketPricingType: string;
-  eventLocationPreference: string;
-  equipmentAvailability: string[];
+  businessLocationLabel: string;
 };
 
 type ApiErrorResponse = {
@@ -49,6 +43,33 @@ type VendorRegistrationStatusResponse = {
   status?: string;
   kyc_status?: string;
   rejection_reason?: string | null;
+};
+
+type RegistrationCategoryOption = {
+  id: string;
+  title: string;
+  desc: string;
+};
+
+type VendorRegistrationFormConfig = {
+  categories: RegistrationCategoryOption[];
+};
+
+type MapCoords = {
+  lat: number;
+  lng: number;
+};
+
+type RegistrationDraft = {
+  formData?: Partial<RegisterFormData>;
+  tradeLicenseDocumentName?: string;
+  ownerIdDocumentName?: string;
+  tradeLicenseDocumentUrl?: string;
+  ownerIdDocumentUrl?: string;
+  tempCoords?: MapCoords;
+  confirmedCoords?: MapCoords;
+  tempAddress?: string;
+  hasPinnedLocation?: boolean;
 };
 
 function isAccountConflictMessage(message: string) {
@@ -84,11 +105,7 @@ const initialFormData: RegisterFormData = {
   tradeLicenseNumber: "",
   agreeToTerms: false,
   categories: ["Restaurant"],
-  eventTypes: ["Corporate Gala"],
-  venueCapacity: "",
-  ticketPricingType: "fixed",
-  eventLocationPreference: "",
-  equipmentAvailability: ["Sound System", "Lighting"],
+  businessLocationLabel: "",
 };
 
 const defaultLegalLabels = {
@@ -96,30 +113,26 @@ const defaultLegalLabels = {
   privacy: "Privacy Policy",
 };
 
-const categories = [
+const defaultCategories: RegistrationCategoryOption[] = [
   {
     id: "Restaurant",
     title: "Restaurant",
     desc: "Manage reservations, tables, and fine dining menus effortlessly.",
-    icon: Utensils,
   },
   {
     id: "Hotel",
     title: "Hotel",
     desc: "Streamline room bookings, guest services, and seasonal rates.",
-    icon: Bed,
   },
   {
     id: "Cafe",
     title: "Cafe",
-    desc: "Perfect for local coffee shops and quick-service bistro needs.",
-    icon: Coffee,
+    desc: "Handle coffee shop orders, light dining, and walk-in customer service.",
   },
   {
     id: "Spa",
     title: "Spa",
     desc: "Automate treatment scheduling and therapist availability.",
-    icon: Sparkles,
   },
 ];
 
@@ -135,10 +148,15 @@ const textFieldNames = new Set<keyof Omit<RegisterFormData, "agreeToTerms">>([
   "website",
   "description",
   "tradeLicenseNumber",
-  "venueCapacity",
-  "ticketPricingType",
-  "eventLocationPreference",
+  "businessLocationLabel",
 ]);
+
+const categoryIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  Restaurant: Utensils,
+  Hotel: Bed,
+  Cafe: Coffee,
+  Spa: Sparkles,
+};
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (!(error instanceof Error)) {
@@ -280,6 +298,23 @@ async function getPublicLegalDocTitle(docType: "terms" | "privacy") {
     : defaultLegalLabels[docType];
 }
 
+async function getJson<T>(path: string): Promise<T> {
+  const response = await fetch(`${getApiBaseUrl()}${path}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || `Request failed with status ${response.status}`);
+  }
+
+  return (await response.json()) as T;
+}
+
 async function postJson<T>(path: string, body: Record<string, unknown>): Promise<T> {
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
     method: "POST",
@@ -330,6 +365,9 @@ export default function RegisterPage() {
   const router = useRouter();
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   const [formData, setFormData] = useState(initialFormData);
+  const [registrationConfig, setRegistrationConfig] = useState<VendorRegistrationFormConfig>({
+    categories: defaultCategories,
+  });
   const [legalLabels, setLegalLabels] = useState(defaultLegalLabels);
   const [submitMessage, setSubmitMessage] = useState("");
   const [showAccountHelp, setShowAccountHelp] = useState(false);
@@ -346,10 +384,11 @@ export default function RegisterPage() {
   const [tempCoords, setTempCoords] = useState({ lat: 40.7128, lng: -74.0060 });
   const [tempAddress, setTempAddress] = useState("Manhattan, New York");
   const [confirmedCoords, setConfirmedCoords] = useState({ lat: 40.7128, lng: -74.0060 });
+  const [hasPinnedLocation, setHasPinnedLocation] = useState(false);
 
   // Geocode typed address to update background preview map in real-time
   useEffect(() => {
-    if (!googleMapsApiKey || formData.address.trim().length <= 3) return;
+    if (!googleMapsApiKey || formData.address.trim().length <= 3 || hasPinnedLocation) return;
 
     const delayDebounce = setTimeout(() => {
       const google = (window as any).google;
@@ -380,7 +419,7 @@ export default function RegisterPage() {
     }, 1200);
 
     return () => clearTimeout(delayDebounce);
-  }, [formData.address, googleMapsApiKey]);
+  }, [formData.address, googleMapsApiKey, hasPinnedLocation]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -393,13 +432,7 @@ export default function RegisterPage() {
     }
 
     try {
-      const parsed = JSON.parse(savedDraft) as {
-        formData?: Partial<RegisterFormData>;
-        tradeLicenseDocumentName?: string;
-        ownerIdDocumentName?: string;
-        tradeLicenseDocumentUrl?: string;
-        ownerIdDocumentUrl?: string;
-      };
+      const parsed = JSON.parse(savedDraft) as RegistrationDraft;
 
       if (parsed.formData) {
         setFormData((prev) => ({ ...prev, ...parsed.formData }));
@@ -408,6 +441,16 @@ export default function RegisterPage() {
       setOwnerIdDocumentName(parsed.ownerIdDocumentName ?? "");
       setTradeLicenseDocumentUrl(parsed.tradeLicenseDocumentUrl ?? "");
       setOwnerIdDocumentUrl(parsed.ownerIdDocumentUrl ?? "");
+      if (parsed.tempCoords) {
+        setTempCoords(parsed.tempCoords);
+      }
+      if (parsed.confirmedCoords) {
+        setConfirmedCoords(parsed.confirmedCoords);
+      }
+      if (parsed.tempAddress) {
+        setTempAddress(parsed.tempAddress);
+      }
+      setHasPinnedLocation(Boolean(parsed.hasPinnedLocation));
     } catch {
       sessionStorage.removeItem(REGISTER_DRAFT_STORAGE_KEY);
     }
@@ -415,6 +458,20 @@ export default function RegisterPage() {
 
   useEffect(() => {
     let mounted = true;
+
+    async function loadRegistrationConfig() {
+      try {
+        const config = await getJson<VendorRegistrationFormConfig>("/vendor/auth/registration-form-config");
+        if (!mounted) {
+          return;
+        }
+        setRegistrationConfig(config);
+      } catch {
+        if (mounted) {
+          setRegistrationConfig((prev) => prev);
+        }
+      }
+    }
 
     async function loadLegalLabels() {
       try {
@@ -438,6 +495,7 @@ export default function RegisterPage() {
       }
     }
 
+    void loadRegistrationConfig();
     void loadLegalLabels();
     return () => {
       mounted = false;
@@ -457,9 +515,23 @@ export default function RegisterPage() {
         ownerIdDocumentName,
         tradeLicenseDocumentUrl,
         ownerIdDocumentUrl,
+        tempCoords,
+        confirmedCoords,
+        tempAddress,
+        hasPinnedLocation,
       }),
     );
-  }, [formData, tradeLicenseDocumentName, ownerIdDocumentName, tradeLicenseDocumentUrl, ownerIdDocumentUrl]);
+  }, [
+    formData,
+    tradeLicenseDocumentName,
+    ownerIdDocumentName,
+    tradeLicenseDocumentUrl,
+    ownerIdDocumentUrl,
+    tempCoords,
+    confirmedCoords,
+    tempAddress,
+    hasPinnedLocation,
+  ]);
 
   useEffect(() => {
     if (!showMapModal || !googleMapsApiKey) return;
@@ -713,9 +785,6 @@ export default function RegisterPage() {
         email_or_phone: formData.email.trim(),
       });
 
-      const finalTradeLicenseNum = formData.tradeLicenseNumber.trim() || 
-        ("TL-" + Math.floor(100000 + Math.random() * 900000));
-
       sessionStorage.setItem(
         "pending_vendor_registration",
         JSON.stringify({
@@ -727,7 +796,7 @@ export default function RegisterPage() {
           city: formData.city.trim(),
           website: formData.website.trim() || null,
           business_description: formData.description.trim(),
-          trade_license_number: finalTradeLicenseNum,
+          trade_license_number: formData.tradeLicenseNumber.trim(),
           trade_license_document_url: tradeLicenseDocumentUrl,
           owner_manager_id_document_url: ownerIdDocumentUrl,
           terms_accepted: formData.agreeToTerms,
@@ -739,7 +808,10 @@ export default function RegisterPage() {
           event_types: null,
           venue_capacity: null,
           ticket_pricing_type: null,
-          event_location_preference: null,
+          business_location_label:
+            formData.businessLocationLabel.trim()
+              ? formData.businessLocationLabel.trim()
+              : null,
           equipment_availability: null,
         }),
       );
@@ -760,22 +832,13 @@ export default function RegisterPage() {
     }
   };
 
-  const handleEquipmentToggle = (item: string) => {
-    setFormData((prev) => {
-      const current = prev.equipmentAvailability;
-      const next = current.includes(item)
-        ? current.filter((x) => x !== item)
-        : [...current, item];
-      return { ...prev, equipmentAvailability: next };
-    });
-  };
-
   const handleConfirmMapLocation = () => {
     setFormData((prev) => ({
       ...prev,
-      eventLocationPreference: `${tempAddress} (${tempCoords.lat.toFixed(4)}, ${tempCoords.lng.toFixed(4)})`,
+      businessLocationLabel: `${tempAddress} (${tempCoords.lat.toFixed(4)}, ${tempCoords.lng.toFixed(4)})`,
     }));
     setConfirmedCoords({ lat: tempCoords.lat, lng: tempCoords.lng });
+    setHasPinnedLocation(true);
     setShowMapModal(false);
   };
 
@@ -815,7 +878,7 @@ export default function RegisterPage() {
             <div className="p-6 border-b border-slate-100 flex items-center justify-between">
               <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                 <Map className="h-5 w-5 text-blue-600" />
-                Select Event Location
+                Select Business Location
               </h3>
               <button 
                 type="button"
@@ -921,8 +984,8 @@ export default function RegisterPage() {
               
               {/* Category cards 3-column layout */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {categories.map((cat) => {
-                  const Icon = cat.icon;
+                {registrationConfig.categories.map((cat) => {
+                  const Icon = categoryIcons[cat.id] || MapPin;
                   const isSelected = formData.categories.includes(cat.id);
                   return (
                     <div
@@ -1033,6 +1096,15 @@ export default function RegisterPage() {
                     <h3 className="text-xl font-black text-[#1a2552] mb-4">
                       Verification
                     </h3>
+
+                    <input
+                      type="text"
+                      name="tradeLicenseNumber"
+                      value={formData.tradeLicenseNumber}
+                      onChange={handleInputChange}
+                      placeholder="Trade License Number"
+                      className="w-full bg-white border border-[#e2e8f0] rounded-full py-4.5 px-6 text-xs font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-slate-300 transition placeholder:text-slate-450"
+                    />
                     
                     {/* Dashed upload buttons next to each other */}
                     <div className="grid grid-cols-2 gap-4">
@@ -1083,84 +1155,21 @@ export default function RegisterPage() {
 
                 </div>
 
-                {/* Right side: Event Details Card */}
+                {/* Right side: Business Location Card */}
                 <div className="lg:col-span-5 bg-[#f4f5f9] rounded-[32px] p-6 md:p-8 border border-slate-100/30 space-y-6">
                     
-                    {/* Sparkle Header */}
+                    {/* Location Header */}
                     <div className="flex items-center gap-2 mb-2">
-                      <Sparkle className="h-5 w-5 text-blue-500 fill-blue-500 animate-spin-slow" />
-                      <h3 className="text-base font-black text-[#1a2552]">Event Details</h3>
+                      <MapPin className="h-5 w-5 text-blue-500" />
+                      <h3 className="text-base font-black text-[#1a2552]">Business Location</h3>
                     </div>
-
-                    {/* Event Types */}
+                    <p className="text-xs font-bold text-slate-400 leading-relaxed">
+                      Registration only captures the fixed business location. Event name, event details, date/time,
+                      and registration settings are created later from the dashboard.
+                    </p>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block ml-1">Event Types</label>
-                      <select
-                        name="eventTypes"
-                        value={formData.eventTypes[0] || "Corporate Gala"}
-                        onChange={(e) => setFormData(prev => ({ ...prev, eventTypes: [e.target.value] }))}
-                        className="w-full bg-white border border-[#e2e8f0] rounded-full py-4 px-6 text-xs font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23475569%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[size:10px_auto] bg-[position:right_24px_center] bg-no-repeat"
-                      >
-                        <option value="Corporate Gala">Corporate Gala</option>
-                        <option value="Wedding">Wedding</option>
-                        <option value="Birthday Party">Birthday Party</option>
-                        <option value="Concert">Concert</option>
-                        <option value="Conference">Conference</option>
-                        <option value="Exhibition">Exhibition</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-
-                    {/* Venue Capacity */}
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block ml-1">Venue Capacity</label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          name="venueCapacity"
-                          value={formData.venueCapacity}
-                          onChange={handleInputChange}
-                          placeholder="e.g. 500"
-                          className="w-full bg-white border border-[#e2e8f0] rounded-full py-4 pl-6 pr-16 text-xs font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition placeholder:text-slate-300"
-                        />
-                        <span className="absolute right-6 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 select-none">
-                          People
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Ticket Pricing Type */}
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block ml-1">Ticket Pricing Type</label>
-                      <div className="flex gap-4">
-                        <button
-                          type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, ticketPricingType: "fixed" }))}
-                          className="flex-1 bg-white border border-[#e2e8f0] rounded-full py-4.5 px-5 text-xs font-bold text-slate-700 transition flex items-center justify-start gap-3 hover:bg-slate-50"
-                        >
-                          <span className={`h-4.5 w-4.5 rounded-full border-2 flex items-center justify-center ${formData.ticketPricingType === "fixed" ? "border-[#1b2554]" : "border-slate-350"}`}>
-                            {formData.ticketPricingType === "fixed" && <span className="h-2.5 w-2.5 bg-[#1b2554] rounded-full" />}
-                          </span>
-                          Fixed Rate
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, ticketPricingType: "tiered" }))}
-                          className="flex-1 bg-white border border-[#e2e8f0] rounded-full py-4.5 px-5 text-xs font-bold text-slate-700 transition flex items-center justify-start gap-3 hover:bg-slate-50"
-                        >
-                          <span className={`h-4.5 w-4.5 rounded-full border-2 flex items-center justify-center ${formData.ticketPricingType === "tiered" ? "border-[#1b2554]" : "border-slate-350"}`}>
-                            {formData.ticketPricingType === "tiered" && <span className="h-2.5 w-2.5 bg-[#1b2554] rounded-full" />}
-                          </span>
-                          Tiered
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Event Location Preference */}
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block ml-1">Event Location Preference</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block ml-1">Location Preview</label>
                       <div className="bg-[#e2e4ed]/70 rounded-2xl h-36 relative flex flex-col items-center justify-center overflow-hidden border border-slate-200/40">
-                        {/* Real Map View Background */}
                         <iframe 
                           src={`https://www.openstreetmap.org/export/embed.html?bbox=${confirmedCoords.lng - 0.015}%2C${confirmedCoords.lat - 0.008}%2C${confirmedCoords.lng + 0.015}%2C${confirmedCoords.lat + 0.008}&layer=mapnik&marker=${confirmedCoords.lat}%2C${confirmedCoords.lng}`} 
                           className="absolute inset-0 w-full h-full border-0 opacity-75 pointer-events-none"
@@ -1168,11 +1177,11 @@ export default function RegisterPage() {
                         />
                         <div className="absolute inset-0 bg-slate-900/5 pointer-events-none" />
 
-                        {formData.eventLocationPreference ? (
+                        {formData.businessLocationLabel ? (
                           <div className="relative text-center flex flex-col items-center gap-1 z-10 bg-white/90 backdrop-blur px-5 py-3 rounded-2xl border border-slate-100 shadow-md">
                             <Check className="h-5 w-5 text-emerald-600 bg-emerald-50 p-1 rounded-full" />
                             <span className="text-[10px] font-black text-slate-700 max-w-[180px] truncate block">
-                              {formData.eventLocationPreference}
+                              {formData.businessLocationLabel}
                             </span>
                             <button
                               type="button"
@@ -1192,35 +1201,17 @@ export default function RegisterPage() {
                           </button>
                         )}
                       </div>
-                    </div>
-
-                    {/* Equipment Availability */}
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block ml-1">Equipment Availability</label>
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        {["Sound System", "Lighting", "Projector"].map((item) => {
-                          const isSel = formData.equipmentAvailability.includes(item);
-                          return (
-                            <button
-                              type="button"
-                              key={item}
-                              onClick={() => handleEquipmentToggle(item)}
-                              className={`py-2.5 px-4.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 ${
-                                isSel
-                                  ? "bg-[#e0e9fe] text-blue-700"
-                                  : "bg-[#f1f3f9] hover:bg-slate-200/80 text-slate-600"
-                              }`}
-                            >
-                              {isSel ? (
-                                <Check className="h-3 w-3 stroke-[2.5]" />
-                              ) : (
-                                <span className="text-slate-400">+</span>
-                              )}
-                              {item}
-                            </button>
-                          );
-                        })}
-                      </div>
+                    <input
+                      type="text"
+                      name="businessLocationLabel"
+                      value={formData.businessLocationLabel}
+                      onChange={handleInputChange}
+                      placeholder="Location label or landmark"
+                      className="w-full bg-white border border-[#e2e8f0] rounded-full py-4 px-6 text-xs font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition placeholder:text-slate-350"
+                    />
+                      <p className="text-[11px] font-bold text-slate-400 leading-relaxed">
+                        Use this for a branch label, landmark, or public-facing location note. Events themselves are created later in the dashboard.
+                      </p>
                     </div>
 
                   </div>

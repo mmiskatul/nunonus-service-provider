@@ -388,7 +388,12 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="space-y-3">
                           <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="text-lg font-bold text-slate-800">{event.title}</h3>
+                            <Link
+                              href={`/events/${event.id}`}
+                              className="text-lg font-bold text-slate-800 transition hover:text-[#1e2a5e]"
+                            >
+                              {event.title}
+                            </Link>
                             <span className={statusClass(event.status)}>{event.status}</span>
                             <span className="rounded-full bg-[#e8f0ff] px-3 py-1 text-xs font-bold text-[#1e2a5e]">
                               {event.category}
@@ -412,6 +417,12 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                         </div>
 
                         <div className="flex flex-wrap gap-2">
+                          <Link
+                            href={`/events/${event.id}`}
+                            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+                          >
+                            View Details
+                          </Link>
                           <button
                             onClick={() =>
                               void handleStatusChange(
