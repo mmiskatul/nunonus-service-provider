@@ -14,9 +14,34 @@ import {
 } from "@/lib/vendor-api";
 import { cn } from "@/lib/utils";
 import { extractVendorCategories, type VendorCategory } from "@/lib/vendor-access";
-import { CalendarDays, Clock3, MapPin, Pencil, Plus, Search, Trash2, Users, X } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, Clock3, MapPin, Pencil, Plus, Search, Trash2, Upload, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+const DEFAULT_TIMEZONE = "Asia/Dhaka";
+const TIMEZONE_OPTIONS = [
+  "Asia/Dhaka",
+  "Asia/Kolkata",
+  "Asia/Dubai",
+  "Asia/Singapore",
+  "Asia/Bangkok",
+  "Asia/Kuala_Lumpur",
+  "Asia/Tokyo",
+  "Europe/London",
+  "Europe/Berlin",
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "Australia/Sydney",
+  "UTC",
+];
+
+type TimezoneOption = {
+  value: string;
+  label: string;
+};
 
 type VendorEventRecord = {
   id: string;
@@ -64,7 +89,7 @@ function getDefaultForm(categories: VendorCategory[]): FormState {
     eventDate: "",
     startTime: "",
     endTime: "",
-    timezone: "Asia/Dhaka",
+    timezone: DEFAULT_TIMEZONE,
     venue: "",
     capacity: "",
     ticketPrice: "",
@@ -84,7 +109,7 @@ function normalizeEvent(row: Record<string, unknown>): VendorEventRecord {
     event_date: String(row.event_date ?? ""),
     start_time: String(row.start_time ?? ""),
     end_time: String(row.end_time ?? ""),
-    timezone: String(row.timezone ?? "Asia/Dhaka"),
+    timezone: String(row.timezone ?? DEFAULT_TIMEZONE),
     venue: String(row.venue ?? ""),
     capacity: Number(row.capacity ?? 0),
     ticket_price: Number(row.ticket_price ?? 0),
@@ -105,7 +130,7 @@ function toPayload(form: FormState): VendorEventPayload {
     event_date: form.eventDate,
     start_time: form.startTime,
     end_time: form.endTime,
-    timezone: form.timezone.trim() || "Asia/Dhaka",
+    timezone: form.timezone.trim() || DEFAULT_TIMEZONE,
     venue: form.venue.trim(),
     capacity: Number(form.capacity),
     ticket_price: Number(form.ticketPrice),
@@ -142,10 +167,71 @@ function formatMoney(value: number) {
   }).format(value);
 }
 
+function detectBrowserTimezone() {
+  try {
+    const resolved = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return resolved && resolved.trim() ? resolved : DEFAULT_TIMEZONE;
+  } catch {
+    return DEFAULT_TIMEZONE;
+  }
+}
+
+function buildTimezoneOptions(currentValue: string) {
+  const supportedValuesOf = (
+    Intl as typeof Intl & {
+      supportedValuesOf?: (key: "timeZone") => string[];
+    }
+  ).supportedValuesOf;
+  const values = new Set([
+    ...TIMEZONE_OPTIONS,
+    ...(typeof supportedValuesOf === "function" ? supportedValuesOf("timeZone") : []),
+  ]);
+  if (currentValue.trim()) {
+    values.add(currentValue.trim());
+  }
+  return Array.from(values).sort((left, right) => left.localeCompare(right));
+}
+
+function formatTimezoneOffset(timezone: string) {
+  try {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      timeZoneName: "shortOffset",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const zonePart = formatter
+      .formatToParts(new Date())
+      .find((part) => part.type === "timeZoneName")?.value;
+
+    if (!zonePart) {
+      return "UTC";
+    }
+
+    return zonePart.replace("GMT", "UTC");
+  } catch {
+    return "UTC";
+  }
+}
+
+function buildTimezoneSelectOptions(currentValue: string, detectedTimezone: string): TimezoneOption[] {
+  return buildTimezoneOptions(currentValue).map((timezone) => ({
+    value: timezone,
+    label:
+      timezone === detectedTimezone
+        ? `${formatTimezoneOffset(timezone)} · ${timezone} · Your timezone`
+        : `${formatTimezoneOffset(timezone)} · ${timezone}`,
+  }));
+}
+
 export function EventsPageClient({ startInCreateMode = false }: { startInCreateMode?: boolean }) {
+  const detectedTimezone = useMemo(() => detectBrowserTimezone(), []);
   const [categories, setCategories] = useState<VendorCategory[]>(DEFAULT_CATEGORIES);
   const [events, setEvents] = useState<VendorEventRecord[]>([]);
-  const [form, setForm] = useState<FormState>(getDefaultForm(DEFAULT_CATEGORIES));
+  const [form, setForm] = useState<FormState>(() => ({
+    ...getDefaultForm(DEFAULT_CATEGORIES),
+    timezone: detectedTimezone,
+  }));
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(startInCreateMode);
   const [statusMessage, setStatusMessage] = useState("");
@@ -153,7 +239,18 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [showBannerPreview, setShowBannerPreview] = useState(false);
+  const [timezoneMenuOpen, setTimezoneMenuOpen] = useState(false);
+  const [tempCoords, setTempCoords] = useState({ lat: 23.8103, lng: 90.4125 });
+  const [tempAddress, setTempAddress] = useState("");
   const bannerInputRef = useRef<HTMLInputElement>(null);
+  const mapInitializedRef = useRef(false);
+  const timezoneMenuRef = useRef<HTMLDivElement>(null);
+  const timezoneOptions = useMemo(
+    () => buildTimezoneSelectOptions(form.timezone, detectedTimezone),
+    [detectedTimezone, form.timezone],
+  );
 
   const loadEvents = async (filters?: { search?: string; status?: string }) => {
     const response = await vendorListEvents({
@@ -178,6 +275,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
         setForm((current) => ({
           ...current,
           category: nextCategories.includes(current.category) ? current.category : nextCategories[0],
+          timezone: current.timezone || detectedTimezone,
         }));
         await loadEvents();
       } catch (error) {
@@ -194,7 +292,167 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     return () => {
       active = false;
     };
-  }, []);
+  }, [detectedTimezone]);
+
+  useEffect(() => {
+    if (!timezoneMenuOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!timezoneMenuRef.current?.contains(event.target as Node)) {
+        setTimezoneMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, [timezoneMenuOpen]);
+
+  useEffect(() => {
+    if (!showMapModal) {
+      mapInitializedRef.current = false;
+      return;
+    }
+
+    if (!GOOGLE_MAPS_API_KEY || mapInitializedRef.current) {
+      return;
+    }
+
+    mapInitializedRef.current = true;
+
+    const initialCoords = tempCoords;
+    const initialAddress = tempAddress.trim();
+    const venueAddress = form.venue.trim();
+
+    const initMap = () => {
+      const google = (window as Window & { google?: any }).google;
+      if (!google) return;
+
+      const mapDiv = document.getElementById("event-google-map-element");
+      if (!mapDiv) return;
+
+      const map = new google.maps.Map(mapDiv, {
+        center: initialCoords,
+        zoom: 14,
+        disableDefaultUI: false,
+        zoomControl: true,
+      });
+
+      const marker = new google.maps.Marker({
+        position: initialCoords,
+        map,
+        draggable: true,
+      });
+
+      const updateLocation = (lat: number, lng: number, locationRef: any) => {
+        setTempCoords({ lat, lng });
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ location: locationRef }, (results: any, status: any) => {
+          if (status === "OK" && results?.[0]) {
+            setTempAddress(results[0].formatted_address);
+          } else {
+            setTempAddress(`Coordinate (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+          }
+        });
+      };
+
+      const tryGeolocation = () => {
+        if (!navigator.geolocation) {
+          updateLocation(initialCoords.lat, initialCoords.lng, initialCoords);
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const pos = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            };
+            map.setCenter(pos);
+            marker.setPosition(pos);
+            updateLocation(pos.lat, pos.lng, pos);
+          },
+          () => {
+            updateLocation(initialCoords.lat, initialCoords.lng, initialCoords);
+          },
+        );
+      };
+
+      if (venueAddress.length > 3) {
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ address: venueAddress }, (results: any, status: any) => {
+          if (status === "OK" && results?.[0]) {
+            const loc = results[0].geometry.location;
+            const next = { lat: loc.lat(), lng: loc.lng() };
+            map.setCenter(next);
+            marker.setPosition(next);
+            setTempCoords(next);
+            setTempAddress(results[0].formatted_address);
+          } else {
+            updateLocation(initialCoords.lat, initialCoords.lng, initialCoords);
+          }
+        });
+      } else if (initialAddress.length > 3) {
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ address: initialAddress }, (results: any, status: any) => {
+          if (status === "OK" && results?.[0]) {
+            const loc = results[0].geometry.location;
+            const next = { lat: loc.lat(), lng: loc.lng() };
+            map.setCenter(next);
+            marker.setPosition(next);
+            setTempCoords(next);
+            setTempAddress(results[0].formatted_address);
+          } else {
+            updateLocation(initialCoords.lat, initialCoords.lng, initialCoords);
+          }
+        });
+      } else {
+        tryGeolocation();
+      }
+
+      map.addListener("click", (event: any) => {
+        const lat = event.latLng.lat();
+        const lng = event.latLng.lng();
+        marker.setPosition(event.latLng);
+        updateLocation(lat, lng, event.latLng);
+      });
+
+      marker.addListener("dragend", () => {
+        const position = marker.getPosition();
+        if (!position) return;
+        updateLocation(position.lat(), position.lng(), position);
+      });
+    };
+
+    if ((window as Window & { google?: any }).google) {
+      initMap();
+      return;
+    }
+
+    const scriptId = "google-maps-js-api-script";
+    let script = document.getElementById(scriptId) as HTMLScriptElement | null;
+
+    if (!script) {
+      script = document.createElement("script");
+      script.id = scriptId;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+
+    const handleScriptLoad = () => {
+      initMap();
+    };
+
+    script.addEventListener("load", handleScriptLoad);
+    return () => {
+      script?.removeEventListener("load", handleScriptLoad);
+    };
+  }, [form.venue, showMapModal, tempAddress]);
 
   const stats = useMemo(() => {
     return {
@@ -206,15 +464,41 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   }, [events]);
 
   const resetForm = () => {
-    setForm(getDefaultForm(categories));
+    setForm({
+      ...getDefaultForm(categories),
+      timezone: detectedTimezone,
+    });
     setEditingId(null);
     setShowForm(false);
+    setShowMapModal(false);
+    setShowBannerPreview(false);
+    setTimezoneMenuOpen(false);
+    setTempAddress("");
   };
 
   const openCreateForm = () => {
-    setForm(getDefaultForm(categories));
+    setForm({
+      ...getDefaultForm(categories),
+      timezone: detectedTimezone,
+    });
     setEditingId(null);
     setShowForm(true);
+    setTimezoneMenuOpen(false);
+    setTempAddress("");
+  };
+
+  const openMapPicker = () => {
+    if (!GOOGLE_MAPS_API_KEY) {
+      setStatusMessage("Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to the service-provider app.");
+      return;
+    }
+    setTempAddress(form.venue.trim());
+    setShowMapModal(true);
+  };
+
+  const handleConfirmMapLocation = () => {
+    setForm((prev) => ({ ...prev, venue: tempAddress.trim() || prev.venue }));
+    setShowMapModal(false);
   };
 
   const handleBannerUpload = async (file: File | null) => {
@@ -274,7 +558,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
       eventDate: event.event_date,
       startTime: event.start_time,
       endTime: event.end_time,
-      timezone: event.timezone || "Asia/Dhaka",
+      timezone: event.timezone || detectedTimezone,
       venue: event.venue,
       capacity: String(event.capacity),
       ticketPrice: String(event.ticket_price),
@@ -283,6 +567,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
       bannerImageUrl: event.banner_image_url ?? "",
       status: event.status,
     });
+    setTempAddress(event.venue);
   };
 
   const handleDelete = async (eventId: string) => {
@@ -348,52 +633,45 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
             <StatCard label="Cancelled" value={String(stats.cancelled)} />
           </div>
 
-          <div className="grid gap-4 rounded-[28px] border border-slate-100 bg-white p-5 md:grid-cols-[1fr,220px,auto] md:p-6">
-            <label className="relative">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search events, venues, or event types"
-                className="h-12 w-full rounded-2xl border border-slate-200 pl-11 pr-4 text-sm outline-none transition focus:border-sky-500"
-              />
-            </label>
-            <select
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-              className="h-12 rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
-            >
-              <option value="all">All statuses</option>
-              <option value="draft">Draft</option>
-              <option value="published">Published</option>
-              <option value="archived">Archived</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-            <button
-              onClick={() => void applyFilters()}
-              className="rounded-2xl bg-[#1e2a5e] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#1a2552]"
-            >
-              Apply
-            </button>
-          </div>
-
           {statusMessage ? (
             <p className="text-sm font-bold text-[#1e2a5e]">{statusMessage}</p>
           ) : null}
 
           <section className="rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm md:p-8">
-              <div className="mb-6">
-                <h2 className="text-xl font-bold text-slate-800">Event List</h2>
-                <p className="mt-1 text-sm text-slate-400">
-                  Allowed categories for this vendor: {categories.join(", ")}.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-3">
-                  <button
-                    onClick={openCreateForm}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#1e2a5e] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#1a2552]"
+              <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-800">Event List</h2>
+                  <p className="mt-1 text-sm text-slate-400">
+                    Allowed categories for this vendor: {categories.join(", ")}.
+                  </p>
+                </div>
+
+                <div className="grid gap-3 xl:w-[560px] xl:grid-cols-[minmax(0,1fr)_180px_auto]">
+                  <label className="relative">
+                    <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                      placeholder="Search events, venues, or event types"
+                      className="h-12 w-full rounded-2xl border border-slate-200 pl-11 pr-4 text-sm outline-none transition focus:border-sky-500"
+                    />
+                  </label>
+                  <select
+                    value={statusFilter}
+                    onChange={(event) => setStatusFilter(event.target.value)}
+                    className="h-12 rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
                   >
-                    <Plus className="h-4 w-4" />
-                    New Event
+                    <option value="all">All statuses</option>
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="archived">Archived</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                  <button
+                    onClick={() => void applyFilters()}
+                    className="rounded-2xl bg-[#1e2a5e] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#1a2552]"
+                  >
+                    Apply
                   </button>
                 </div>
               </div>
@@ -491,32 +769,31 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
       </main>
 
       {showForm ? (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 p-4 backdrop-blur-sm md:p-8">
-          <div className="mx-auto flex h-[100dvh] w-full max-w-6xl flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl">
-            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5 md:px-8">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 p-3 backdrop-blur-sm md:p-6">
+          <div className="mx-auto flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 md:px-6">
               <div>
                 <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
                   {editingId ? "Edit Event" : "Create Event"}
                 </p>
-                <h2 className="mt-2 text-3xl font-black text-slate-800">
+                <h2 className="mt-1.5 text-2xl font-black text-slate-800 md:text-[28px]">
                   {editingId ? "Edit Event" : "New Event"}
                 </h2>
-                <p className="mt-2 text-sm text-slate-400">
+                <p className="mt-1 text-sm text-slate-400">
                   Fill the event details here. This is the same flow for both new and create event.
                 </p>
               </div>
               <button
                 onClick={resetForm}
-                className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
                 aria-label="Close event form"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 py-6 md:px-8 md:py-8">
-              <div className="grid gap-8 xl:grid-cols-[1.1fr,0.9fr]">
-                <div className="space-y-5">
+            <div className="flex-1 overflow-y-auto px-5 py-5 md:px-6 md:py-5">
+              <div className="space-y-4">
                   <Field label="Event Title">
                     <input
                       value={form.title}
@@ -525,7 +802,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                       placeholder="Founder networking night"
                     />
                   </Field>
-                  <div className="grid gap-5 md:grid-cols-2">
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <Field label="Category">
                       <select
                         value={form.category}
@@ -549,8 +826,101 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                         placeholder="Corporate Gala"
                       />
                     </Field>
+                    <Field label="Status">
+                      <select
+                        value={form.status}
+                        onChange={(event) =>
+                          setForm((prev) => ({ ...prev, status: event.target.value as VendorEventStatus }))
+                        }
+                        className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
+                      >
+                        <option value="draft">Draft</option>
+                        <option value="published">Published</option>
+                        <option value="archived">Archived</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </Field>
                   </div>
-                  <div className="grid gap-5 md:grid-cols-2">
+                  <div className="grid gap-4 xl:grid-cols-3">
+                  <Field label="Timezone">
+                    <div ref={timezoneMenuRef} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setTimezoneMenuOpen((current) => !current)}
+                        className="flex h-12 w-full items-center justify-between rounded-2xl border border-slate-200 px-4 text-left text-sm font-extrabold outline-none transition hover:border-slate-300 focus:border-sky-500"
+                      >
+                        <span className="truncate">
+                          {timezoneOptions.find((timezone) => timezone.value === form.timezone)?.label ?? form.timezone}
+                        </span>
+                        <ChevronDown className={cn("h-4 w-4 shrink-0 text-slate-500 transition", timezoneMenuOpen && "rotate-180")} />
+                      </button>
+                      {timezoneMenuOpen ? (
+                        <div className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                          {timezoneOptions.map((timezone) => {
+                            const isSelected = timezone.value === form.timezone;
+                            const isDetected = timezone.value === detectedTimezone;
+
+                            return (
+                              <button
+                                key={timezone.value}
+                                type="button"
+                                onClick={() => {
+                                  setForm((prev) => ({ ...prev, timezone: timezone.value }));
+                                  setTimezoneMenuOpen(false);
+                                }}
+                                className={cn(
+                                  "flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm transition",
+                                  isSelected ? "bg-[#eef3ff] text-[#1e2a5e]" : "text-slate-700 hover:bg-slate-50",
+                                  isDetected && "font-extrabold",
+                                )}
+                              >
+                                <div className="min-w-0">
+                                  <p className={cn("truncate", isDetected ? "font-extrabold" : "font-semibold")}>
+                                    {timezone.label.replace(" · Your timezone", "")}
+                                  </p>
+                                </div>
+                                <div className="flex shrink-0 items-center gap-2">
+                                  {isDetected ? (
+                                    <span className="rounded-full bg-[#1e2a5e] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] text-white">
+                                      Your timezone
+                                    </span>
+                                  ) : null}
+                                  {isSelected ? <Check className="h-4 w-4 text-[#1e2a5e]" /> : null}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+                  </Field>
+                    <div className="xl:col-span-2">
+                      <Field label="Location">
+                        <div className="space-y-2">
+                          <div className="flex flex-col gap-3 md:flex-row">
+                            <input
+                              value={form.venue}
+                              onChange={(event) => setForm((prev) => ({ ...prev, venue: event.target.value }))}
+                              className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
+                              placeholder="Select location from map or enter an address"
+                            />
+                            <button
+                              type="button"
+                              onClick={openMapPicker}
+                              className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                            >
+                              <MapPin className="h-4 w-4" />
+                              Select on Map
+                            </button>
+                          </div>
+                          <p className="text-xs font-medium text-slate-400">
+                            Use the live map to pick the real event location.
+                          </p>
+                        </div>
+                      </Field>
+                    </div>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <Field label="Event Date">
                       <input
                         type="date"
@@ -559,16 +929,29 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                         className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
                       />
                     </Field>
-                    <Field label="Timezone">
+                    <Field label="Registration Deadline">
                       <input
-                        value={form.timezone}
-                        onChange={(event) => setForm((prev) => ({ ...prev, timezone: event.target.value }))}
+                        type="datetime-local"
+                        value={form.registrationDeadline}
+                        onChange={(event) =>
+                          setForm((prev) => ({ ...prev, registrationDeadline: event.target.value }))
+                        }
                         className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
-                        placeholder="Asia/Dhaka"
+                      />
+                    </Field>
+                    <Field label="Ticket Price">
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={form.ticketPrice}
+                        onChange={(event) => setForm((prev) => ({ ...prev, ticketPrice: event.target.value }))}
+                        className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
+                        placeholder="45"
                       />
                     </Field>
                   </div>
-                  <div className="grid gap-5 md:grid-cols-2">
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <Field label="Start Time">
                       <input
                         type="time"
@@ -585,16 +968,6 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                         className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
                       />
                     </Field>
-                  </div>
-                  <Field label="Location">
-                    <input
-                      value={form.venue}
-                      onChange={(event) => setForm((prev) => ({ ...prev, venue: event.target.value }))}
-                      className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
-                      placeholder="Rooftop Hall"
-                    />
-                  </Field>
-                  <div className="grid gap-5 md:grid-cols-2">
                     <Field label="Capacity">
                       <input
                         type="number"
@@ -605,30 +978,10 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                         placeholder="300"
                       />
                     </Field>
-                    <Field label="Ticket Price">
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={form.ticketPrice}
-                        onChange={(event) => setForm((prev) => ({ ...prev, ticketPrice: event.target.value }))}
-                        className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
-                        placeholder="45"
-                      />
-                    </Field>
                   </div>
-                  <Field label="Registration Deadline">
-                    <input
-                      type="datetime-local"
-                      value={form.registrationDeadline}
-                      onChange={(event) =>
-                        setForm((prev) => ({ ...prev, registrationDeadline: event.target.value }))
-                      }
-                      className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
-                    />
-                  </Field>
+                  <div className="grid gap-4 xl:grid-cols-3">
                   <Field label="Banner Image">
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       <input
                         ref={bannerInputRef}
                         type="file"
@@ -639,33 +992,59 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                           event.target.value = "";
                         }}
                       />
-                      <button
-                        type="button"
-                        onClick={() => bannerInputRef.current?.click()}
-                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
-                      >
-                        <Plus className="h-4 w-4" />
-                        {form.bannerImageUrl ? "Replace Banner" : "Upload Banner"}
-                      </button>
+                      {form.bannerImageUrl ? null : (
+                        <button
+                          type="button"
+                          onClick={() => bannerInputRef.current?.click()}
+                          className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                          aria-label="Upload banner"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Upload Banner
+                        </button>
+                      )}
                       {form.bannerImageUrl ? (
-                        <div className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-50">
+                        <div
+                          className="group relative overflow-hidden rounded-2xl border border-slate-100 bg-slate-50"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setShowBannerPreview(true)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              setShowBannerPreview(true);
+                            }
+                          }}
+                        >
                           <img
                             src={form.bannerImageUrl}
                             alt="Banner preview"
-                            className="h-40 w-full object-cover"
+                            className="h-32 w-full object-cover"
                           />
-                          <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3">
-                            <p className="truncate text-xs font-semibold text-slate-500">
-                              Banner uploaded
-                            </p>
-                            <button
-                              type="button"
-                              onClick={() => setForm((prev) => ({ ...prev, bannerImageUrl: "" }))}
-                              className="text-xs font-bold text-rose-600"
-                            >
-                              Remove
-                            </button>
-                          </div>
+                          <div className="absolute inset-0 bg-slate-950/45 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100" />
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setForm((prev) => ({ ...prev, bannerImageUrl: "" }));
+                              setShowBannerPreview(false);
+                            }}
+                            className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-sm opacity-0 transition hover:bg-white group-hover:opacity-100 group-focus-within:opacity-100"
+                            aria-label="Remove banner image"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              bannerInputRef.current?.click();
+                            }}
+                            className="absolute left-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-sm opacity-0 transition hover:bg-white group-hover:opacity-100 group-focus-within:opacity-100"
+                            aria-label="Replace banner image"
+                          >
+                            <Upload className="h-4 w-4" />
+                          </button>
                         </div>
                       ) : (
                         <p className="text-xs font-medium text-slate-400">
@@ -674,83 +1053,21 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                       )}
                     </div>
                   </Field>
-                  <Field label="Description">
-                    <textarea
-                      value={form.description}
-                      onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
-                      className="min-h-[160px] w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-500"
-                      placeholder="Describe the event agenda, audience, and timing."
-                    />
-                  </Field>
-                  <Field label="Status">
-                    <select
-                      value={form.status}
-                      onChange={(event) =>
-                        setForm((prev) => ({ ...prev, status: event.target.value as VendorEventStatus }))
-                      }
-                      className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
-                    >
-                      <option value="draft">Draft</option>
-                      <option value="published">Published</option>
-                      <option value="archived">Archived</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </Field>
-                </div>
-
-                <div className="rounded-[28px] border border-slate-100 bg-slate-50/70 p-6">
-                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-                    Preview
-                  </p>
-                  <div className="mt-4 space-y-4 rounded-[24px] bg-white p-5 shadow-sm">
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Title</p>
-                      <p className="mt-1 text-lg font-bold text-slate-800">{form.title || "Event title"}</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm text-slate-600">
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Category</p>
-                        <p className="mt-1">{form.category}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Type</p>
-                        <p className="mt-1">{form.eventType || "Event type"}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Date</p>
-                        <p className="mt-1">{form.eventDate || "Not set"}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Time</p>
-                        <p className="mt-1">{form.startTime || "--:--"} - {form.endTime || "--:--"}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Location</p>
-                      <p className="mt-1 text-sm text-slate-700">{form.venue || "Location"}</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm text-slate-600">
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Capacity</p>
-                        <p className="mt-1">{form.capacity || "0"}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Ticket</p>
-                        <p className="mt-1">{form.ticketPrice || "0"}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Description</p>
-                      <p className="mt-1 text-sm leading-6 text-slate-600">
-                        {form.description || "Event description"}
-                      </p>
+                    <div className="xl:col-span-2">
+                      <Field label="Description">
+                        <textarea
+                          value={form.description}
+                          onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
+                          className="min-h-[112px] w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-500"
+                          placeholder="Describe the event agenda, audience, and timing."
+                        />
+                      </Field>
                     </div>
                   </div>
-                </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-5 md:px-8">
+            <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-5 py-4 md:px-6">
               <button
                 onClick={resetForm}
                 className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
@@ -764,6 +1081,94 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
               >
                 {saving ? "Saving..." : editingId ? "Update Event" : "Save Event"}
               </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showMapModal ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-4xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+                  Event Location
+                </p>
+                <h3 className="mt-2 text-2xl font-black text-slate-800">Select event location</h3>
+                <p className="mt-2 text-sm text-slate-400">
+                  Click on the map or drag the marker to use the real event address.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMapModal(false)}
+                className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                aria-label="Close map modal"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-5 px-6 py-6">
+              <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50">
+                <div id="event-google-map-element" className="h-[420px] w-full" />
+              </div>
+              <div className="rounded-[20px] border border-slate-100 bg-slate-50 px-5 py-4">
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Selected Address</p>
+                <p className="mt-2 text-sm font-semibold text-slate-700">
+                  {tempAddress || "Select a point on the map to capture the event location."}
+                </p>
+                <p className="mt-2 text-xs text-slate-400">
+                  {tempCoords.lat.toFixed(5)}, {tempCoords.lng.toFixed(5)}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-5">
+              <button
+                type="button"
+                onClick={() => setShowMapModal(false)}
+                className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmMapLocation}
+                className="rounded-xl bg-[#1e2a5e] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#1a2552]"
+              >
+                Confirm Location
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showBannerPreview && form.bannerImageUrl ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-4xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 md:px-6">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Banner Preview</p>
+                <p className="mt-1 text-sm text-slate-500">Full banner image inside the popup.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBannerPreview(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                aria-label="Close banner preview"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="bg-slate-50 p-4 md:p-6">
+              <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white">
+                <img
+                  src={form.bannerImageUrl}
+                  alt="Banner full preview"
+                  className="max-h-[72vh] w-full object-contain bg-slate-50"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -796,10 +1201,10 @@ function StatCard({ label, value }: { label: string; value: string }) {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-bold text-slate-700">{label}</span>
+    <div className="block">
+      <span className="mb-1.5 block text-[13px] font-bold text-slate-700">{label}</span>
       {children}
-    </label>
+    </div>
   );
 }
 
