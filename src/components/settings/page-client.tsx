@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Header } from "@/components/Header";
 import { Bell, CalendarPlus2, Save, Shield, User, X } from "lucide-react";
 import {
@@ -9,6 +9,7 @@ import {
   vendorUpdateNotificationSettings,
   vendorUpdatePassword,
   vendorUpdateProfileSettings,
+  uploadVendorFile,
   type VendorEventPayload,
   type VendorEventStatus,
 } from "@/lib/vendor-api";
@@ -77,7 +78,7 @@ function validateEventForm(form: EventFormState): string | null {
   if (!form.startTime) return "Start time is required.";
   if (!form.endTime) return "End time is required.";
   if (form.endTime <= form.startTime) return "End time must be later than start time.";
-  if (!form.venue.trim()) return "Venue is required.";
+  if (!form.venue.trim()) return "Location is required.";
   if (!form.capacity.trim() || Number(form.capacity) <= 0) return "Capacity must be greater than zero.";
   if (!form.ticketPrice.trim() || Number(form.ticketPrice) < 0) return "Ticket price must be zero or more.";
   if (!form.description.trim()) return "Description is required.";
@@ -139,6 +140,7 @@ export function SettingsPageClient({
     platform_updates: Boolean(initialNotifications.platform_updates ?? false),
   });
   const [eventForm, setEventForm] = useState<EventFormState>(getDefaultEventForm(DEFAULT_CATEGORIES));
+  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   const ensureCategoriesLoaded = async () => {
     if (categoriesLoaded) {
@@ -224,6 +226,23 @@ export function SettingsPageClient({
     setEventStatusMessage("");
     setEventForm(getDefaultEventForm(categories));
     void ensureCategoriesLoaded();
+  };
+
+  const handleBannerUpload = async (file: File | null) => {
+    if (!file) {
+      return;
+    }
+
+    try {
+      setEventStatusMessage("Uploading banner image...");
+      const url = await uploadVendorFile(file);
+      setEventForm((current) => ({ ...current, bannerImageUrl: url }));
+      setEventStatusMessage("Banner image uploaded.");
+    } catch (error) {
+      setEventStatusMessage(
+        error instanceof Error ? error.message : "Failed to upload banner image.",
+      );
+    }
   };
 
   const handleCreateEvent = async () => {
@@ -456,7 +475,7 @@ export function SettingsPageClient({
                     </h4>
                     <p className="mt-2 text-sm text-white/75">
                       {eventForm.eventType || "Event type"} in{" "}
-                      {eventForm.venue || "your selected venue"}
+                      {eventForm.venue || "your selected location"}
                     </p>
                     <div className="mt-5 space-y-2 text-sm text-white/80">
                       <p>Date: {eventForm.eventDate || "Not selected"}</p>
@@ -526,7 +545,7 @@ export function SettingsPageClient({
                     placeholder="Dinner, Concert, Workshop"
                   />
                 </Field>
-                <Field label="Venue">
+                <Field label="Location">
                   <input
                     value={eventForm.venue}
                     onChange={(event) => setEventForm((current) => ({ ...current, venue: event.target.value }))}
@@ -600,18 +619,54 @@ export function SettingsPageClient({
                     className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
                   />
                 </Field>
-                <Field label="Banner Image URL">
-                  <input
-                    value={eventForm.bannerImageUrl}
-                    onChange={(event) =>
-                      setEventForm((current) => ({
-                        ...current,
-                        bannerImageUrl: event.target.value,
-                      }))
-                    }
-                    className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
-                    placeholder="https://..."
-                  />
+                <Field label="Banner Image">
+                  <div className="space-y-3">
+                    <input
+                      ref={bannerInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(event) => {
+                        void handleBannerUpload(event.target.files?.[0] ?? null);
+                        event.target.value = "";
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => bannerInputRef.current?.click()}
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                    >
+                      <CalendarPlus2 className="h-4 w-4" />
+                      {eventForm.bannerImageUrl ? "Replace Banner" : "Upload Banner"}
+                    </button>
+                    {eventForm.bannerImageUrl ? (
+                      <div className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-50">
+                        <img
+                          src={eventForm.bannerImageUrl}
+                          alt="Banner preview"
+                          className="h-40 w-full object-cover"
+                        />
+                        <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3">
+                          <p className="truncate text-xs font-semibold text-slate-500">
+                            Banner uploaded
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEventForm((current) => ({ ...current, bannerImageUrl: "" }))
+                            }
+                            className="text-xs font-bold text-rose-600"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs font-medium text-slate-400">
+                        Upload a JPG or PNG banner image.
+                      </p>
+                    )}
+                  </div>
                 </Field>
                 <Field label="Status">
                   <select

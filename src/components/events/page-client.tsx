@@ -8,6 +8,7 @@ import {
   vendorListEvents,
   vendorUpdateEvent,
   vendorUpdateEventStatus,
+  uploadVendorFile,
   type VendorEventPayload,
   type VendorEventStatus,
 } from "@/lib/vendor-api";
@@ -15,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { extractVendorCategories, type VendorCategory } from "@/lib/vendor-access";
 import { CalendarDays, Clock3, MapPin, Pencil, Plus, Search, Trash2, Users, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type VendorEventRecord = {
   id: string;
@@ -123,7 +124,7 @@ function validateForm(form: FormState): string | null {
   if (!form.startTime) return "Start time is required.";
   if (!form.endTime) return "End time is required.";
   if (form.endTime <= form.startTime) return "End time must be later than start time.";
-  if (!form.venue.trim()) return "Venue is required.";
+  if (!form.venue.trim()) return "Location is required.";
   if (!form.capacity.trim() || Number(form.capacity) <= 0) return "Capacity must be greater than zero.";
   if (!form.ticketPrice.trim() || Number(form.ticketPrice) < 0) return "Ticket price must be zero or more.";
   if (form.registrationDeadline && !form.registrationDeadline.includes("T")) {
@@ -152,6 +153,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   const loadEvents = async (filters?: { search?: string; status?: string }) => {
     const response = await vendorListEvents({
@@ -213,6 +215,23 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     setForm(getDefaultForm(categories));
     setEditingId(null);
     setShowForm(true);
+  };
+
+  const handleBannerUpload = async (file: File | null) => {
+    if (!file) {
+      return;
+    }
+
+    try {
+      setStatusMessage("Uploading banner image...");
+      const url = await uploadVendorFile(file);
+      setForm((prev) => ({ ...prev, bannerImageUrl: url }));
+      setStatusMessage("Banner image uploaded.");
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "Failed to upload banner image.",
+      );
+    }
   };
 
   const handleSubmit = async () => {
@@ -567,7 +586,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                       />
                     </Field>
                   </div>
-                  <Field label="Venue">
+                  <Field label="Location">
                     <input
                       value={form.venue}
                       onChange={(event) => setForm((prev) => ({ ...prev, venue: event.target.value }))}
@@ -608,13 +627,52 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                       className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
                     />
                   </Field>
-                  <Field label="Banner Image URL">
-                    <input
-                      value={form.bannerImageUrl}
-                      onChange={(event) => setForm((prev) => ({ ...prev, bannerImageUrl: event.target.value }))}
-                      className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
-                      placeholder="https://..."
-                    />
+                  <Field label="Banner Image">
+                    <div className="space-y-3">
+                      <input
+                        ref={bannerInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(event) => {
+                          void handleBannerUpload(event.target.files?.[0] ?? null);
+                          event.target.value = "";
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => bannerInputRef.current?.click()}
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                      >
+                        <Plus className="h-4 w-4" />
+                        {form.bannerImageUrl ? "Replace Banner" : "Upload Banner"}
+                      </button>
+                      {form.bannerImageUrl ? (
+                        <div className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-50">
+                          <img
+                            src={form.bannerImageUrl}
+                            alt="Banner preview"
+                            className="h-40 w-full object-cover"
+                          />
+                          <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3">
+                            <p className="truncate text-xs font-semibold text-slate-500">
+                              Banner uploaded
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setForm((prev) => ({ ...prev, bannerImageUrl: "" }))}
+                              className="text-xs font-bold text-rose-600"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs font-medium text-slate-400">
+                          Upload a JPG or PNG banner image.
+                        </p>
+                      )}
+                    </div>
                   </Field>
                   <Field label="Description">
                     <textarea
@@ -668,8 +726,8 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                       </div>
                     </div>
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Venue</p>
-                      <p className="mt-1 text-sm text-slate-700">{form.venue || "Venue"}</p>
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Location</p>
+                      <p className="mt-1 text-sm text-slate-700">{form.venue || "Location"}</p>
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-sm text-slate-600">
                       <div>
