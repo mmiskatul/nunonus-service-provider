@@ -14,7 +14,7 @@ import {
 } from "@/lib/vendor-api";
 import { cn } from "@/lib/utils";
 import { extractVendorCategories, type VendorCategory } from "@/lib/vendor-access";
-import { CalendarDays, Check, ChevronDown, Clock3, MapPin, Pencil, Plus, Search, Trash2, Upload, Users, X } from "lucide-react";
+import { CalendarDays, Clock3, MapPin, Pencil, Plus, Search, Trash2, Upload, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -39,6 +39,11 @@ const TIMEZONE_OPTIONS = [
 ];
 
 type TimezoneOption = {
+  value: string;
+  label: string;
+};
+
+type LocationOption = {
   value: string;
   label: string;
 };
@@ -224,6 +229,32 @@ function buildTimezoneSelectOptions(currentValue: string, detectedTimezone: stri
   }));
 }
 
+function deriveSavedRestaurantLocation(profile: Record<string, unknown>) {
+  const candidates = [
+    profile.location_value,
+    profile.office_address,
+    profile.business_address,
+    profile.address,
+  ];
+
+  for (const value of candidates) {
+    const normalized = String(value ?? "").trim();
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return "";
+}
+
+function buildSavedLocationLabel(category: string) {
+  const normalizedCategory = category.trim().toLowerCase();
+  if (!normalizedCategory) {
+    return "Your location";
+  }
+  return `Your ${normalizedCategory} location`;
+}
+
 export function EventsPageClient({ startInCreateMode = false }: { startInCreateMode?: boolean }) {
   const detectedTimezone = useMemo(() => detectBrowserTimezone(), []);
   const [categories, setCategories] = useState<VendorCategory[]>(DEFAULT_CATEGORIES);
@@ -241,16 +272,34 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showMapModal, setShowMapModal] = useState(false);
   const [showBannerPreview, setShowBannerPreview] = useState(false);
-  const [timezoneMenuOpen, setTimezoneMenuOpen] = useState(false);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+  const [savedRestaurantLocation, setSavedRestaurantLocation] = useState("");
+  const [currentLocationLabel, setCurrentLocationLabel] = useState("Current location");
   const [tempCoords, setTempCoords] = useState({ lat: 23.8103, lng: 90.4125 });
   const [tempAddress, setTempAddress] = useState("");
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const mapInitializedRef = useRef(false);
-  const timezoneMenuRef = useRef<HTMLDivElement>(null);
   const timezoneOptions = useMemo(
     () => buildTimezoneSelectOptions(form.timezone, detectedTimezone),
     [detectedTimezone, form.timezone],
   );
+  const locationOptions = useMemo(() => {
+    const options: LocationOption[] = [];
+    if (savedRestaurantLocation) {
+      options.push({
+        value: savedRestaurantLocation,
+        label: buildSavedLocationLabel(form.category),
+      });
+    }
+    if (currentLocationLabel.trim()) {
+      const normalizedCurrentLocation = currentLocationLabel.replace(/^Custom location:\s*/, "").trim();
+      options.push({
+        value: normalizedCurrentLocation,
+        label: currentLocationLabel.startsWith("Custom location:") ? "Custom location" : "Current location",
+      });
+    }
+    return options;
+  }, [currentLocationLabel, form.category, savedRestaurantLocation]);
 
   const loadEvents = async (filters?: { search?: string; status?: string }) => {
     const response = await vendorListEvents({
@@ -263,6 +312,21 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     setEvents(nextItems);
   };
 
+  const refreshProfileLocation = async () => {
+    const profile = await vendorGetProfileSettings();
+    const nextCategories = extractVendorCategories(profile.categories ?? profile.category);
+    const nextSavedLocation = deriveSavedRestaurantLocation(profile);
+    setCategories(nextCategories);
+    setSavedRestaurantLocation(nextSavedLocation);
+    setForm((current) => ({
+      ...current,
+      category: nextCategories.includes(current.category) ? current.category : nextCategories[0],
+      timezone: current.timezone || detectedTimezone,
+      venue: current.venue || nextSavedLocation,
+    }));
+    return { nextCategories, nextSavedLocation };
+  };
+
   useEffect(() => {
     let active = true;
 
@@ -271,11 +335,14 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
         const profile = await vendorGetProfileSettings();
         if (!active) return;
         const nextCategories = extractVendorCategories(profile.categories ?? profile.category);
+        const nextSavedLocation = deriveSavedRestaurantLocation(profile);
         setCategories(nextCategories);
+        setSavedRestaurantLocation(nextSavedLocation);
         setForm((current) => ({
           ...current,
           category: nextCategories.includes(current.category) ? current.category : nextCategories[0],
           timezone: current.timezone || detectedTimezone,
+          venue: current.venue || nextSavedLocation,
         }));
         await loadEvents();
       } catch (error) {
@@ -295,21 +362,25 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   }, [detectedTimezone]);
 
   useEffect(() => {
-    if (!timezoneMenuOpen) {
+    if (!navigator.geolocation) {
       return;
     }
 
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!timezoneMenuRef.current?.contains(event.target as Node)) {
-        setTimezoneMenuOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-    };
-  }, [timezoneMenuOpen]);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const nextCoords = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+        setTempCoords(nextCoords);
+        setCurrentLocationLabel(
+          `Current location (${nextCoords.lat.toFixed(4)}, ${nextCoords.lng.toFixed(4)})`,
+        );
+      },
+      () => undefined,
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
+    );
+  }, []);
 
   useEffect(() => {
     if (!showMapModal) {
@@ -467,23 +538,33 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     setForm({
       ...getDefaultForm(categories),
       timezone: detectedTimezone,
+      venue: savedRestaurantLocation,
     });
     setEditingId(null);
     setShowForm(false);
     setShowMapModal(false);
     setShowBannerPreview(false);
-    setTimezoneMenuOpen(false);
+    setShowSaveConfirm(false);
     setTempAddress("");
   };
 
-  const openCreateForm = () => {
+  const openCreateForm = async () => {
+    let nextSavedLocation = savedRestaurantLocation;
+    let nextCategories = categories;
+    try {
+      const refreshed = await refreshProfileLocation();
+      nextSavedLocation = refreshed.nextSavedLocation;
+      nextCategories = refreshed.nextCategories;
+    } catch {
+      // Keep the form usable even if the profile refresh fails.
+    }
     setForm({
-      ...getDefaultForm(categories),
+      ...getDefaultForm(nextCategories),
       timezone: detectedTimezone,
+      venue: nextSavedLocation,
     });
     setEditingId(null);
     setShowForm(true);
-    setTimezoneMenuOpen(false);
     setTempAddress("");
   };
 
@@ -497,8 +578,17 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   };
 
   const handleConfirmMapLocation = () => {
-    setForm((prev) => ({ ...prev, venue: tempAddress.trim() || prev.venue }));
+    const nextAddress = tempAddress.trim();
+    setForm((prev) => ({ ...prev, venue: nextAddress || prev.venue }));
+    if (nextAddress && nextAddress !== savedRestaurantLocation) {
+      setCurrentLocationLabel(`Custom location: ${nextAddress}`);
+    }
     setShowMapModal(false);
+  };
+
+  const handleSelectLocationOption = (option: LocationOption) => {
+    setForm((prev) => ({ ...prev, venue: option.value }));
+    setTempAddress(option.value);
   };
 
   const handleBannerUpload = async (file: File | null) => {
@@ -518,10 +608,22 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     }
   };
 
+  const handleOpenSaveConfirm = () => {
+    const validationError = validateForm(form);
+    if (validationError) {
+      setStatusMessage(validationError);
+      return;
+    }
+
+    setStatusMessage("");
+    setShowSaveConfirm(true);
+  };
+
   const handleSubmit = async () => {
     const validationError = validateForm(form);
     if (validationError) {
       setStatusMessage(validationError);
+      setShowSaveConfirm(false);
       return;
     }
 
@@ -541,6 +643,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "Failed to save event.");
     } finally {
+      setShowSaveConfirm(false);
       setSaving(false);
     }
   };
@@ -843,67 +946,49 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                   </div>
                   <div className="grid gap-4 xl:grid-cols-3">
                   <Field label="Timezone">
-                    <div ref={timezoneMenuRef} className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setTimezoneMenuOpen((current) => !current)}
-                        className="flex h-12 w-full items-center justify-between rounded-2xl border border-slate-200 px-4 text-left text-sm font-extrabold outline-none transition hover:border-slate-300 focus:border-sky-500"
+                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                      <select
+                        value={form.timezone}
+                        onChange={(event) => setForm((prev) => ({ ...prev, timezone: event.target.value }))}
+                        className="h-7 w-full border-0 bg-transparent p-0 text-sm font-bold outline-none"
                       >
-                        <span className="truncate">
-                          {timezoneOptions.find((timezone) => timezone.value === form.timezone)?.label ?? form.timezone}
-                        </span>
-                        <ChevronDown className={cn("h-4 w-4 shrink-0 text-slate-500 transition", timezoneMenuOpen && "rotate-180")} />
-                      </button>
-                      {timezoneMenuOpen ? (
-                        <div className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
-                          {timezoneOptions.map((timezone) => {
-                            const isSelected = timezone.value === form.timezone;
-                            const isDetected = timezone.value === detectedTimezone;
-
-                            return (
-                              <button
-                                key={timezone.value}
-                                type="button"
-                                onClick={() => {
-                                  setForm((prev) => ({ ...prev, timezone: timezone.value }));
-                                  setTimezoneMenuOpen(false);
-                                }}
-                                className={cn(
-                                  "flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm transition",
-                                  isSelected ? "bg-[#eef3ff] text-[#1e2a5e]" : "text-slate-700 hover:bg-slate-50",
-                                  isDetected && "font-extrabold",
-                                )}
-                              >
-                                <div className="min-w-0">
-                                  <p className={cn("truncate", isDetected ? "font-extrabold" : "font-semibold")}>
-                                    {timezone.label.replace(" · Your timezone", "")}
-                                  </p>
-                                </div>
-                                <div className="flex shrink-0 items-center gap-2">
-                                  {isDetected ? (
-                                    <span className="rounded-full bg-[#1e2a5e] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] text-white">
-                                      Your timezone
-                                    </span>
-                                  ) : null}
-                                  {isSelected ? <Check className="h-4 w-4 text-[#1e2a5e]" /> : null}
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ) : null}
+                        {timezoneOptions.map((timezone) => (
+                          <option key={timezone.value} value={timezone.value}>
+                            {timezone.label.replace(" ? Your timezone", "")}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </Field>
                     <div className="xl:col-span-2">
                       <Field label="Location">
                         <div className="space-y-2">
                           <div className="flex flex-col gap-3 md:flex-row">
-                            <input
-                              value={form.venue}
-                              onChange={(event) => setForm((prev) => ({ ...prev, venue: event.target.value }))}
-                              className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
-                              placeholder="Select location from map or enter an address"
-                            />
+                            <div className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 transition focus-within:border-sky-500">
+                              <select
+                                value={form.venue}
+                                onChange={(event) => {
+                                  const nextValue = event.target.value;
+                                  const matchedOption = locationOptions.find((option) => option.value === nextValue);
+                                  if (matchedOption) {
+                                    handleSelectLocationOption(matchedOption);
+                                    return;
+                                  }
+                                  setForm((prev) => ({ ...prev, venue: nextValue }));
+                                  setTempAddress(nextValue);
+                                }}
+                                className="h-7 w-full border-0 bg-transparent p-0 text-sm font-bold outline-none"
+                              >
+                                <option value="">Select location option</option>
+                                {locationOptions
+                                  .filter((option) => option.value.trim())
+                                  .map((option) => (
+                                    <option key={`${option.label}-${option.value}`} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                              </select>
+                            </div>
                             <button
                               type="button"
                               onClick={openMapPicker}
@@ -1075,7 +1160,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                 Cancel
               </button>
               <button
-                onClick={() => void handleSubmit()}
+                onClick={handleOpenSaveConfirm}
                 disabled={saving}
                 className="rounded-xl bg-[#1e2a5e] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#1a2552] disabled:cursor-not-allowed disabled:opacity-60"
               >
@@ -1138,6 +1223,52 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                 className="rounded-xl bg-[#1e2a5e] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#1a2552]"
               >
                 Confirm Location
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showSaveConfirm ? (
+        <div className="fixed inset-0 z-[65] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-[28px] bg-white shadow-2xl">
+            <div className="border-b border-slate-100 px-5 py-4 md:px-6">
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                Confirm Event
+              </p>
+              <h3 className="mt-1.5 text-xl font-black text-slate-800">
+                {editingId ? "Update this event?" : "Create this event?"}
+              </h3>
+              <p className="mt-2 text-sm text-slate-500">
+                {editingId
+                  ? "The event endpoint will run only after you confirm this update."
+                  : "The event create endpoint will run only after you confirm this new event."}
+              </p>
+            </div>
+            <div className="px-5 py-4 md:px-6">
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                <p className="text-sm font-extrabold text-slate-800">{form.title || "Untitled event"}</p>
+                <p className="mt-1 text-xs font-medium text-slate-500">
+                  {form.eventDate} {form.startTime ? `• ${form.startTime}` : ""} {form.venue ? `• ${form.venue}` : ""}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-5 py-4 md:px-6">
+              <button
+                type="button"
+                onClick={() => setShowSaveConfirm(false)}
+                disabled={saving}
+                className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSubmit()}
+                disabled={saving}
+                className="rounded-xl bg-[#1e2a5e] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#1a2552] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {saving ? "Saving..." : "Confirm"}
               </button>
             </div>
           </div>
