@@ -5,6 +5,7 @@ import {
   vendorCreateEvent,
   vendorDeleteEvent,
   vendorGetProfileSettings,
+  vendorGetEvent,
   vendorListEvents,
   vendorUpdateEvent,
   vendorUpdateEventStatus,
@@ -14,7 +15,7 @@ import {
 } from "@/lib/vendor-api";
 import { cn } from "@/lib/utils";
 import { extractVendorCategories, type VendorCategory } from "@/lib/vendor-access";
-import { CalendarDays, Clock3, MapPin, Pencil, Plus, Search, Trash2, Upload, Users, X } from "lucide-react";
+import { CalendarDays, Clock3, Eye, MapPin, Pencil, Plus, Search, Trash2, Upload, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -273,6 +274,10 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   const [showMapModal, setShowMapModal] = useState(false);
   const [showBannerPreview, setShowBannerPreview] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState("");
+  const [detailEvent, setDetailEvent] = useState<VendorEventRecord | null>(null);
   const [savedRestaurantLocation, setSavedRestaurantLocation] = useState("");
   const [currentLocationLabel, setCurrentLocationLabel] = useState("Current location");
   const [tempCoords, setTempCoords] = useState({ lat: 23.8103, lng: 90.4125 });
@@ -545,6 +550,10 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     setShowMapModal(false);
     setShowBannerPreview(false);
     setShowSaveConfirm(false);
+    setShowDetailModal(false);
+    setDetailLoading(false);
+    setDetailError("");
+    setDetailEvent(null);
     setTempAddress("");
   };
 
@@ -589,6 +598,30 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   const handleSelectLocationOption = (option: LocationOption) => {
     setForm((prev) => ({ ...prev, venue: option.value }));
     setTempAddress(option.value);
+  };
+
+  const closeDetailModal = () => {
+    setShowDetailModal(false);
+    setDetailLoading(false);
+    setDetailError("");
+    setDetailEvent(null);
+  };
+
+  const openEventDetails = async (eventId: string) => {
+    const cachedEvent = events.find((item) => item.id === eventId) ?? null;
+    setShowDetailModal(true);
+    setDetailEvent(cachedEvent);
+    setDetailLoading(!cachedEvent);
+    setDetailError("");
+
+    try {
+      const response = await vendorGetEvent(eventId);
+      setDetailEvent(normalizeEvent(response));
+    } catch (error) {
+      setDetailError(error instanceof Error ? error.message : "Failed to load event details.");
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const handleBannerUpload = async (file: File | null) => {
@@ -649,6 +682,10 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   };
 
   const handleEdit = (event: VendorEventRecord) => {
+    setShowDetailModal(false);
+    setDetailLoading(false);
+    setDetailError("");
+    setDetailEvent(null);
     setEditingId(event.id);
     setShowForm(true);
     setStatusMessage("");
@@ -824,12 +861,14 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                          <Link
-                            href={`/events/${event.id}`}
-                            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+                          <button
+                            type="button"
+                            onClick={() => void openEventDetails(event.id)}
+                            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
                           >
+                            <Eye className="h-4 w-4" />
                             View Details
-                          </Link>
+                          </button>
                           <button
                             onClick={() =>
                               void handleStatusChange(
@@ -1275,6 +1314,105 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
         </div>
       ) : null}
 
+      {showDetailModal ? (
+        <div className="fixed inset-0 z-[68] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-5xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 md:px-6">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                  Event Details
+                </p>
+                <h3 className="mt-1.5 text-2xl font-black text-slate-800">
+                  {detailEvent?.title || "Loading event..."}
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  All fields are loaded from the backend event record.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeDetailModal}
+                className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                aria-label="Close event details"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {detailLoading ? (
+              <div className="px-6 py-16 text-center text-sm font-medium text-slate-400">
+                Loading event details...
+              </div>
+            ) : detailError ? (
+              <div className="px-6 py-16 text-center text-sm font-bold text-rose-600">
+                {detailError}
+              </div>
+            ) : detailEvent ? (
+              <div className="grid gap-6 px-5 py-5 md:px-6 lg:grid-cols-[1.2fr_0.8fr]">
+                <div className="space-y-5">
+                  <div className="rounded-[24px] border border-slate-100 bg-slate-50 p-5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={statusClass(detailEvent.status)}>{detailEvent.status}</span>
+                      <span className="rounded-full bg-[#e8f0ff] px-3 py-1 text-xs font-bold text-[#1e2a5e]">
+                        {detailEvent.category}
+                      </span>
+                      <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
+                        {detailEvent.event_type}
+                      </span>
+                    </div>
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      <DetailLine label="Event Date" value={detailEvent.event_date} />
+                      <DetailLine label="Time" value={`${detailEvent.start_time} - ${detailEvent.end_time}`} />
+                      <DetailLine label="Timezone" value={detailEvent.timezone || "Asia/Dhaka"} />
+                      <DetailLine label="Venue" value={detailEvent.venue} />
+                      <DetailLine label="Capacity" value={String(detailEvent.capacity)} />
+                      <DetailLine label="Ticket Price" value={formatMoney(detailEvent.ticket_price)} />
+                      <DetailLine
+                        label="Registration Deadline"
+                        value={detailEvent.registration_deadline || "Not set"}
+                      />
+                      <DetailLine label="Active" value={detailEvent.active ? "Yes" : "No"} />
+                    </div>
+                  </div>
+                  <div className="rounded-[24px] border border-slate-100 bg-white p-5">
+                    <h4 className="text-sm font-black uppercase tracking-[0.18em] text-slate-400">
+                      Description
+                    </h4>
+                    <p className="mt-3 text-sm leading-6 text-slate-600">
+                      {detailEvent.description || "No description provided."}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-5">
+                  <div className="overflow-hidden rounded-[24px] border border-slate-100 bg-white">
+                    {detailEvent.banner_image_url ? (
+                      <img
+                        src={detailEvent.banner_image_url}
+                        alt={detailEvent.title}
+                        className="h-64 w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-64 items-center justify-center bg-slate-50 text-sm font-medium text-slate-400">
+                        No banner image.
+                      </div>
+                    )}
+                  </div>
+                  <div className="rounded-[24px] border border-slate-100 bg-slate-50 p-5">
+                    <h4 className="text-sm font-black uppercase tracking-[0.18em] text-slate-400">
+                      Backend Data
+                    </h4>
+                    <p className="mt-3 text-sm text-slate-600">
+                      The popup is populated from the backend event record so it matches the stored data exactly.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       {showBannerPreview && form.bannerImageUrl ? (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm">
           <div className="relative w-full max-w-4xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
@@ -1350,6 +1488,15 @@ function Meta({
     <div className="flex items-center gap-2">
       <Icon className="h-4 w-4 text-slate-400" />
       <span>{label}</span>
+    </div>
+  );
+}
+
+function DetailLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
+      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{label}</p>
+      <p className="mt-2 text-sm font-bold text-slate-800 break-words">{value}</p>
     </div>
   );
 }
