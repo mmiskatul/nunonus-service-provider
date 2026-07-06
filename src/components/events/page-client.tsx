@@ -1364,7 +1364,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                       <DetailLine label="Event Date" value={detailEvent.event_date} />
                       <DetailLine label="Time" value={`${detailEvent.start_time} - ${detailEvent.end_time}`} />
                       <DetailLine label="Timezone" value={detailEvent.timezone || "Asia/Dhaka"} />
-                      <DetailLine label="Venue" value={detailEvent.venue} />
+                      <DetailLine label="Location" value={detailEvent.venue || "Not set"} />
                       <DetailLine label="Capacity" value={String(detailEvent.capacity)} />
                       <DetailLine label="Ticket Price" value={formatMoney(detailEvent.ticket_price)} />
                       <DetailLine
