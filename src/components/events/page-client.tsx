@@ -10,6 +10,7 @@ import {
   vendorUpdateEvent,
   vendorUpdateEventStatus,
   uploadVendorFile,
+  type VendorEventBookingMode,
   type VendorEventPayload,
   type VendorEventStatus,
 } from "@/lib/vendor-api";
@@ -54,6 +55,7 @@ type VendorEventRecord = {
   title: string;
   category: string;
   event_type: string;
+  booking_mode: VendorEventBookingMode;
   event_date: string;
   start_time: string;
   end_time: string;
@@ -72,6 +74,7 @@ type FormState = {
   title: string;
   category: VendorCategory;
   eventType: string;
+  bookingMode: VendorEventBookingMode;
   eventDate: string;
   startTime: string;
   endTime: string;
@@ -92,6 +95,7 @@ function getDefaultForm(categories: VendorCategory[]): FormState {
     title: "",
     category: categories[0] ?? "Restaurant",
     eventType: "",
+    bookingMode: "simple",
     eventDate: "",
     startTime: "",
     endTime: "",
@@ -112,6 +116,7 @@ function normalizeEvent(row: Record<string, unknown>): VendorEventRecord {
     title: String(row.title ?? ""),
     category: String(row.category ?? ""),
     event_type: String(row.event_type ?? ""),
+    booking_mode: String(row.booking_mode ?? "simple").toLowerCase() as VendorEventBookingMode,
     event_date: String(row.event_date ?? ""),
     start_time: String(row.start_time ?? ""),
     end_time: String(row.end_time ?? ""),
@@ -133,6 +138,7 @@ function toPayload(form: FormState): VendorEventPayload {
     title: form.title.trim(),
     category: form.category,
     event_type: form.eventType.trim(),
+    booking_mode: form.bookingMode,
     event_date: form.eventDate,
     start_time: form.startTime,
     end_time: form.endTime,
@@ -695,6 +701,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
         ? (event.category as VendorCategory)
         : categories[0],
       eventType: event.event_type,
+      bookingMode: event.booking_mode,
       eventDate: event.event_date,
       startTime: event.start_time,
       endTime: event.end_time,
@@ -842,10 +849,13 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                             <span className="rounded-full bg-[#e8f0ff] px-3 py-1 text-xs font-bold text-[#1e2a5e]">
                               {event.category}
                             </span>
-                            <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
-                              {event.event_type}
-                            </span>
-                          </div>
+                          <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
+                            {event.event_type}
+                          </span>
+                          <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
+                            {event.booking_mode === "detailed" ? "Detailed booking" : "Simple booking"}
+                          </span>
+                        </div>
                           <p className="text-sm text-slate-500">{event.description}</p>
                           <div className="grid gap-3 text-sm text-slate-500 md:grid-cols-2 xl:grid-cols-4">
                             <Meta icon={CalendarDays} label={event.event_date} />
@@ -967,6 +977,21 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                         className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
                         placeholder="Corporate Gala"
                       />
+                    </Field>
+                    <Field label="Booking Flow">
+                      <select
+                        value={form.bookingMode}
+                        onChange={(event) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            bookingMode: event.target.value as VendorEventBookingMode,
+                          }))
+                        }
+                        className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
+                      >
+                        <option value="simple">Simple map booking</option>
+                        <option value="detailed">Detailed booking page</option>
+                      </select>
                     </Field>
                     <Field label="Status">
                       <select
@@ -1359,11 +1384,18 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                       <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
                         {detailEvent.event_type}
                       </span>
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
+                        {detailEvent.booking_mode === "detailed" ? "Detailed booking" : "Simple booking"}
+                      </span>
                     </div>
                     <div className="mt-4 grid gap-3 md:grid-cols-2">
                       <DetailLine label="Event Date" value={detailEvent.event_date} />
                       <DetailLine label="Time" value={`${detailEvent.start_time} - ${detailEvent.end_time}`} />
                       <DetailLine label="Timezone" value={detailEvent.timezone || "Asia/Dhaka"} />
+                      <DetailLine
+                        label="Booking Flow"
+                        value={detailEvent.booking_mode === "detailed" ? "Detailed booking page" : "Simple map booking"}
+                      />
                       <DetailLine label="Location" value={detailEvent.venue || "Not set"} />
                       <DetailLine label="Capacity" value={String(detailEvent.capacity)} />
                       <DetailLine label="Ticket Price" value={formatMoney(detailEvent.ticket_price)} />

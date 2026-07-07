@@ -10,6 +10,7 @@ import {
   vendorUpdatePassword,
   vendorUpdateProfileSettings,
   uploadVendorFile,
+  type VendorEventBookingMode,
   type VendorEventPayload,
   type VendorEventStatus,
 } from "@/lib/vendor-api";
@@ -21,6 +22,7 @@ type EventFormState = {
   title: string;
   category: VendorCategory;
   eventType: string;
+  bookingMode: VendorEventBookingMode;
   eventDate: string;
   startTime: string;
   endTime: string;
@@ -57,6 +59,7 @@ function getDefaultEventForm(categories: VendorCategory[]): EventFormState {
     title: "",
     category: categories[0] ?? "Restaurant",
     eventType: "",
+    bookingMode: "simple",
     eventDate: "",
     startTime: "",
     endTime: "",
@@ -90,6 +93,7 @@ function toEventPayload(form: EventFormState): VendorEventPayload {
     title: form.title.trim(),
     category: form.category,
     event_type: form.eventType.trim(),
+    booking_mode: form.bookingMode,
     event_date: form.eventDate,
     start_time: form.startTime,
     end_time: form.endTime,
@@ -544,6 +548,21 @@ export function SettingsPageClient({
                     className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
                     placeholder="Dinner, Concert, Workshop"
                   />
+                </Field>
+                <Field label="Booking Flow">
+                  <select
+                    value={eventForm.bookingMode}
+                    onChange={(event) =>
+                      setEventForm((current) => ({
+                        ...current,
+                        bookingMode: event.target.value as VendorEventBookingMode,
+                      }))
+                    }
+                    className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
+                  >
+                    <option value="simple">Simple map booking</option>
+                    <option value="detailed">Detailed booking page</option>
+                  </select>
                 </Field>
                 <Field label="Location">
                   <input

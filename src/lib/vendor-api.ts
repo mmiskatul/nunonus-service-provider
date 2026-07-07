@@ -175,11 +175,13 @@ export interface VendorAuthResult {
 }
 
 export type VendorEventStatus = "draft" | "published" | "archived" | "cancelled";
+export type VendorEventBookingMode = "simple" | "detailed";
 
 export interface VendorEventPayload {
   title: string;
   category: string;
   event_type: string;
+  booking_mode: VendorEventBookingMode;
   event_date: string;
   start_time: string;
   end_time: string;

@@ -1,7 +1,7 @@
 "use client";
 
 import { Header } from "@/components/Header";
-import { vendorGetEvent, type VendorEventStatus } from "@/lib/vendor-api";
+import { vendorGetEvent, type VendorEventBookingMode, type VendorEventStatus } from "@/lib/vendor-api";
 import { cn } from "@/lib/utils";
 import { CalendarDays, Clock3, MapPin, Tag, Ticket, Users } from "lucide-react";
 import Link from "next/link";
@@ -12,6 +12,7 @@ type VendorEventRecord = {
   title: string;
   category: string;
   event_type: string;
+  booking_mode: VendorEventBookingMode;
   event_date: string;
   start_time: string;
   end_time: string;
@@ -31,6 +32,7 @@ function normalizeEvent(row: Record<string, unknown>): VendorEventRecord {
     title: String(row.title ?? ""),
     category: String(row.category ?? ""),
     event_type: String(row.event_type ?? ""),
+    booking_mode: String(row.booking_mode ?? "simple").toLowerCase() as VendorEventBookingMode,
     event_date: String(row.event_date ?? ""),
     start_time: String(row.start_time ?? ""),
     end_time: String(row.end_time ?? ""),
@@ -127,6 +129,9 @@ export function EventDetailClient({ eventId }: { eventId: string }) {
                       <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
                         {event.event_type}
                       </span>
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
+                        {event.booking_mode === "detailed" ? "Detailed booking" : "Simple booking"}
+                      </span>
                     </div>
                     <h1 className="text-4xl font-black tracking-tight text-slate-900">
                       {event.title}
@@ -149,6 +154,11 @@ export function EventDetailClient({ eventId }: { eventId: string }) {
                 <DetailCard icon={MapPin} label="Venue" value={event.venue} />
                 <DetailCard icon={Users} label="Capacity" value={`${event.capacity} seats`} />
                 <DetailCard icon={Ticket} label="Ticket Price" value={formatMoney(event.ticket_price)} />
+                <DetailCard
+                  icon={Tag}
+                  label="Booking Flow"
+                  value={event.booking_mode === "detailed" ? "Detailed booking page" : "Simple map booking"}
+                />
                 <DetailCard icon={Tag} label="Timezone" value={event.timezone || "Asia/Dhaka"} />
               </section>
 
