@@ -374,6 +374,7 @@ export async function vendorListBookings(
     skip?: number;
     search?: string;
     status?: string;
+    provider_type?: string;
     date_from?: string;
     date_to?: string;
   } = {},

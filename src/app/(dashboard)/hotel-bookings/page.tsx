@@ -76,6 +76,7 @@ export default function HotelBookingsPage() {
         skip: (currentPage - 1) * ITEMS_PER_PAGE,
         search: searchQuery || undefined,
         status: statusFilter !== "All" ? statusFilter : undefined,
+        provider_type: "hotel,hotel_room",
         date_from: dateRange.start ? dateRange.start.toISOString().split("T")[0] : undefined,
         date_to: dateRange.end ? dateRange.end.toISOString().split("T")[0] : undefined,
       };
