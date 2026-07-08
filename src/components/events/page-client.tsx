@@ -61,6 +61,8 @@ type VendorEventRecord = {
   end_time: string;
   timezone?: string;
   venue: string;
+  latitude?: number | null;
+  longitude?: number | null;
   capacity: number;
   ticket_price: number;
   registration_deadline?: string | null;
@@ -80,6 +82,8 @@ type FormState = {
   endTime: string;
   timezone: string;
   venue: string;
+  latitude: number | null;
+  longitude: number | null;
   capacity: string;
   ticketPrice: string;
   registrationDeadline: string;
@@ -101,6 +105,8 @@ function getDefaultForm(categories: VendorCategory[]): FormState {
     endTime: "",
     timezone: DEFAULT_TIMEZONE,
     venue: "",
+    latitude: null,
+    longitude: null,
     capacity: "",
     ticketPrice: "",
     registrationDeadline: "",
@@ -122,6 +128,8 @@ function normalizeEvent(row: Record<string, unknown>): VendorEventRecord {
     end_time: String(row.end_time ?? ""),
     timezone: String(row.timezone ?? DEFAULT_TIMEZONE),
     venue: String(row.venue ?? ""),
+    latitude: row.latitude == null ? null : Number(row.latitude),
+    longitude: row.longitude == null ? null : Number(row.longitude),
     capacity: Number(row.capacity ?? 0),
     ticket_price: Number(row.ticket_price ?? 0),
     registration_deadline:
@@ -144,6 +152,8 @@ function toPayload(form: FormState): VendorEventPayload {
     end_time: form.endTime,
     timezone: form.timezone.trim() || DEFAULT_TIMEZONE,
     venue: form.venue.trim(),
+    latitude: form.latitude,
+    longitude: form.longitude,
     capacity: Number(form.capacity),
     ticket_price: Number(form.ticketPrice),
     registration_deadline: form.registrationDeadline || null,
@@ -550,6 +560,8 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
       ...getDefaultForm(categories),
       timezone: detectedTimezone,
       venue: savedRestaurantLocation,
+      latitude: null,
+      longitude: null,
     });
     setEditingId(null);
     setShowForm(false);
@@ -577,6 +589,8 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
       ...getDefaultForm(nextCategories),
       timezone: detectedTimezone,
       venue: nextSavedLocation,
+      latitude: null,
+      longitude: null,
     });
     setEditingId(null);
     setShowForm(true);
@@ -594,7 +608,12 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
 
   const handleConfirmMapLocation = () => {
     const nextAddress = tempAddress.trim();
-    setForm((prev) => ({ ...prev, venue: nextAddress || prev.venue }));
+    setForm((prev) => ({
+      ...prev,
+      venue: nextAddress || prev.venue,
+      latitude: tempCoords.lat,
+      longitude: tempCoords.lng,
+    }));
     if (nextAddress && nextAddress !== savedRestaurantLocation) {
       setCurrentLocationLabel(`Custom location: ${nextAddress}`);
     }
@@ -602,7 +621,12 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   };
 
   const handleSelectLocationOption = (option: LocationOption) => {
-    setForm((prev) => ({ ...prev, venue: option.value }));
+    setForm((prev) => ({
+      ...prev,
+      venue: option.value,
+      latitude: option.value === savedRestaurantLocation ? null : prev.latitude,
+      longitude: option.value === savedRestaurantLocation ? null : prev.longitude,
+    }));
     setTempAddress(option.value);
   };
 
@@ -707,6 +731,8 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
       endTime: event.end_time,
       timezone: event.timezone || detectedTimezone,
       venue: event.venue,
+      latitude: event.latitude ?? null,
+      longitude: event.longitude ?? null,
       capacity: String(event.capacity),
       ticketPrice: String(event.ticket_price),
       registrationDeadline: event.registration_deadline ?? "",
@@ -715,6 +741,10 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
       status: event.status,
     });
     setTempAddress(event.venue);
+    setTempCoords({
+      lat: event.latitude ?? tempCoords.lat,
+      lng: event.longitude ?? tempCoords.lng,
+    });
   };
 
   const handleDelete = async (eventId: string) => {

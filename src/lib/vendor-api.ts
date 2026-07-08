@@ -187,6 +187,8 @@ export interface VendorEventPayload {
   end_time: string;
   timezone: string;
   venue: string;
+  latitude?: number | null;
+  longitude?: number | null;
   capacity: number;
   ticket_price: number;
   registration_deadline?: string | null;
