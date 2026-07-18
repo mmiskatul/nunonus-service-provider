@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
 import Link from "next/link";
 import {
@@ -9,9 +10,7 @@ import {
   MousePointer2,
   Plus,
   Tag,
-  ChevronRight,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/ToastProvider";
 import { PromotionsTable, Promotion } from "@/components/PromotionsTable";
 import { CampaignCard } from "@/components/CampaignCard";
@@ -20,6 +19,7 @@ import {
   vendorJoinPlatformCampaign,
   vendorUpdatePromotionStatus,
 } from "@/lib/vendor-api";
+import { vendorQueryKeys } from "@/lib/vendor-queries";
 
 type PromotionSummary = {
   totalPromotions: number;
@@ -146,79 +146,76 @@ const EMPTY_SUMMARY: PromotionSummary = {
 
 export default function PromotionsPage() {
   const { toast } = useToast();
-  const [businessPromotions, setBusinessPromotions] = useState<Promotion[]>([]);
-  const [summary, setSummary] = useState<PromotionSummary>(EMPTY_SUMMARY);
-  const [platformCampaigns, setPlatformCampaigns] = useState<PlatformCampaign[]>([]);
-  const [campaignStates, setCampaignStates] = useState<Record<string, boolean>>({});
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const promotionsKey = vendorQueryKeys.promotions();
+  const promotionsQuery = useQuery({
+    queryKey: promotionsKey,
+    queryFn: ({ signal }) => vendorListPromotions({}, signal) as Promise<PromotionsResponse>,
+  });
+  const raw = promotionsQuery.data;
+  const items = raw?.business_promotions ?? raw?.items ?? [];
+  const businessPromotions: Promotion[] = items.map((promotion) => ({
+    id: String(promotion.id ?? promotion._id ?? ""),
+    name: String(promotion.name ?? promotion.title ?? ""),
+    description: String(promotion.description ?? ""),
+    type: String(promotion.type ?? "PERCENTAGE"),
+    value: String(promotion.value ?? ""),
+    schedule: String(promotion.schedule ?? ""),
+    usageCount: toNumber(promotion.usage_count ?? promotion.usageCount),
+    usageMax: toNumber(promotion.usage_max ?? promotion.usageMax) || 100,
+    isActive: Boolean(promotion.is_active ?? promotion.isActive ?? promotion.active),
+  }));
+  const rawSummary = raw?.summary ?? {};
+  const summary: PromotionSummary = raw ? {
+    totalPromotions: toNumber(rawSummary.total_promotions),
+    activePromotions: toNumber(rawSummary.active_promotions),
+    campaignReach: toNumber(rawSummary.campaign_reach),
+    averageConversionPercent: rawSummary.avg_conversion_percent == null ? null : toNumber(rawSummary.avg_conversion_percent),
+    totalPromoRevenue: formatMoney(rawSummary.total_promo_revenue ?? rawSummary.promo_revenue),
+  } : EMPTY_SUMMARY;
+  const platformCampaigns = (raw?.platform_campaigns ?? []).map(normalizePlatformCampaign);
 
-  const fetchPromotions = useCallback(async () => {
-    try {
-      const raw = (await vendorListPromotions()) as PromotionsResponse;
-      const items = raw?.business_promotions ?? raw?.items ?? [];
-      const normalized: Promotion[] = items.map((p) => ({
-        id: (p.id ?? p._id ?? "") as string,
-        name: (p.name ?? p.title ?? "") as string,
-        description: (p.description ?? "") as string,
-        type: (p.type ?? "PERCENTAGE") as string,
-        value: (p.value ?? "") as string,
-        schedule: (p.schedule ?? "") as string,
-        usageCount: (p.usage_count ?? p.usageCount ?? 0) as number,
-        usageMax: (p.usage_max ?? p.usageMax ?? 100) as number,
-        isActive: (p.is_active ?? p.isActive ?? false) as boolean,
-      }));
-      const rawSummary = raw.summary ?? {};
-      const normalizedCampaigns = (raw.platform_campaigns ?? []).map(normalizePlatformCampaign);
-
-      setSummary({
-        totalPromotions: toNumber(rawSummary.total_promotions),
-        activePromotions: toNumber(rawSummary.active_promotions),
-        campaignReach: toNumber(rawSummary.campaign_reach),
-        averageConversionPercent:
-          rawSummary.avg_conversion_percent === undefined ||
-          rawSummary.avg_conversion_percent === null
-            ? null
-            : toNumber(rawSummary.avg_conversion_percent),
-        totalPromoRevenue: formatMoney(
-          rawSummary.total_promo_revenue ?? rawSummary.promo_revenue,
-        ),
+  const campaignMutation = useMutation({
+    mutationFn: ({ id, joined }: { id: string; joined: boolean }) => vendorJoinPlatformCampaign(id, joined),
+    onMutate: async ({ id, joined }) => {
+      await queryClient.cancelQueries({ queryKey: promotionsKey });
+      const previous = queryClient.getQueryData<PromotionsResponse>(promotionsKey);
+      queryClient.setQueryData<PromotionsResponse>(promotionsKey, (current) => current ? {
+        ...current,
+        platform_campaigns: current.platform_campaigns?.map((campaign) => String(campaign.id ?? campaign._id) === id ? { ...campaign, joined } : campaign),
+      } : current);
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      queryClient.setQueryData(promotionsKey, context?.previous);
+      toast(error instanceof Error ? error.message : "Failed to update campaign.", "error");
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: promotionsKey }),
+  });
+  const promotionMutation = useMutation({
+    mutationFn: ({ id, active }: { id: string; active: boolean }) => vendorUpdatePromotionStatus(id, active),
+    onMutate: async ({ id, active }) => {
+      await queryClient.cancelQueries({ queryKey: promotionsKey });
+      const previous = queryClient.getQueryData<PromotionsResponse>(promotionsKey);
+      queryClient.setQueryData<PromotionsResponse>(promotionsKey, (current) => {
+        if (!current) return current;
+        const update = (promotion: Record<string, unknown>) => String(promotion.id ?? promotion._id) === id ? { ...promotion, active, is_active: active, isActive: active } : promotion;
+        return { ...current, items: current.items?.map(update), business_promotions: current.business_promotions?.map(update) };
       });
-      setBusinessPromotions(normalized);
-      setPlatformCampaigns(normalizedCampaigns);
-      setCampaignStates(
-        Object.fromEntries(
-          normalizedCampaigns.map((campaign) => [campaign.id, campaign.isActive]),
-        ),
-      );
-    } catch (err) {
-      console.warn("Failed to load promotions:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchPromotions(); }, [fetchPromotions]);
-
-  const toggleCampaign = async (id: string) => {
-    const newState = !campaignStates[id];
-    setCampaignStates((prev) => ({ ...prev, [id]: newState }));
-    try {
-      await vendorJoinPlatformCampaign(id, newState);
-    } catch (err) {
-      console.warn("Failed to update campaign state:", err);
-      // Revert on failure
-      setCampaignStates((prev) => ({ ...prev, [id]: !newState }));
-    }
-  };
-
-  const togglePromotionStatus = async (promotion: Promotion) => {
-    try {
-      await vendorUpdatePromotionStatus(String(promotion.id), !promotion.isActive);
-      await fetchPromotions();
-    } catch (error) {
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      queryClient.setQueryData(promotionsKey, context?.previous);
       toast(error instanceof Error ? error.message : "Failed to update promotion.", "error");
-    }
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: promotionsKey }),
+  });
+
+  const toggleCampaign = (id: string) => {
+    const campaign = platformCampaigns.find((item) => item.id === id);
+    if (campaign) campaignMutation.mutate({ id, joined: !campaign.isActive });
   };
+  const togglePromotionStatus = (promotion: Promotion) => promotionMutation.mutate({ id: promotion.id, active: !promotion.isActive });
   const stats = [
     {
       label: "TOTAL PROMO REVENUE",
@@ -299,10 +296,12 @@ export default function PromotionsPage() {
           </div>
 
           {/* Business Promotions Table */}
-          {loading ? (
+          {promotionsQuery.isPending ? (
             <div className="flex items-center justify-center py-12">
               <div className="w-6 h-6 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
             </div>
+          ) : promotionsQuery.isError ? (
+            <div className="rounded-[32px] border border-red-100 bg-white p-10 text-center text-sm text-red-600">Promotions could not be loaded. <button type="button" onClick={() => promotionsQuery.refetch()} className="font-bold underline">Try again</button></div>
           ) : (
             <PromotionsTable promotions={businessPromotions} onToggleStatus={togglePromotionStatus} />
           )}
@@ -318,10 +317,7 @@ export default function PromotionsPage() {
                   Join network-wide events to boost your visibility.
                 </p>
               </div>
-              <button className="text-sm font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1 group">
-                View All Opportunities
-                <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-              </button>
+              <span className="text-sm font-bold text-slate-400">{platformCampaigns.length} opportunities</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -330,7 +326,7 @@ export default function PromotionsPage() {
                   <CampaignCard
                     key={campaign.id}
                     {...campaign}
-                    isActive={campaignStates[campaign.id] ?? campaign.isActive}
+                    isActive={campaign.isActive}
                     onToggle={() => toggleCampaign(campaign.id)}
                   />
                 ))

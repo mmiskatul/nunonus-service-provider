@@ -101,7 +101,7 @@ export function NotificationsModal({ isOpen, onClose }: NotificationsModalProps)
         </div>
 
         <div className="flex justify-center p-6 pt-0">
-          <Link href="/notifications" prefetch={false} onClick={onClose} className="text-[10px] font-black uppercase tracking-widest text-slate-400 transition-colors hover:text-slate-600">View all notifications</Link>
+          <Link href="/notifications" onClick={onClose} className="text-[10px] font-black uppercase tracking-widest text-slate-400 transition-colors hover:text-slate-600">View all notifications</Link>
         </div>
       </div>
     </div>

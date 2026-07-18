@@ -24,7 +24,7 @@ export function UpcomingBookingsTable({ bookings = [], viewAllHref = "/restauran
     <section aria-labelledby="upcoming-bookings-title" className="h-full overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-8">
       <div className="mb-8 flex items-center justify-between">
         <h3 id="upcoming-bookings-title" className="text-lg font-bold text-slate-800">Upcoming Bookings</h3>
-        <Link href={viewAllHref} prefetch={false} className="text-sm font-semibold text-sky-500 transition-colors hover:text-sky-600">View All</Link>
+        <Link href={viewAllHref} className="text-sm font-semibold text-sky-500 transition-colors hover:text-sky-600">View All</Link>
       </div>
       {bookings.length === 0 ? (
         <div className="py-10 text-center text-slate-400">No upcoming bookings</div>

@@ -3,7 +3,7 @@ import "./globals.css";
 import { AppProviders } from "@/components/providers/AppProviders";
 
 export const metadata: Metadata = {
-  title: "Nunonus Service Provider",
+  title: { default: "Nunonus Provider", template: "%s | Nunonus Provider" },
   description: "Service provider portal for bookings, services, promotions, and account management."
 };
 
@@ -13,8 +13,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body suppressHydrationWarning>
+    <html lang="en">
+      <body>
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

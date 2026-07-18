@@ -5,22 +5,7 @@ function trimTrailingSlash(value: string) {
   return value.replace(/\/+$/, "");
 }
 
-function firstHeaderValue(value: string | null) {
-  if (!value) return null;
-  return value.split(",")[0]?.trim() || null;
-}
-
-async function resolveBaseUrl() {
-  const headerList = await headers();
-  const forwardedHost = firstHeaderValue(headerList.get("x-forwarded-host"));
-  const host = forwardedHost ?? firstHeaderValue(headerList.get("host"));
-  const forwardedProto = firstHeaderValue(headerList.get("x-forwarded-proto"));
-  const protocol = forwardedProto ?? (process.env.NODE_ENV === "development" ? "http" : "https");
-
-  if (host) {
-    return `${protocol}://${host}`;
-  }
-
+function resolveBaseUrl() {
   const configuredUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL;
   if (configuredUrl) {
     return trimTrailingSlash(configuredUrl);
@@ -59,6 +44,7 @@ async function refreshVendorAccessToken(cookieHeader: string | null) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refresh_token: refreshToken }),
     cache: "no-store",
+    signal: AbortSignal.timeout(15_000),
   });
   const payload = (await response.json().catch(() => ({}))) as {
     access_token?: string;
@@ -84,14 +70,15 @@ function isAuthFailure(response: Response, payload: { detail?: string; message?:
 
 export async function fetchApiData<T extends object>(path: string): Promise<T> {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const baseUrl = await resolveBaseUrl();
+  const baseUrl = resolveBaseUrl();
   const headerList = await headers();
   const cookie = headerList.get("cookie");
   const requestUrl = `${baseUrl}${normalizedPath}`;
   let response = await fetch(requestUrl, {
     headers: cookie ? { cookie } : undefined,
     cache: "no-store",
-    next: { revalidate: 0 }
+    next: { revalidate: 0 },
+    signal: AbortSignal.timeout(15_000),
   });
 
   if (response.status === 401) {
@@ -103,7 +90,8 @@ export async function fetchApiData<T extends object>(path: string): Promise<T> {
           Authorization: `Bearer ${refreshedAccessToken}`,
         },
         cache: "no-store",
-        next: { revalidate: 0 }
+        next: { revalidate: 0 },
+        signal: AbortSignal.timeout(15_000),
       });
     }
   }

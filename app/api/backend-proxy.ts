@@ -7,6 +7,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const DEFAULT_BACKEND_BASE_URL = "https://nunos-backend.vercel.app";
+const BACKEND_TIMEOUT_MS = 15_000;
+const refreshRequests = new Map<string, Promise<string | null>>();
+
+function fetchBackend(url: string, init: RequestInit = {}) {
+  return fetch(url, { ...init, signal: init.signal ?? AbortSignal.timeout(BACKEND_TIMEOUT_MS) });
+}
 
 function getBackendBase(): string {
   return (process.env.NEXT_PUBLIC_AUTH_API_BASE?.trim() || DEFAULT_BACKEND_BASE_URL).replace(/\/+$/, "");
@@ -57,23 +63,21 @@ async function refreshVendorAccessToken(request: Request | NextRequest): Promise
     return null;
   }
 
-  const response = await fetch(backendUrl("/vendor/auth/refresh"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh_token: refreshToken }),
-    cache: "no-store",
-  });
-  const payload = (await response.json().catch(() => ({}))) as {
-    access_token?: string;
-    refresh_token?: string;
-    session_token?: string;
-  };
+  const pending = refreshRequests.get(refreshToken);
+  if (pending) return pending;
 
-  if (!response.ok || !payload.access_token) {
-    return null;
-  }
-
-  return payload.access_token;
+  const refresh = (async () => {
+    const response = await fetchBackend(backendUrl("/vendor/auth/refresh"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+      cache: "no-store",
+    });
+    const payload = (await response.json().catch(() => ({}))) as { access_token?: string };
+    return response.ok && payload.access_token ? payload.access_token : null;
+  })().finally(() => refreshRequests.delete(refreshToken));
+  refreshRequests.set(refreshToken, refresh);
+  return refresh;
 }
 
 function applyVendorCookies(
@@ -106,12 +110,21 @@ function applyVendorCookies(
   return response;
 }
 
+function jsonFromBackend(data: unknown, upstream: Response): NextResponse {
+  const response = NextResponse.json(data, { status: upstream.status });
+  for (const name of ["server-timing", "x-request-id"]) {
+    const value = upstream.headers.get(name);
+    if (value) response.headers.set(name, value);
+  }
+  return response;
+}
+
 async function fetchBackendWithRefresh(
   request: Request | NextRequest,
   url: string,
   init: RequestInit,
 ): Promise<{ response: Response; accessToken?: string }> {
-  const first = await fetch(url, init);
+  const first = await fetchBackend(url, init);
   if (first.status !== 401) {
     return { response: first };
   }
@@ -123,7 +136,7 @@ async function fetchBackendWithRefresh(
 
   const headers = new Headers(init.headers);
   headers.set("Authorization", `Bearer ${accessToken}`);
-  const retry = await fetch(url, { ...init, headers });
+  const retry = await fetchBackend(url, { ...init, headers });
   return { response: retry, accessToken };
 }
 
@@ -151,11 +164,11 @@ export async function proxyGet(
     });
     const data = await res.json().catch(() => ({}));
 
-    const nextResponse = NextResponse.json(data, { status: res.status });
+    const nextResponse = jsonFromBackend(data, res);
     return accessToken ? applyVendorCookies(nextResponse, accessToken) : nextResponse;
-  } catch (err) {
+  } catch {
     return NextResponse.json(
-      { error: "Backend unavailable", detail: String(err) },
+      { error: "Backend unavailable" },
       { status: 502 },
     );
   }
@@ -181,11 +194,11 @@ export async function proxyPost(
       body,
     });
     const data = await res.json().catch(() => ({}));
-    const nextResponse = NextResponse.json(data, { status: res.status });
+    const nextResponse = jsonFromBackend(data, res);
     return accessToken ? applyVendorCookies(nextResponse, accessToken) : nextResponse;
-  } catch (err) {
+  } catch {
     return NextResponse.json(
-      { error: "Backend unavailable", detail: String(err) },
+      { error: "Backend unavailable" },
       { status: 502 },
     );
   }
@@ -209,11 +222,11 @@ export async function proxyPatch(
       body: JSON.stringify(body),
     });
     const data = await res.json().catch(() => ({}));
-    const nextResponse = NextResponse.json(data, { status: res.status });
+    const nextResponse = jsonFromBackend(data, res);
     return accessToken ? applyVendorCookies(nextResponse, accessToken) : nextResponse;
-  } catch (err) {
+  } catch {
     return NextResponse.json(
-      { error: "Backend unavailable", detail: String(err) },
+      { error: "Backend unavailable" },
       { status: 502 },
     );
   }
@@ -233,11 +246,11 @@ export async function proxyDelete(
       headers,
     });
     const data = await res.json().catch(() => ({}));
-    const nextResponse = NextResponse.json(data, { status: res.status });
+    const nextResponse = jsonFromBackend(data, res);
     return accessToken ? applyVendorCookies(nextResponse, accessToken) : nextResponse;
-  } catch (err) {
+  } catch {
     return NextResponse.json(
-      { error: "Backend unavailable", detail: String(err) },
+      { error: "Backend unavailable" },
       { status: 502 },
     );
   }

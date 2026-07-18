@@ -90,9 +90,7 @@ function normalizeCategory(value: unknown): VendorCategory | null {
     return null;
   }
   const trimmed = value.trim();
-  return CATEGORY_VALUES.includes(trimmed as VendorCategory)
-    ? (trimmed as VendorCategory)
-    : null;
+  return CATEGORY_VALUES.find((category) => category.toLowerCase() === trimmed.toLowerCase()) ?? null;
 }
 
 export function extractVendorCategories(input: unknown): VendorCategory[] {

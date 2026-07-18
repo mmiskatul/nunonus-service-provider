@@ -26,50 +26,64 @@ export const vendorQueryKeys = {
   notifications: (limit: number, skip: number) => ["vendor", "notifications", limit, skip] as const,
   customer: (id: string) => ["vendor", "customer", id] as const,
   promotion: (id: string) => ["vendor", "promotion", id] as const,
+  analytics: (dateFrom?: string, dateTo?: string) => ["vendor", "analytics", "overview", dateFrom ?? null, dateTo ?? null] as const,
+  bookings: (filters: Record<string, unknown> = {}) => ["vendor", "bookings", filters] as const,
+  reviews: (filters: Record<string, unknown> = {}) => ["vendor", "reviews", filters] as const,
+  promotions: (filters: Record<string, unknown> = {}) => ["vendor", "promotions", filters] as const,
+  rooms: ["vendor", "rooms"] as const,
+  services: ["vendor", "services"] as const,
+  loyalty: ["vendor", "loyalty"] as const,
+  support: ["vendor", "support"] as const,
 };
 
 export const vendorProfileQuery = () =>
   queryOptions({
     queryKey: vendorQueryKeys.profile,
-    queryFn: vendorGetProfileSettings,
+    queryFn: ({ signal }) => vendorGetProfileSettings(signal),
     staleTime: 5 * 60_000,
   });
 
 export const dashboardOverviewQuery = () =>
-  queryOptions({ queryKey: vendorQueryKeys.dashboardOverview, queryFn: vendorGetDashboardOverview });
+  queryOptions({ queryKey: vendorQueryKeys.dashboardOverview, queryFn: ({ signal }) => vendorGetDashboardOverview(signal), refetchInterval: 60_000 });
 
 export const bookingTrendsQuery = () =>
-  queryOptions({ queryKey: vendorQueryKeys.bookingTrends, queryFn: vendorGetBookingTrends });
+  queryOptions({ queryKey: vendorQueryKeys.bookingTrends, queryFn: ({ signal }) => vendorGetBookingTrends(signal) });
 
 export const calendarPreviewQuery = (month: string) =>
   queryOptions({
     queryKey: vendorQueryKeys.calendar(month),
-    queryFn: () => vendorGetCalendarPreview(month),
+    queryFn: ({ signal }) => vendorGetCalendarPreview(month, signal),
   });
 
 export const upcomingBookingsQuery = (limit = 10) =>
   queryOptions({
     queryKey: vendorQueryKeys.upcomingBookings(limit),
-    queryFn: () => vendorGetUpcomingBookings(limit),
+    queryFn: ({ signal }) => vendorGetUpcomingBookings(limit, signal),
+    refetchInterval: 60_000,
   });
 
 export const recentReviewsQuery = (limit = 5) =>
   queryOptions({
     queryKey: vendorQueryKeys.recentReviews(limit),
-    queryFn: () => vendorGetRecentReviews(limit),
+    queryFn: ({ signal }) => vendorGetRecentReviews(limit, signal),
   });
 
 export const notificationsQuery = (limit = 20, skip = 0) =>
   queryOptions({
     queryKey: vendorQueryKeys.notifications(limit, skip),
-    queryFn: () => vendorListNotifications({ limit, skip }),
+    queryFn: ({ signal }) => vendorListNotifications({ limit, skip }, signal),
+    refetchInterval: 30_000,
   });
 
-export const analyticsOverviewQuery = () =>
-  queryOptions({ queryKey: ["vendor", "analytics", "overview"] as const, queryFn: vendorGetAnalyticsOverview, staleTime: 60_000 });
+export const analyticsOverviewQuery = (dateFrom?: string, dateTo?: string) =>
+  queryOptions({
+    queryKey: vendorQueryKeys.analytics(dateFrom, dateTo),
+    queryFn: ({ signal }) => vendorGetAnalyticsOverview({ date_from: dateFrom, date_to: dateTo }, signal),
+    staleTime: 60_000,
+  });
 
 export const customerQuery = (id: string) =>
-  queryOptions({ queryKey: vendorQueryKeys.customer(id), queryFn: () => vendorGetUser(id), enabled: Boolean(id), staleTime: 5 * 60_000 });
+  queryOptions({ queryKey: vendorQueryKeys.customer(id), queryFn: ({ signal }) => vendorGetUser(id, signal), enabled: Boolean(id), staleTime: 5 * 60_000 });
 
 export const promotionQuery = (id: string) =>
-  queryOptions({ queryKey: vendorQueryKeys.promotion(id), queryFn: () => vendorGetPromotion(id), enabled: Boolean(id), staleTime: 60_000 });
+  queryOptions({ queryKey: vendorQueryKeys.promotion(id), queryFn: ({ signal }) => vendorGetPromotion(id, signal), enabled: Boolean(id), staleTime: 60_000 });

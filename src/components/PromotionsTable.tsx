@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { Search, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,18 @@ interface PromotionsTableProps {
 }
 
 export function PromotionsTable({ promotions, onToggleStatus }: PromotionsTableProps) {
+  const [search, setSearch] = useState("");
+  const [type, setType] = useState("ALL");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const filtered = useMemo(() => promotions.filter((promotion) => {
+    const matchesSearch = `${promotion.name} ${promotion.description}`.toLowerCase().includes(search.trim().toLowerCase());
+    return matchesSearch && (type === "ALL" || promotion.type === type);
+  }), [promotions, search, type]);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(page, pageCount);
+  const visiblePromotions = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+
   return (
     <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden">
       {/* Header with Filters */}
@@ -51,17 +63,19 @@ export function PromotionsTable({ promotions, onToggleStatus }: PromotionsTableP
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-sky-500 transition-colors" />
             <input
               type="text"
+              value={search}
+              onChange={(event) => { setSearch(event.target.value); setPage(1); }}
               placeholder="Search promotions..."
               className="w-full bg-slate-50 border border-slate-100 rounded-xl py-2.5 pl-11 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"
             />
           </div>
 
           <div className="relative group min-w-[140px]">
-            <select className="appearance-none w-full bg-slate-50 border border-slate-100 rounded-xl py-2.5 px-4 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all cursor-pointer font-medium text-slate-600">
-              <option>All Types</option>
-              <option>Percentage</option>
-              <option>Happy Hour</option>
-              <option>Fixed</option>
+            <select aria-label="Filter promotions by type" value={type} onChange={(event) => { setType(event.target.value); setPage(1); }} className="appearance-none w-full bg-slate-50 border border-slate-100 rounded-xl py-2.5 px-4 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all cursor-pointer font-medium text-slate-600">
+              <option value="ALL">All Types</option>
+              <option value="PERCENTAGE">Percentage</option>
+              <option value="HAPPY HOUR">Happy Hour</option>
+              <option value="FIXED">Fixed</option>
             </select>
             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           </div>
@@ -94,9 +108,9 @@ export function PromotionsTable({ promotions, onToggleStatus }: PromotionsTableP
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {promotions.map((promo) => {
+            {visiblePromotions.map((promo) => {
               const usagePercent = Math.round(
-                (promo.usageCount / promo.usageMax) * 100,
+                promo.usageMax > 0 ? (promo.usageCount / promo.usageMax) * 100 : 0,
               );
               const typeStyles = {
                 PERCENTAGE: "bg-blue-50 text-blue-600 border-blue-100/50",
@@ -211,6 +225,7 @@ export function PromotionsTable({ promotions, onToggleStatus }: PromotionsTableP
                 </tr>
               );
             })}
+            {visiblePromotions.length === 0 ? <tr><td colSpan={6} className="px-8 py-12 text-center text-sm font-medium text-slate-400">No promotions match these filters.</td></tr> : null}
           </tbody>
         </table>
       </div>
@@ -219,12 +234,14 @@ export function PromotionsTable({ promotions, onToggleStatus }: PromotionsTableP
       <div className="p-4 bg-slate-50/30 border-t border-slate-50 flex items-center justify-between">
         <p className="text-[11px] font-medium text-slate-400 ml-4">
           Showing{" "}
-          <span className="text-slate-700 font-bold">{promotions.length}</span>{" "}
-          of 12 internal promotions
+          <span className="text-slate-700 font-bold">{visiblePromotions.length}</span>{" "}
+          of {filtered.length} matching promotions
         </p>
-        <button className="px-4 py-2 text-[11px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
-          Prev
-        </button>
+        <div className="flex items-center gap-2">
+          <button type="button" disabled={safePage === 1} onClick={() => setPage((current) => current - 1)} className="px-4 py-2 text-[11px] font-bold text-slate-500 hover:text-slate-700 transition-colors disabled:cursor-not-allowed disabled:opacity-40">Prev</button>
+          <span className="text-[11px] font-bold text-slate-500">Page {safePage} of {pageCount}</span>
+          <button type="button" disabled={safePage === pageCount} onClick={() => setPage((current) => current + 1)} className="px-4 py-2 text-[11px] font-bold text-slate-500 hover:text-slate-700 transition-colors disabled:cursor-not-allowed disabled:opacity-40">Next</button>
+        </div>
       </div>
     </div>
   );

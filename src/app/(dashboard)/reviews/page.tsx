@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState } from "react";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
 import {
   Star,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { vendorListReviews, vendorReplyReview } from "@/lib/vendor-api";
+import { vendorQueryKeys } from "@/lib/vendor-queries";
 
 interface Review {
   id: string;
@@ -30,9 +32,7 @@ interface Review {
 const ITEMS_PER_PAGE = 10;
 
 export default function ReviewsPage() {
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"all" | "replied" | "unreplied">("all");
   const [search, setSearch] = useState("");
   const [starFilter, setStarFilter] = useState<number | null>(null);
@@ -40,42 +40,43 @@ export default function ReviewsPage() {
   const [replyText, setReplyText] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const fetchReviews = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params: Record<string, unknown> = {
-        limit: ITEMS_PER_PAGE,
-        skip: (currentPage - 1) * ITEMS_PER_PAGE,
-        search: search || undefined,
-        star_rating: starFilter ?? undefined,
-        replied: activeTab === "all" ? undefined : activeTab === "replied",
-      };
-      const raw = await vendorListReviews(
-        Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined)) as Parameters<typeof vendorListReviews>[0],
-      ) as { items?: Review[]; total?: number };
-      setReviews(raw?.items ?? []);
-      setTotal(raw?.total ?? 0);
-    } catch {
-      setReviews([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentPage, search, starFilter, activeTab]);
-
-  useEffect(() => { void fetchReviews(); }, [fetchReviews]);
-
-  const handleReply = async (reviewId: string) => {
-    if (!replyText.trim()) return;
-    try {
-      await vendorReplyReview(reviewId, replyText.trim());
-      setReviews((prev) =>
-        prev.map((r) => r.id === reviewId ? { ...r, vendor_reply: replyText.trim() } : r),
-      );
+  const reviewParams = {
+    limit: ITEMS_PER_PAGE,
+    skip: (currentPage - 1) * ITEMS_PER_PAGE,
+    search: search || undefined,
+    star_rating: starFilter ?? undefined,
+    replied: activeTab === "all" ? undefined : activeTab === "replied",
+  };
+  const reviewsKey = vendorQueryKeys.reviews(reviewParams);
+  const reviewsQuery = useQuery({
+    queryKey: reviewsKey,
+    queryFn: ({ signal }) => vendorListReviews(reviewParams, signal) as Promise<{ items?: Review[]; total?: number }>,
+    placeholderData: keepPreviousData,
+  });
+  const reviews = reviewsQuery.data?.items ?? [];
+  const total = reviewsQuery.data?.total ?? 0;
+  const replyMutation = useMutation({
+    mutationFn: ({ reviewId, text }: { reviewId: string; text: string }) => vendorReplyReview(reviewId, text),
+    onMutate: async ({ reviewId, text }) => {
+      await queryClient.cancelQueries({ queryKey: reviewsKey });
+      const previous = queryClient.getQueryData(reviewsKey);
+      queryClient.setQueryData<{ items?: Review[]; total?: number }>(reviewsKey, (current) => current ? {
+        ...current,
+        items: current.items?.map((review) => review.id === reviewId ? { ...review, vendor_reply: text } : review),
+      } : current);
+      return { previous };
+    },
+    onError: (_error, _variables, context) => queryClient.setQueryData(reviewsKey, context?.previous),
+    onSuccess: async () => {
       setReplyingTo(null);
       setReplyText("");
-    } catch (err) {
-      console.warn("Failed to reply:", err);
-    }
+      await queryClient.invalidateQueries({ queryKey: vendorQueryKeys.reviews() });
+      await queryClient.invalidateQueries({ queryKey: vendorQueryKeys.dashboardOverview });
+    },
+  });
+
+  const handleReply = (reviewId: string) => {
+    if (replyText.trim()) replyMutation.mutate({ reviewId, text: replyText.trim() });
   };
 
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
@@ -144,10 +145,12 @@ export default function ReviewsPage() {
 
           {/* Review Feed */}
           <div className="space-y-8 pb-10">
-            {loading ? (
+            {reviewsQuery.isPending ? (
               <div className="flex items-center justify-center py-16">
                 <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
               </div>
+            ) : reviewsQuery.isError ? (
+              <div className="py-16 text-center text-red-600">Reviews could not be loaded. <button type="button" onClick={() => reviewsQuery.refetch()} className="font-bold underline">Try again</button></div>
             ) : reviews.length === 0 ? (
               <div className="text-center text-slate-400 py-16">No reviews found.</div>
             ) : (
@@ -228,10 +231,12 @@ export default function ReviewsPage() {
                               Cancel
                             </button>
                             <button
+                              type="button"
+                              disabled={replyMutation.isPending || !replyText.trim()}
                               onClick={() => handleReply(review.id)}
                               className="bg-[#1e2a5e] hover:bg-[#1a2552] text-white px-8 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-lg shadow-slate-900/10"
                             >
-                              Send Response <Send className="h-3 w-3" />
+                              {replyMutation.isPending ? "Sending…" : "Send Response"} <Send className="h-3 w-3" />
                             </button>
                           </div>
                         </div>

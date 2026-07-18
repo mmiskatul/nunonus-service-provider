@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Menu } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import { DashboardShellProvider } from "@/components/DashboardShellContext";
 import { vendorProfileQuery, vendorQueryKeys } from "@/lib/vendor-queries";
@@ -71,6 +72,14 @@ export default function MainLayout({
           onMobileClose={() => setMobileNavigationOpen(false)}
         />
         <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">{children}</main>
+        <button
+          type="button"
+          aria-label="Open dashboard navigation"
+          onClick={() => setMobileNavigationOpen(true)}
+          className="fixed bottom-5 left-5 z-40 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1e2a5e] text-white shadow-xl shadow-slate-900/20 md:hidden"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
       </div>
     </DashboardShellProvider>
   );

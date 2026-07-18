@@ -36,13 +36,33 @@ export async function vendorRequest<T>(
   path: string,
   method: "GET" | "POST" | "PATCH" | "DELETE" = "GET",
   body?: Record<string, unknown>,
+  options: { signal?: AbortSignal; timeoutMs?: number } = {},
 ): Promise<T> {
-  const response = await fetch(vendorProxyPath(path), {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: body ? JSON.stringify(body) : undefined,
-    credentials: "same-origin",
-  });
+  const controller = new AbortController();
+  let timedOut = false;
+  const abortFromCaller = () => controller.abort(options.signal?.reason);
+  options.signal?.addEventListener("abort", abortFromCaller, { once: true });
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, options.timeoutMs ?? (method === "GET" ? 15_000 : 30_000));
+
+  let response: Response;
+  try {
+    response = await fetch(vendorProxyPath(path), {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined,
+      credentials: "same-origin",
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (timedOut) throw new Error("The server took too long to respond. Please try again.");
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+    options.signal?.removeEventListener("abort", abortFromCaller);
+  }
 
   const result = (await response.json().catch(() => ({}))) as T & {
     detail?: string;
@@ -432,9 +452,12 @@ export async function vendorDeleteService(serviceId: string) {
 export async function vendorListPromotions(params: {
   search?: string;
   active?: boolean;
-} = {}) {
+} = {}, signal?: AbortSignal) {
   return vendorRequest<Record<string, unknown>>(
     `/vendor/promotions${q(params)}`,
+    "GET",
+    undefined,
+    { signal },
   );
 }
 
@@ -448,9 +471,12 @@ export async function vendorCreatePromotion(payload: Record<string, unknown>) {
 }
 
 /** GET /vendor/promotions/:id */
-export async function vendorGetPromotion(promotionId: string) {
+export async function vendorGetPromotion(promotionId: string, signal?: AbortSignal) {
   return vendorRequest<Record<string, unknown>>(
     `/vendor/promotions/${promotionId}`,
+    "GET",
+    undefined,
+    { signal },
   );
 }
 
@@ -498,8 +524,11 @@ export async function vendorJoinPlatformCampaign(
 // ─── Analytics ────────────────────────────────────────────────────────────────
 
 /** GET /vendor/analytics/overview */
-export async function vendorGetAnalyticsOverview() {
-  return vendorRequest<Record<string, unknown>>(`/vendor/analytics/overview`);
+export async function vendorGetAnalyticsOverview(
+  params: { date_from?: string; date_to?: string } = {},
+  signal?: AbortSignal,
+) {
+  return vendorRequest<Record<string, unknown>>(`/vendor/analytics/overview${q(params)}`, "GET", undefined, { signal });
 }
 
 /** GET /vendor/analytics/demographics */
@@ -522,8 +551,10 @@ export async function vendorGetReviewsSummary() {
 }
 
 /** GET /vendor/analytics/export */
-export async function vendorExportAnalytics() {
-  return vendorRequest<Record<string, unknown>>(`/vendor/analytics/export`);
+export async function vendorExportAnalytics(params: { date_from?: string; date_to?: string } = {}) {
+  return vendorRequest<{ filename: string; content_type: string; content: string }>(
+    `/vendor/analytics/export${q(params)}`,
+  );
 }
 
 // ─── Loyalty ──────────────────────────────────────────────────────────────────
@@ -555,9 +586,13 @@ export async function vendorListReviews(
     star_rating?: number;
     replied?: boolean;
   } = {},
+  signal?: AbortSignal,
 ) {
   return vendorRequest<Record<string, unknown>>(
     `/vendor/reviews${q(params)}`,
+    "GET",
+    undefined,
+    { signal },
   );
 }
 
@@ -627,8 +662,8 @@ export async function vendorUpdateLegalDoc(
 }
 
 /** GET /vendor/settings/profile */
-export async function vendorGetProfileSettings() {
-  const result = await vendorRequest<Record<string, unknown>>(`/vendor/settings/profile`);
+export async function vendorGetProfileSettings(signal?: AbortSignal) {
+  const result = await vendorRequest<Record<string, unknown>>(`/vendor/settings/profile`, "GET", undefined, { signal });
   cacheVendorCategories(result.categories ?? result.category);
   return result;
 }
@@ -722,8 +757,8 @@ export async function vendorListUsers(
 }
 
 /** GET /vendor/users/:id */
-export async function vendorGetUser(userId: string) {
-  return vendorRequest<Record<string, unknown>>(`/vendor/users/${userId}`);
+export async function vendorGetUser(userId: string, signal?: AbortSignal) {
+  return vendorRequest<Record<string, unknown>>(`/vendor/users/${userId}`, "GET", undefined, { signal });
 }
 
 // ─── Notifications ────────────────────────────────────────────────────────────
@@ -731,9 +766,13 @@ export async function vendorGetUser(userId: string) {
 /** GET /vendor/notifications */
 export async function vendorListNotifications(
   params: { limit?: number; skip?: number } = {},
+  signal?: AbortSignal,
 ) {
   return vendorRequest<Record<string, unknown>>(
     `/vendor/notifications${q(params)}`,
+    "GET",
+    undefined,
+    { signal },
   );
 }
 

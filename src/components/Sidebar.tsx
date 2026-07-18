@@ -89,7 +89,6 @@ export function Sidebar({
             <Link
               key={item.name}
               href={item.href}
-              prefetch={false}
               onClick={onMobileClose}
               aria-current={isActive ? "page" : undefined}
               className={cn(

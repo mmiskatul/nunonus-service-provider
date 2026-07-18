@@ -19,6 +19,7 @@ export interface RecentReview {
   review_text?: string;
   text?: string;
   reply?: string | null;
+  vendor_reply?: string | null;
 }
 
 export function RecentReviews({ reviews = [] }: { reviews?: RecentReview[] }) {
@@ -27,6 +28,24 @@ export function RecentReviews({ reviews = [] }: { reviews?: RecentReview[] }) {
   const [replyText, setReplyText] = useState("");
   const replyMutation = useMutation({
     mutationFn: ({ id, text }: { id: string; text: string }) => vendorReplyReview(id, text),
+    onMutate: async ({ id, text }) => {
+      await queryClient.cancelQueries({ queryKey: vendorQueryKeys.dashboardOverview });
+      const previous = queryClient.getQueryData(vendorQueryKeys.dashboardOverview);
+      queryClient.setQueryData(vendorQueryKeys.dashboardOverview, (current: unknown) => {
+        if (!current || typeof current !== "object") return current;
+        const overview = current as { recent_reviews?: RecentReview[] };
+        return {
+          ...overview,
+          recent_reviews: overview.recent_reviews?.map((review) =>
+            (review.id ?? review._id) === id ? { ...review, vendor_reply: text } : review,
+          ),
+        };
+      });
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(vendorQueryKeys.dashboardOverview, context.previous);
+    },
     onSuccess: async () => {
       setReplyingId(null);
       setReplyText("");
@@ -38,7 +57,7 @@ export function RecentReviews({ reviews = [] }: { reviews?: RecentReview[] }) {
     <section aria-labelledby="recent-reviews-title" className="h-full rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
       <div className="mb-8 flex items-center justify-between">
         <h3 id="recent-reviews-title" className="text-sm font-bold text-slate-800">Recent Reviews</h3>
-        <Link href="/reviews" prefetch={false} className="text-sm font-semibold text-sky-500 transition-colors hover:text-sky-600">View All</Link>
+        <Link href="/reviews" className="text-sm font-semibold text-sky-500 transition-colors hover:text-sky-600">View All</Link>
       </div>
       {reviews.length === 0 ? (
         <div className="py-10 text-center text-sm text-slate-400">No reviews yet</div>
@@ -56,8 +75,8 @@ export function RecentReviews({ reviews = [] }: { reviews?: RecentReview[] }) {
                   <div><h4 className="text-xs font-bold text-slate-800">{name}</h4><div className="flex" aria-label={`${rating} out of 5 stars`}>{Array.from({ length: 5 }).map((_, star) => <Star aria-hidden="true" key={star} className={`h-3 w-3 ${star < rating ? "fill-amber-400 text-amber-400" : "text-slate-200"}`} />)}</div></div>
                 </div>
                 <p className="mb-3 text-xs leading-relaxed text-slate-500">{text}</p>
-                {review.reply ? (
-                  <p className="text-xs italic text-sky-600">Your reply: {review.reply}</p>
+                {review.vendor_reply ?? review.reply ? (
+                  <p className="text-xs italic text-sky-600">Your reply: {review.vendor_reply ?? review.reply}</p>
                 ) : replyingId === reviewId ? (
                   <div className="mt-2 space-y-2">
                     <label htmlFor={`reply-${reviewId}`} className="sr-only">Reply to {name}</label>

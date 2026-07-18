@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import {
   Calendar,
@@ -10,7 +11,6 @@ import {
   Download,
   TrendingDown,
   TrendingUp,
-  Users,
   DollarSign,
   Bed,
   Star,
@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { DatePicker } from "@/components/DatePicker";
 import { Header } from "@/components/Header";
+import { useToast } from "@/components/ui/ToastProvider";
 import { vendorExportAnalytics } from "@/lib/vendor-api";
 import { analyticsOverviewQuery } from "@/lib/vendor-queries";
 
@@ -99,14 +100,32 @@ function percentLabel(value?: number) {
 }
 
 export default function AnalyticsPage() {
+  const { toast } = useToast();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const overviewQuery = useQuery(analyticsOverviewQuery());
   const calendarRef = useRef<HTMLDivElement>(null);
-  const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({
-    start: null,
-    end: null,
+  const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>(() => {
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
+    return {
+      start: from && /^\d{4}-\d{2}-\d{2}$/.test(from) ? new Date(`${from}T00:00:00`) : null,
+      end: to && /^\d{4}-\d{2}-\d{2}$/.test(to) ? new Date(`${to}T00:00:00`) : null,
+    };
   });
+  const dateFrom = dateRange.start ? format(dateRange.start, "yyyy-MM-dd") : undefined;
+  const dateTo = dateRange.end ? format(dateRange.end, "yyyy-MM-dd") : undefined;
+  const overviewQuery = useQuery(analyticsOverviewQuery(dateFrom, dateTo));
+  const handleRangeChange = (range: { start: Date | null; end: Date | null }) => {
+    setDateRange(range);
+    if (!range.start || !range.end) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("from", format(range.start, "yyyy-MM-dd"));
+    params.set("to", format(range.end, "yyyy-MM-dd"));
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -125,9 +144,17 @@ export default function AnalyticsPage() {
     if (exporting) return;
     setExporting(true);
     try {
-      await vendorExportAnalytics();
+      const report = await vendorExportAnalytics({ date_from: dateFrom, date_to: dateTo });
+      const blob = new Blob([report.content], { type: report.content_type || "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = report.filename || "vendor-analytics.csv";
+      anchor.click();
+      URL.revokeObjectURL(url);
+      toast("Analytics report downloaded.", "success");
     } catch (error) {
-      console.warn("Export failed:", error);
+      toast(error instanceof Error ? error.message : "Export failed.", "error");
     } finally {
       setExporting(false);
     }
@@ -139,25 +166,25 @@ export default function AnalyticsPage() {
     {
       ...STAT_BASE[0],
       value: String(overview?.total_bookings ?? 0),
-      trend: "+0%",
+      trend: "Selected range",
       trendType: "up",
     },
     {
       ...STAT_BASE[1],
       value: overview?.monthly_revenue != null ? `$${Number(overview.monthly_revenue).toLocaleString()}` : "$0",
-      trend: "+0%",
+      trend: "Selected range",
       trendType: "up",
     },
     {
       ...STAT_BASE[2],
       value: percentLabel(overview?.occupancy_rate ?? overview?.occupancy_tracking?.occupancy_rate),
-      trend: "0%",
+      trend: "End date",
       trendType: "down",
     },
     {
       ...STAT_BASE[3],
       value: `${Number(overview?.average_rating ?? overview?.reviews_summary?.average_rating ?? 0).toFixed(1)} / 5.0`,
-      trend: `${Number(overview?.reviews_summary?.total_reviews ?? 0)}`,
+      trend: `${Number(overview?.reviews_summary?.total_reviews ?? 0)} reviews`,
       trendType: "up",
     },
   ];
@@ -188,17 +215,20 @@ export default function AnalyticsPage() {
             </div>
             <div className="flex items-center gap-3">
               <div className="relative" ref={calendarRef}>
-                <div
+                <button
+                  type="button"
+                  aria-expanded={isCalendarOpen}
+                  aria-haspopup="dialog"
                   onClick={() => setIsCalendarOpen((value) => !value)}
                   className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-100 bg-white px-4 py-2.5 shadow-sm transition-colors hover:bg-slate-50"
                 >
                   <Calendar className="h-4 w-4 text-slate-400" />
                   <span className="text-sm font-bold text-slate-600">{rangeText}</span>
                   <ChevronDown className="h-4 w-4 text-slate-400" />
-                </div>
+                </button>
                 {isCalendarOpen && (
                   <div className="absolute right-0 top-full z-50 mt-2">
-                    <DatePicker onClose={() => setIsCalendarOpen(false)} selectedRange={dateRange} onRangeChange={setDateRange} />
+                    <DatePicker onClose={() => setIsCalendarOpen(false)} selectedRange={dateRange} onRangeChange={handleRangeChange} />
                   </div>
                 )}
               </div>
@@ -226,8 +256,8 @@ export default function AnalyticsPage() {
                       <div className={cn("flex h-12 w-12 items-center justify-center rounded-2xl transition-transform group-hover:scale-110", stat.bg, stat.color)}>
                         <stat.icon className="h-6 w-6" />
                       </div>
-                      <div className={cn("flex items-center gap-1 text-xs font-black", stat.trendType === "down" ? "text-rose-500" : "text-emerald-500")}>
-                        {stat.trendType === "down" ? <TrendingDown className="h-3 w-3" /> : <TrendingUp className="h-3 w-3" />}
+                      <div className="flex items-center gap-1 text-xs font-bold text-slate-400">
+                        {stat.trend.startsWith("+") ? <TrendingUp className="h-3 w-3" /> : stat.trend.startsWith("-") ? <TrendingDown className="h-3 w-3" /> : null}
                         {stat.trend}
                       </div>
                     </div>

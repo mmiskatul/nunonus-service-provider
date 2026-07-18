@@ -59,7 +59,7 @@ export function HotelBookingDetailsModal({
     booking.tourismTax;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="hotel-booking-title">
       <div
         className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300"
         onClick={onClose}
@@ -67,10 +67,12 @@ export function HotelBookingDetailsModal({
 
       <div className="relative w-full max-w-[480px] bg-white rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-300">
         <div className="p-8 pb-4 flex items-center justify-between border-b border-slate-50">
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">
+          <h2 id="hotel-booking-title" className="text-2xl font-black text-slate-800 tracking-tight">
             Booking Details
           </h2>
           <button
+            type="button"
+            aria-label="Close booking details"
             onClick={onClose}
             className="p-2 hover:bg-slate-50 rounded-2xl transition-all group"
           >
@@ -212,15 +214,15 @@ export function HotelBookingDetailsModal({
           {/* Actions */}
           <div className="flex flex-col gap-4 pt-4">
             <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => onUpdateStatus("complete")} className="flex items-center justify-center py-5 rounded-[24px] bg-slate-50 text-slate-700 font-black text-sm hover:bg-slate-100 transition-all border border-slate-100">
-                Reschedule
+              <button type="button" onClick={() => onUpdateStatus("complete")} className="flex items-center justify-center py-5 rounded-[24px] bg-slate-50 text-slate-700 font-black text-sm hover:bg-slate-100 transition-all border border-slate-100">
+                Mark complete
               </button>
-              <button onClick={() => onUpdateStatus("cancelled")} className="flex items-center justify-center gap-3 py-5 rounded-[24px] bg-[#1e2a5e] text-white font-black text-sm hover:bg-[#1a234d] transition-all shadow-xl shadow-[#1e2a5e]/20">
+              <button type="button" onClick={() => onUpdateStatus("check_in")} className="flex items-center justify-center gap-3 py-5 rounded-[24px] bg-[#1e2a5e] text-white font-black text-sm hover:bg-[#1a234d] transition-all shadow-xl shadow-[#1e2a5e]/20">
                 <CircleCheck className="h-5 w-5" />
                 Check-in
               </button>
             </div>
-            <button className="text-xs font-black uppercase tracking-widest text-rose-500 hover:text-rose-600 transition-colors py-2">
+            <button type="button" onClick={() => onUpdateStatus("cancelled")} className="text-xs font-black uppercase tracking-widest text-rose-500 hover:text-rose-600 transition-colors py-2">
               CANCEL RESERVATION
             </button>
           </div>
