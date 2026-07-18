@@ -552,7 +552,7 @@ export async function vendorGetReviewsSummary() {
 
 /** GET /vendor/analytics/export */
 export async function vendorExportAnalytics(params: { date_from?: string; date_to?: string } = {}) {
-  return vendorRequest<{ filename: string; content_type: string; content: string }>(
+  return vendorRequest<{ filename?: string; content_type?: string; content?: string; download_url?: string }>(
     `/vendor/analytics/export${q(params)}`,
   );
 }

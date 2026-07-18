@@ -24,6 +24,7 @@ import { analyticsOverviewQuery } from "@/lib/vendor-queries";
 
 type AnalyticsOverview = {
   total_bookings?: number;
+  total_bookings_month?: number;
   todays_bookings?: number;
   monthly_revenue?: number;
   occupancy_rate?: number;
@@ -145,7 +146,16 @@ export default function AnalyticsPage() {
     setExporting(true);
     try {
       const report = await vendorExportAnalytics({ date_from: dateFrom, date_to: dateTo });
-      const blob = new Blob([report.content], { type: report.content_type || "text/csv;charset=utf-8" });
+      const fallbackCsv = [
+        ["Metric", "Value"],
+        ["Date from", dateFrom ?? "Current month"],
+        ["Date to", dateTo ?? "Today"],
+        ["Total bookings", overview?.total_bookings ?? overview?.total_bookings_month ?? 0],
+        ["Revenue", overview?.monthly_revenue ?? 0],
+        ["Occupancy rate", overview?.occupancy_rate ?? overview?.occupancy_tracking?.occupancy_rate ?? 0],
+        ["Average rating", overview?.average_rating ?? overview?.reviews_summary?.average_rating ?? 0],
+      ].map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",")).join("\n");
+      const blob = new Blob([report.content || fallbackCsv], { type: report.content_type || "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
@@ -165,7 +175,7 @@ export default function AnalyticsPage() {
   const stats: StatItem[] = [
     {
       ...STAT_BASE[0],
-      value: String(overview?.total_bookings ?? 0),
+      value: String(overview?.total_bookings ?? overview?.total_bookings_month ?? 0),
       trend: "Selected range",
       trendType: "up",
     },
