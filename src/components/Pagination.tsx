@@ -10,6 +10,7 @@ interface PaginationProps {
   totalItems: number;
   itemsPerPage: number;
   onPageChange: (page: number) => void;
+  itemLabel?: string;
 }
 
 export function Pagination({
@@ -18,8 +19,9 @@ export function Pagination({
   totalItems,
   itemsPerPage,
   onPageChange,
+  itemLabel = "bookings",
 }: PaginationProps) {
-  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
   return (
@@ -29,11 +31,13 @@ export function Pagination({
         <span className="text-slate-700">
           {startItem}-{endItem}
         </span>{" "}
-        of <span className="text-slate-700">{totalItems}</span> bookings
+        of <span className="text-slate-700">{totalItems}</span> {itemLabel}
       </p>
 
       <div className="flex items-center gap-2">
         <button
+          type="button"
+          aria-label="Previous page"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
           className="h-9 w-9 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-400 hover:text-sky-500 hover:border-sky-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -55,6 +59,9 @@ export function Pagination({
 
             return pages.map((page) => (
               <button
+                type="button"
+                aria-label={`Page ${page}`}
+                aria-current={currentPage === page ? "page" : undefined}
                 key={page}
                 onClick={() => onPageChange(page)}
                 className={cn(
@@ -71,6 +78,8 @@ export function Pagination({
         </div>
 
         <button
+          type="button"
+          aria-label="Next page"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
           className="h-9 w-9 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-400 hover:text-sky-500 hover:border-sky-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"

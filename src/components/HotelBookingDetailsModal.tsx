@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 
 export interface HotelBooking {
   id: string;
+  backendId?: string;
   customer: {
     name: string;
     avatar: string;
@@ -42,11 +43,13 @@ export interface HotelBooking {
 interface HotelBookingDetailsModalProps {
   booking: HotelBooking | null;
   onClose: () => void;
+  onUpdateStatus: (status: string) => void;
 }
 
 export function HotelBookingDetailsModal({
   booking,
   onClose,
+  onUpdateStatus,
 }: HotelBookingDetailsModalProps) {
   if (!booking) return null;
 
@@ -82,11 +85,7 @@ export function HotelBookingDetailsModal({
               Guest Information
             </span>
             <div className="flex items-center gap-5">
-              <img
-                src={booking.customer.avatar}
-                alt={booking.customer.name}
-                className="h-20 w-20 rounded-[32px] border-4 border-slate-50 object-cover shadow-sm"
-              />
+              {booking.customer.avatar ? <img src={booking.customer.avatar} alt={booking.customer.name} className="h-20 w-20 rounded-[32px] border-4 border-slate-50 object-cover shadow-sm" /> : <span className="flex h-20 w-20 items-center justify-center rounded-[32px] border-4 border-slate-50 bg-slate-100 text-xl font-black text-slate-500">{booking.customer.name.slice(0, 1).toUpperCase()}</span>}
               <div>
                 <h3 className="text-xl font-black text-slate-800 mb-1">
                   {booking.customer.name}
@@ -213,10 +212,10 @@ export function HotelBookingDetailsModal({
           {/* Actions */}
           <div className="flex flex-col gap-4 pt-4">
             <div className="grid grid-cols-2 gap-4">
-              <button className="flex items-center justify-center py-5 rounded-[24px] bg-slate-50 text-slate-700 font-black text-sm hover:bg-slate-100 transition-all border border-slate-100">
+              <button onClick={() => onUpdateStatus("complete")} className="flex items-center justify-center py-5 rounded-[24px] bg-slate-50 text-slate-700 font-black text-sm hover:bg-slate-100 transition-all border border-slate-100">
                 Reschedule
               </button>
-              <button className="flex items-center justify-center gap-3 py-5 rounded-[24px] bg-[#1e2a5e] text-white font-black text-sm hover:bg-[#1a234d] transition-all shadow-xl shadow-[#1e2a5e]/20">
+              <button onClick={() => onUpdateStatus("cancelled")} className="flex items-center justify-center gap-3 py-5 rounded-[24px] bg-[#1e2a5e] text-white font-black text-sm hover:bg-[#1a234d] transition-all shadow-xl shadow-[#1e2a5e]/20">
                 <CircleCheck className="h-5 w-5" />
                 Check-in
               </button>

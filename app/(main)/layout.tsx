@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Sidebar } from "@/components/Sidebar";
-import { getVendorToken, vendorGetProfileSettings } from "@/lib/vendor-api";
+import { DashboardShellProvider } from "@/components/DashboardShellContext";
+import { vendorProfileQuery, vendorQueryKeys } from "@/lib/vendor-queries";
 import {
   extractVendorCategories,
   getFallbackRouteForCategories,
   isRouteAllowedForCategories,
-  readCachedVendorCategories,
   VENDOR_CATEGORIES_UPDATED_EVENT,
-  type VendorCategory,
 } from "@/lib/vendor-access";
 
 export default function MainLayout({
@@ -19,49 +19,30 @@ export default function MainLayout({
   children: React.ReactNode;
 }>) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const pathname = usePathname();
-  const [authorized, setAuthorized] = useState(false);
-  const [categories, setCategories] = useState<VendorCategory[]>(["Restaurant"]);
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const profileQuery = useQuery(vendorProfileQuery());
+  const categories = profileQuery.data
+    ? extractVendorCategories(profileQuery.data.categories ?? profileQuery.data.category)
+    : extractVendorCategories("Restaurant");
 
   useEffect(() => {
-    const token = getVendorToken();
-    if (!token) {
-      const currentPath = typeof window !== "undefined" ? window.location.pathname + window.location.search : "";
-      const redirectUrl = currentPath ? `/auth/login?next=${encodeURIComponent(currentPath)}` : "/auth/login";
-      router.replace(redirectUrl);
-      return;
+    if (!profileQuery.data) return;
+    const nextCategories = extractVendorCategories(
+      profileQuery.data.categories ?? profileQuery.data.category,
+    );
+    if (!isRouteAllowedForCategories(pathname, nextCategories)) {
+      router.replace(getFallbackRouteForCategories(nextCategories));
     }
-
-    const cachedCategories = readCachedVendorCategories();
-    setCategories(cachedCategories);
-
-    vendorGetProfileSettings()
-      .then((profile) => {
-        const nextCategories = extractVendorCategories(
-          profile.categories ?? profile.category,
-        );
-        setCategories(nextCategories);
-        if (!isRouteAllowedForCategories(pathname, nextCategories)) {
-          router.replace(getFallbackRouteForCategories(nextCategories));
-          return;
-        }
-        setAuthorized(true);
-      })
-      .catch(() => {
-        if (!isRouteAllowedForCategories(pathname, cachedCategories)) {
-          router.replace(getFallbackRouteForCategories(cachedCategories));
-          return;
-        }
-        setAuthorized(true);
-      });
-  }, [pathname, router]);
+  }, [pathname, profileQuery.data, router]);
 
   useEffect(() => {
     const handleCategoriesUpdated = (event: Event) => {
       const nextCategories = extractVendorCategories(
         (event as CustomEvent<unknown>).detail,
       );
-      setCategories(nextCategories);
+      queryClient.invalidateQueries({ queryKey: vendorQueryKeys.profile });
       if (!isRouteAllowedForCategories(pathname, nextCategories)) {
         router.replace(getFallbackRouteForCategories(nextCategories));
       }
@@ -74,20 +55,23 @@ export default function MainLayout({
         handleCategoriesUpdated,
       );
     };
-  }, [pathname, router]);
+  }, [pathname, queryClient, router]);
 
-  if (!authorized) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f8fafc]">
-        <div className="animate-pulse font-medium text-slate-400">Loading...</div>
-      </div>
-    );
-  }
+  const shellActions = useMemo(
+    () => ({ openNavigation: () => setMobileNavigationOpen(true) }),
+    [],
+  );
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar categories={categories} />
-      <main className="flex-1 overflow-y-auto overflow-x-hidden">{children}</main>
-    </div>
+    <DashboardShellProvider value={shellActions}>
+      <div className="flex h-dvh overflow-hidden">
+        <Sidebar
+          categories={categories}
+          mobileOpen={mobileNavigationOpen}
+          onMobileClose={() => setMobileNavigationOpen(false)}
+        />
+        <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">{children}</main>
+      </div>
+    </DashboardShellProvider>
   );
 }

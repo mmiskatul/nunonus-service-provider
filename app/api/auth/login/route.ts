@@ -43,26 +43,27 @@ export async function POST(request: Request) {
       {
         ok: true,
         user: { email: payload.vendor?.email ?? email },
-        access_token: payload.access_token,
-        refresh_token: payload.refresh_token ?? payload.session_token,
       },
       { status: 200 }
     );
     nextResponse.cookies.set("nunos_vendor_auth", "true", {
       httpOnly: true,
       sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
       path: "/",
       maxAge: 60 * 60 * 24 * 30,
     });
     nextResponse.cookies.set("nunos_vendor_access_token", payload.access_token, {
       httpOnly: true,
       sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
       path: "/"
     });
     if (payload.refresh_token || payload.session_token) {
       nextResponse.cookies.set("nunos_vendor_refresh_token", payload.refresh_token ?? payload.session_token ?? "", {
         httpOnly: true,
         sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
         path: "/",
         maxAge: 60 * 60 * 24 * 30,
       });

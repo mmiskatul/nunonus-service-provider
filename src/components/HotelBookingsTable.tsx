@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { Check, Eye, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HotelBooking } from "./HotelBookingDetailsModal";
@@ -8,11 +9,13 @@ import { HotelBooking } from "./HotelBookingDetailsModal";
 interface HotelBookingsTableProps {
   bookings: HotelBooking[];
   onViewDetails: (booking: HotelBooking) => void;
+  onUpdateStatus: (booking: HotelBooking, status: string) => void;
 }
 
 export function HotelBookingsTable({
   bookings,
   onViewDetails,
+  onUpdateStatus,
 }: HotelBookingsTableProps) {
   return (
     <div className="rounded-2xl bg-white p-4 md:p-8 shadow-sm border border-slate-100 mb-6 overflow-hidden">
@@ -57,11 +60,7 @@ export function HotelBookingsTable({
                 </td>
                 <td className="py-5">
                   <div className="flex items-center gap-3">
-                    <img
-                      src={booking.customer.avatar}
-                      alt={booking.customer.name}
-                      className="h-10 w-10 rounded-full border-2 border-slate-100"
-                    />
+                    {booking.customer.avatar ? <Image src={booking.customer.avatar} alt="" width={40} height={40} sizes="40px" className="h-10 w-10 rounded-full border-2 border-slate-100 object-cover" /> : <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-slate-100 bg-slate-100 text-xs font-black text-slate-500">{booking.customer.name.slice(0, 1).toUpperCase()}</span>}
                     <span className="font-bold text-slate-700 text-sm">
                       {booking.customer.name}
                     </span>
@@ -119,7 +118,7 @@ export function HotelBookingsTable({
                 </td>
                 <td className="py-5 text-right">
                   <div className="flex justify-end gap-2">
-                    <button className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-emerald-500 hover:text-white transition-all">
+                    <button onClick={() => onUpdateStatus(booking, "confirmed")} aria-label="Confirm booking" className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-emerald-500 hover:text-white transition-all">
                       <Check className="h-4 w-4" />
                     </button>
                     <button
@@ -128,7 +127,7 @@ export function HotelBookingsTable({
                     >
                       <Eye className="h-4 w-4" />
                     </button>
-                    <button className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-rose-500 hover:text-white transition-all">
+                    <button onClick={() => onUpdateStatus(booking, "cancelled")} aria-label="Cancel booking" className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-rose-500 hover:text-white transition-all">
                       <X className="h-4 w-4" />
                     </button>
                   </div>

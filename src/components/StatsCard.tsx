@@ -8,7 +8,6 @@ import {
   Star,
   TrendingDown,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface StatsCardProps {
   title: string;
@@ -64,8 +63,7 @@ export function StatsCard({ title, value, trend }: StatsCardProps) {
             </div>
           )}
           {trend.type === "neutral" && (
-            <div className="flex items-center text-emerald-500 text-sm font-medium">
-              <TrendingUp className="mr-1 h-4 w-4" />
+            <div className="flex items-center text-slate-400 text-sm font-medium">
               <span>{trend.value}</span>
             </div>
           )}

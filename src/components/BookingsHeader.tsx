@@ -6,6 +6,8 @@ import { format } from "date-fns";
 import { DatePicker } from "./DatePicker";
 
 interface BookingsHeaderProps {
+  title?: string;
+  description?: string;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   statusFilter: string;
@@ -15,6 +17,8 @@ interface BookingsHeaderProps {
 }
 
 export function BookingsHeader({
+  title = "Bookings",
+  description = "Manage and monitor all your reservations in real time.",
   searchQuery,
   onSearchChange,
   statusFilter,
@@ -55,10 +59,10 @@ export function BookingsHeader({
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-8">
         <div>
           <h2 className="text-2xl md:text-3xl font-bold text-slate-800 mb-2">
-            Bookings
+            {title}
           </h2>
           <p className="text-sm text-slate-400 max-w-sm">
-            Manage and monitor all your table reservations in real-time.
+            {description}
           </p>
         </div>
 
@@ -68,6 +72,7 @@ export function BookingsHeader({
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-sky-500 transition-colors" />
             <input
               type="text"
+              aria-label="Search bookings"
               placeholder="Search by name or ID"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
@@ -78,6 +83,7 @@ export function BookingsHeader({
           {/* Status Filter */}
           <div className="relative group w-full sm:w-auto min-w-[180px]">
             <select
+              aria-label="Filter bookings by status"
               value={statusFilter}
               onChange={(e) => onStatusChange(e.target.value)}
               className="appearance-none w-full bg-slate-50 border border-slate-100 rounded-xl py-3.5 sm:py-3 px-4 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all cursor-pointer font-medium"
@@ -93,15 +99,18 @@ export function BookingsHeader({
 
           {/* Date Picker */}
           <div className="relative w-full sm:w-auto" ref={calendarRef}>
-            <div
+            <button
+              type="button"
+              aria-label="Choose booking date range"
+              aria-expanded={isCalendarOpen}
               onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-              className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl py-3.5 sm:py-3 px-4 cursor-pointer hover:bg-slate-100 transition-colors"
+              className="flex w-full items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl py-3.5 sm:py-3 px-4 cursor-pointer hover:bg-slate-100 transition-colors"
             >
               <CalendarIcon className="h-4 w-4 text-slate-400" />
               <span className="text-sm text-slate-600 font-medium truncate min-w-[120px]">
                 {rangeText}
               </span>
-            </div>
+            </button>
 
             {isCalendarOpen && (
               <DatePicker

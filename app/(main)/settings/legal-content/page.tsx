@@ -9,9 +9,10 @@ type SearchParams = {
 export default async function SettingsLegalContentPage({
   searchParams
 }: {
-  searchParams?: SearchParams;
+  searchParams?: Promise<SearchParams>;
 }) {
-  const initialDocument = searchParams?.tab === "privacy" ? "privacy" : "terms";
+  const params = await searchParams;
+  const initialDocument = params?.tab === "privacy" ? "privacy" : "terms";
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col">

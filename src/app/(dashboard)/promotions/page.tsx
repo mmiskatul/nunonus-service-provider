@@ -12,11 +12,13 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/ToastProvider";
 import { PromotionsTable, Promotion } from "@/components/PromotionsTable";
 import { CampaignCard } from "@/components/CampaignCard";
 import {
   vendorListPromotions,
   vendorJoinPlatformCampaign,
+  vendorUpdatePromotionStatus,
 } from "@/lib/vendor-api";
 
 type PromotionSummary = {
@@ -143,6 +145,7 @@ const EMPTY_SUMMARY: PromotionSummary = {
 };
 
 export default function PromotionsPage() {
+  const { toast } = useToast();
   const [businessPromotions, setBusinessPromotions] = useState<Promotion[]>([]);
   const [summary, setSummary] = useState<PromotionSummary>(EMPTY_SUMMARY);
   const [platformCampaigns, setPlatformCampaigns] = useState<PlatformCampaign[]>([]);
@@ -205,6 +208,15 @@ export default function PromotionsPage() {
       console.warn("Failed to update campaign state:", err);
       // Revert on failure
       setCampaignStates((prev) => ({ ...prev, [id]: !newState }));
+    }
+  };
+
+  const togglePromotionStatus = async (promotion: Promotion) => {
+    try {
+      await vendorUpdatePromotionStatus(String(promotion.id), !promotion.isActive);
+      await fetchPromotions();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Failed to update promotion.", "error");
     }
   };
   const stats = [
@@ -292,7 +304,7 @@ export default function PromotionsPage() {
               <div className="w-6 h-6 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
-            <PromotionsTable promotions={businessPromotions} />
+            <PromotionsTable promotions={businessPromotions} onToggleStatus={togglePromotionStatus} />
           )}
 
           {/* Platform Campaigns */}

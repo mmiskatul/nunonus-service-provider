@@ -1,10 +1,14 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
+import { useQuery } from "@tanstack/react-query";
 
-import { Bell } from "lucide-react";
+import { Bell, Menu } from "lucide-react";
 import { NotificationsModal } from "./NotificationsModal";
 import Link from "next/link";
+import { notificationsQuery, vendorProfileQuery } from "@/lib/vendor-queries";
+import { useDashboardShell } from "@/components/DashboardShellContext";
 
 interface HeaderProps {
   title?: string;
@@ -13,6 +17,15 @@ interface HeaderProps {
 export function Header({ title = "Business Overview" }: HeaderProps) {
   const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
   const notificationRef = React.useRef<HTMLDivElement>(null);
+  const { openNavigation } = useDashboardShell();
+  const profileQuery = useQuery(vendorProfileQuery());
+  const notifications = useQuery({ ...notificationsQuery(20, 0), enabled: isNotificationsOpen });
+  const profile = profileQuery.data;
+  const avatarUrl = String(profile?.avatar_url ?? profile?.profile_image_url ?? "");
+  const notificationItems = (notifications.data as { items?: Array<{ is_read?: boolean; read?: boolean }> } | undefined)?.items ?? [];
+  const unreadCount = notifications.data
+    ? notificationItems.filter((item) => !(item.is_read ?? item.read ?? false)).length
+    : Number(profile?.unread_notifications ?? 0);
 
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -33,18 +46,35 @@ export function Header({ title = "Business Overview" }: HeaderProps) {
   }, [isNotificationsOpen]);
 
   return (
-    <header className="flex h-24 items-center justify-between px-10 bg-white border-b border-slate-100">
-      <h2 className="text-3xl font-bold text-slate-800">{title}</h2>
+    <header className="flex h-20 items-center justify-between border-b border-slate-100 bg-white px-4 sm:px-6 md:h-24 md:px-10">
+      <div className="flex min-w-0 items-center gap-3">
+        <button
+          type="button"
+          onClick={openNavigation}
+          aria-label="Open navigation"
+          className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 md:hidden"
+        >
+          <Menu className="h-6 w-6" />
+        </button>
+        <h2 className="truncate text-xl font-bold text-slate-800 sm:text-2xl md:text-3xl">{title}</h2>
+      </div>
 
       <div className="flex items-center space-x-6">
         <div className="relative" ref={notificationRef}>
-          <div
+          <button
+            type="button"
+            aria-label={unreadCount ? `Notifications, ${unreadCount} unread` : "Notifications"}
+            aria-expanded={isNotificationsOpen}
             className="cursor-pointer group p-2 hover:bg-slate-50 rounded-xl transition-all"
             onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
           >
             <Bell className="h-6 w-6 text-slate-400 group-hover:text-sky-500 transition-colors" />
-            <span className="absolute top-2 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-white"></span>
-          </div>
+            {unreadCount > 0 ? (
+              <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-red-500 px-1 text-[10px] font-bold text-white">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            ) : null}
+          </button>
 
           <NotificationsModal
             isOpen={isNotificationsOpen}
@@ -56,11 +86,11 @@ export function Header({ title = "Business Overview" }: HeaderProps) {
           href="/profile"
           className="flex items-center space-x-3 cursor-pointer group"
         >
-          <img
-            src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop"
-            alt="User profile"
-            className="h-12 w-12 rounded-full border-2 border-slate-200 group-hover:border-sky-400 transition-all"
-          />
+          {avatarUrl ? (
+            <Image src={avatarUrl} alt="User profile" width={48} height={48} sizes="48px" className="h-10 w-10 rounded-full border-2 border-slate-200 object-cover transition-all group-hover:border-sky-400 md:h-12 md:w-12" />
+          ) : (
+            <span className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-slate-200 bg-slate-100 text-sm font-black text-slate-500 md:h-12 md:w-12">SP</span>
+          )}
         </Link>
       </div>
     </header>

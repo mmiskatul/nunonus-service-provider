@@ -85,17 +85,20 @@ function applyVendorSessionCookies(
   response.cookies.set("nunos_vendor_auth", "true", {
     httpOnly: true,
     sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
   });
   response.cookies.set("nunos_vendor_access_token", payload.access_token, {
     httpOnly: true,
     sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
     path: "/",
   });
   response.cookies.set("nunos_vendor_refresh_token", payload.refresh_token ?? payload.session_token ?? "", {
     httpOnly: true,
     sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
   });

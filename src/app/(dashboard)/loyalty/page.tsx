@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
+import { useToast } from "@/components/ui/ToastProvider";
 import {
   Trophy,
   Zap,
@@ -33,6 +34,7 @@ interface LoyaltySettings {
 }
 
 export default function LoyaltyPage() {
+  const { toast } = useToast();
   const [settings, setSettings] = useState<LoyaltySettings>({
     enable_loyalty_program: true,
     points_rule_type: "points_per_currency",
@@ -73,7 +75,7 @@ export default function LoyaltyPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
-      alert("Failed to save: " + (err instanceof Error ? err.message : String(err)));
+      toast("Failed to save: " + (err instanceof Error ? err.message : String(err)), "error");
     } finally {
       setSaving(false);
     }

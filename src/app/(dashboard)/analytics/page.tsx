@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { format } from "date-fns";
 import {
   Calendar,
@@ -16,7 +18,8 @@ import {
 import { cn } from "@/lib/utils";
 import { DatePicker } from "@/components/DatePicker";
 import { Header } from "@/components/Header";
-import { vendorExportAnalytics, vendorGetAnalyticsOverview } from "@/lib/vendor-api";
+import { vendorExportAnalytics } from "@/lib/vendor-api";
+import { analyticsOverviewQuery } from "@/lib/vendor-queries";
 
 type AnalyticsOverview = {
   total_bookings?: number;
@@ -97,21 +100,13 @@ function percentLabel(value?: number) {
 
 export default function AnalyticsPage() {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-  const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
+  const overviewQuery = useQuery(analyticsOverviewQuery());
   const calendarRef = useRef<HTMLDivElement>(null);
   const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({
     start: null,
     end: null,
   });
-
-  useEffect(() => {
-    vendorGetAnalyticsOverview()
-      .then((data) => setOverview(data as AnalyticsOverview))
-      .catch(() => setOverview(null))
-      .finally(() => setLoading(false));
-  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -138,6 +133,8 @@ export default function AnalyticsPage() {
     }
   };
 
+  const overview = overviewQuery.data as AnalyticsOverview | undefined;
+  const loading = overviewQuery.isPending;
   const stats: StatItem[] = [
     {
       ...STAT_BASE[0],
@@ -217,7 +214,9 @@ export default function AnalyticsPage() {
           </div>
 
           {loading ? (
-            <div className="rounded-[32px] border border-slate-100 bg-white p-10 text-sm text-slate-400">Loading analytics...</div>
+            <div className="animate-pulse rounded-[32px] border border-slate-100 bg-white p-10 text-sm text-slate-400">Loading analytics...</div>
+          ) : overviewQuery.isError ? (
+            <div className="rounded-[32px] border border-red-100 bg-white p-10 text-center text-sm text-red-600">Analytics could not be loaded.<button type="button" onClick={() => overviewQuery.refetch()} className="ml-3 rounded-xl bg-slate-100 px-4 py-2 font-bold text-slate-700">Try again</button></div>
           ) : (
             <>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -347,7 +346,7 @@ export default function AnalyticsPage() {
               <div className="rounded-[40px] border border-slate-100 bg-white p-10 shadow-sm">
                 <div className="mb-10 flex items-center justify-between">
                   <h3 className="text-xl font-bold text-slate-800">Reviews & Ratings Summary</h3>
-                  <button className="text-sm font-bold text-sky-600 transition-colors hover:text-sky-700">View All Feedback</button>
+                  <Link href="/reviews" className="text-sm font-bold text-sky-600 transition-colors hover:text-sky-700">View All Feedback</Link>
                 </div>
 
                 <div className="grid grid-cols-1 gap-12 lg:grid-cols-12">

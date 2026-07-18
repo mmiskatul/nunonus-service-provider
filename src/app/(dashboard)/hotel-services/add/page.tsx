@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { uploadVendorFile, vendorCreateRoom } from "@/lib/vendor-api";
+import { useToast } from "@/components/ui/ToastProvider";
 
 const AMENITIES_OPTIONS = [
   "Free WiFi",
@@ -30,6 +31,7 @@ const AMENITIES_OPTIONS = [
 ];
 
 export default function AddRoomPage() {
+  const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -126,7 +128,7 @@ export default function AddRoomPage() {
 
   const handleSave = async () => {
     if (!formData.name) {
-      alert("Please enter a room name");
+      toast("Please enter a room name.", "error");
       return;
     }
 
@@ -156,7 +158,7 @@ export default function AddRoomPage() {
       router.push("/hotel-services");
     } catch (err) {
       setIsSubmitting(false);
-      alert("Failed to save room: " + (err instanceof Error ? err.message : String(err)));
+      toast("Failed to save room: " + (err instanceof Error ? err.message : String(err)), "error");
     }
   };
 

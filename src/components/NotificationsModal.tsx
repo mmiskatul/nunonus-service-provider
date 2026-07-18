@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { X, Calendar, Star, Bell } from "lucide-react";
+import Link from "next/link";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Bell, Calendar, Star, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { vendorListNotifications, vendorMarkNotificationRead } from "@/lib/vendor-api";
+import { vendorMarkNotificationRead } from "@/lib/vendor-api";
+import { notificationsQuery, vendorQueryKeys } from "@/lib/vendor-queries";
 
 interface NotificationItem {
   id: string;
@@ -22,103 +24,84 @@ interface NotificationsModalProps {
 }
 
 export function NotificationsModal({ isOpen, onClose }: NotificationsModalProps) {
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    setLoading(true);
-    vendorListNotifications({ limit: 20, skip: 0 })
-      .then((data) => {
-        const raw = data as { items?: NotificationItem[] };
-        setNotifications(raw?.items ?? []);
-      })
-      .catch(() => setNotifications([]))
-      .finally(() => setLoading(false));
-  }, [isOpen]);
-
-  const handleMarkRead = async (id: string) => {
-    try {
-      await vendorMarkNotificationRead(id);
-      setNotifications((prev) =>
-        prev.map((n) => n.id === id ? { ...n, is_read: true, read: true } : n),
-      );
-    } catch {
-      // non-critical — ignore
-    }
-  };
+  const queryClient = useQueryClient();
+  const notificationQuery = useQuery({ ...notificationsQuery(20, 0), enabled: isOpen });
+  const notifications = (notificationQuery.data as { items?: NotificationItem[] } | undefined)?.items ?? [];
+  const markRead = useMutation({
+    mutationFn: vendorMarkNotificationRead,
+    onSuccess: (_result, id) => {
+      queryClient.setQueryData(vendorQueryKeys.notifications(20, 0), (current: unknown) => {
+        const payload = current as { items?: NotificationItem[] } | undefined;
+        return {
+          ...(payload ?? {}),
+          items: (payload?.items ?? []).map((item) =>
+            item.id === id ? { ...item, is_read: true, read: true } : item,
+          ),
+        };
+      });
+      queryClient.setQueryData(vendorQueryKeys.profile, (current: unknown) => {
+        const profile = current as Record<string, unknown> | undefined;
+        return { ...(profile ?? {}), unread_notifications: Math.max(0, Number(profile?.unread_notifications ?? 0) - 1) };
+      });
+    },
+  });
 
   if (!isOpen) return null;
 
   return (
-    <div className="absolute top-full right-0 mt-4 w-[480px] z-[100] animate-in fade-in zoom-in duration-200">
-      <div className="bg-white/90 backdrop-blur-xl rounded-[32px] shadow-2xl border border-slate-100 overflow-hidden">
-        <div className="p-6 pb-3 flex items-center justify-between border-b border-slate-100/50">
+    <div role="dialog" aria-label="Notifications" className="fixed inset-x-3 top-20 z-[100] animate-in fade-in zoom-in duration-200 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-4 sm:w-[min(480px,calc(100vw-2rem))]">
+      <div className="overflow-hidden rounded-[28px] border border-slate-100 bg-white/95 shadow-2xl backdrop-blur-xl sm:rounded-[32px]">
+        <div className="flex items-center justify-between border-b border-slate-100/50 p-5 pb-3 sm:p-6 sm:pb-3">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 bg-sky-50 rounded-xl flex items-center justify-center text-sky-500">
-              <Bell className="h-5 w-5" />
-            </div>
-            <h2 className="text-xl font-black text-slate-800 tracking-tight">Notifications</h2>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-500"><Bell className="h-5 w-5" /></div>
+            <h2 className="text-xl font-black tracking-tight text-slate-800">Notifications</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-xl transition-all group">
-            <X className="h-5 w-5 text-slate-300 group-hover:text-slate-600" />
-          </button>
+          <button type="button" aria-label="Close notifications" onClick={onClose} className="group rounded-xl p-1.5 transition-all hover:bg-slate-100"><X className="h-5 w-5 text-slate-300 group-hover:text-slate-600" /></button>
         </div>
 
-        <div className="p-6 space-y-4 overflow-y-auto max-h-[500px]">
-          {loading ? (
-            <div className="flex items-center justify-center py-10">
-              <div className="w-6 h-6 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
+        <div className="max-h-[min(500px,65vh)] space-y-4 overflow-y-auto p-4 sm:p-6">
+          {notificationQuery.isPending ? (
+            <div className="flex items-center justify-center py-10"><div className="h-6 w-6 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" /></div>
+          ) : notificationQuery.isError ? (
+            <div className="space-y-3 py-8 text-center text-sm text-red-600">
+              <p>Notifications could not be loaded.</p>
+              <button type="button" onClick={() => notificationQuery.refetch()} className="rounded-xl bg-slate-100 px-4 py-2 font-bold text-slate-700">Try again</button>
             </div>
           ) : notifications.length === 0 ? (
-            <div className="text-center text-slate-400 py-10 text-sm">No notifications yet.</div>
-          ) : (
-            notifications.map((notif) => {
-              const isUnread = !(notif.is_read ?? notif.read ?? false);
-              const isBooking = notif.type === "booking" || notif.type?.includes("booking");
-              return (
-                <div
-                  key={notif.id}
-                  onClick={() => isUnread && handleMarkRead(notif.id)}
-                  className={cn(
-                    "relative p-5 bg-white/50 rounded-3xl border transition-all group cursor-pointer",
-                    isUnread ? "border-slate-100 hover:border-sky-200" : "border-slate-50 opacity-70",
-                  )}
-                >
-                  {isUnread && <div className="absolute top-5 right-5 h-2 w-2 bg-[#1e2a5e] rounded-full" />}
-                  <div className="flex gap-4">
-                    <div className={cn(
-                      "h-12 w-12 rounded-xl flex items-center justify-center shrink-0",
-                      isBooking ? "bg-sky-50 text-sky-500" : "bg-amber-50 text-amber-500",
-                    )}>
-                      {isBooking ? <Calendar className="h-5 w-5" /> : <Star className="h-5 w-5" />}
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-base font-black text-slate-800">
-                          {notif.title ?? (isBooking ? "New Booking" : "New Notification")}
-                        </h3>
-                        {notif.created_at && (
-                          <span className="text-[10px] font-bold text-slate-400">
-                            {new Date(notif.created_at).toLocaleDateString()}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] font-bold text-slate-500 leading-relaxed pr-6 line-clamp-2">
-                        {notif.message ?? notif.body ?? ""}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
+            <div className="py-10 text-center text-sm text-slate-400">No notifications yet.</div>
+          ) : notifications.map((notification) => {
+            const isUnread = !(notification.is_read ?? notification.read ?? false);
+            const isBooking = notification.type === "booking" || notification.type?.includes("booking");
+            return (
+              <button
+                type="button"
+                key={notification.id}
+                onClick={() => isUnread && markRead.mutate(notification.id)}
+                className={cn(
+                  "group relative block w-full rounded-3xl border bg-white/50 p-5 text-left transition-all",
+                  isUnread ? "border-slate-100 hover:border-sky-200" : "border-slate-50 opacity-70",
+                )}
+              >
+                {isUnread ? <span className="absolute right-5 top-5 h-2 w-2 rounded-full bg-[#1e2a5e]" /> : null}
+                <span className="flex gap-4">
+                  <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl", isBooking ? "bg-sky-50 text-sky-500" : "bg-amber-50 text-amber-500")}>
+                    {isBooking ? <Calendar className="h-5 w-5" /> : <Star className="h-5 w-5" />}
+                  </span>
+                  <span className="min-w-0 flex-1 space-y-1">
+                    <span className="flex items-center justify-between gap-3">
+                      <span className="truncate text-base font-black text-slate-800">{notification.title ?? (isBooking ? "New Booking" : "New Notification")}</span>
+                      {notification.created_at ? <span className="shrink-0 text-[10px] font-bold text-slate-400">{new Date(notification.created_at).toLocaleDateString()}</span> : null}
+                    </span>
+                    <span className="line-clamp-2 block pr-6 text-[11px] font-bold leading-relaxed text-slate-500">{notification.message ?? notification.body ?? ""}</span>
+                  </span>
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        <div className="p-6 pt-0 flex justify-center">
-          <button className="text-[10px] font-black text-slate-400 hover:text-slate-600 transition-colors uppercase tracking-widest">
-            View all notifications
-          </button>
+        <div className="flex justify-center p-6 pt-0">
+          <Link href="/notifications" prefetch={false} onClick={onClose} className="text-[10px] font-black uppercase tracking-widest text-slate-400 transition-colors hover:text-slate-600">View all notifications</Link>
         </div>
       </div>
     </div>

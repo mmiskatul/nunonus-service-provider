@@ -11,6 +11,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import {
+  vendorCreateSupportTicket,
+  vendorListSupportTickets,
+} from "@/lib/vendor-api";
 
 interface Ticket {
   id: string;
@@ -19,32 +23,69 @@ interface Ticket {
   status: "Resolved" | "In Progress" | "Open";
 }
 
-const TICKETS: Ticket[] = [
-  {
-    id: "#SP-2024-001",
-    title: "Payment not processed",
-    date: "Jan 15, 2026",
-    status: "Resolved",
-  },
-  {
-    id: "#SP-2024-002",
-    title: "App crashes on booking",
-    date: "Jan 18, 2026",
-    status: "In Progress",
-  },
-  {
-    id: "#SP-2024-003",
-    title: "Promo code not working",
-    date: "Jan 20, 2026",
-    status: "Open",
-  },
-];
+function normalizeStatus(value: unknown): Ticket["status"] {
+  const status = String(value ?? "open").toLowerCase();
+  if (status.includes("resolv") || status === "closed") return "Resolved";
+  if (status.includes("progress") || status === "pending") return "In Progress";
+  return "Open";
+}
+
+function normalizeTickets(payload: Record<string, unknown>): Ticket[] {
+  const rows = Array.isArray(payload.items)
+    ? payload.items
+    : Array.isArray(payload.tickets)
+      ? payload.tickets
+      : [];
+  return rows.map((row, index) => {
+    const ticket = (row ?? {}) as Record<string, unknown>;
+    return {
+      id: String(ticket.id ?? ticket.ticket_id ?? `#SP-${index + 1}`),
+      title: String(ticket.subject ?? ticket.title ?? "Support request"),
+      date: String(ticket.created_at ?? ticket.date ?? "").slice(0, 10),
+      status: normalizeStatus(ticket.status),
+    };
+  });
+}
 
 export default function SupportPage() {
   const [formData, setFormData] = useState({
     subject: "",
     description: "",
   });
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState("");
+
+  React.useEffect(() => {
+    void vendorListSupportTickets({ limit: 50, skip: 0 })
+      .then((payload) => setTickets(normalizeTickets(payload)))
+      .catch((error) => setMessage(error instanceof Error ? error.message : "Failed to load support tickets."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSubmit = async () => {
+    if (formData.subject.trim().length < 3 || formData.description.trim().length < 10) {
+      setMessage("Enter a subject and at least 10 characters describing the issue.");
+      return;
+    }
+    setSubmitting(true);
+    setMessage("");
+    try {
+      await vendorCreateSupportTicket({
+        subject: formData.subject.trim(),
+        description: formData.description.trim(),
+      });
+      setFormData({ subject: "", description: "" });
+      const payload = await vendorListSupportTickets({ limit: 50, skip: 0 });
+      setTickets(normalizeTickets(payload));
+      setMessage("Support request submitted.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to submit support request.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col">
@@ -98,6 +139,7 @@ export default function SupportPage() {
                 />
               </div>
             </div>
+            {message ? <p className="text-sm font-bold text-[#1e2a5e]">{message}</p> : null}
           </div>
 
           {/* Tickets List */}
@@ -107,9 +149,12 @@ export default function SupportPage() {
             </h3>
 
             <div className="space-y-4">
-              {TICKETS.map((ticket) => (
-                <div
+              {loading ? <p className="text-sm font-bold text-slate-400">Loading tickets...</p> : null}
+              {!loading && tickets.length === 0 ? <p className="text-sm font-bold text-slate-400">No support tickets yet.</p> : null}
+              {tickets.map((ticket) => (
+                <Link
                   key={ticket.id}
+                  href={`/profile/support/${encodeURIComponent(ticket.id)}`}
                   className="bg-white p-8 rounded-[32px] border border-slate-100 hover:border-sky-200 transition-all group"
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -137,15 +182,20 @@ export default function SupportPage() {
                       {ticket.date}
                     </span>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
 
           {/* Submit Button */}
           <div className="pt-6">
-            <button className="w-full py-6 bg-[#1e2a5e] hover:bg-[#1a234d] text-white rounded-[28px] text-base font-black shadow-2xl shadow-[#1e2a5e]/30 transition-all flex items-center justify-center gap-3">
-              Submit Support Request
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="w-full py-6 bg-[#1e2a5e] hover:bg-[#1a234d] disabled:opacity-60 text-white rounded-[28px] text-base font-black shadow-2xl shadow-[#1e2a5e]/30 transition-all flex items-center justify-center gap-3"
+            >
+              {submitting ? "Submitting..." : "Submit Support Request"}
             </button>
           </div>
         </div>

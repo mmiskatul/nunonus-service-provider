@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import { Search, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -16,9 +17,10 @@ export interface Promotion {
 
 interface PromotionsTableProps {
   promotions: Promotion[];
+  onToggleStatus: (promotion: Promotion) => void;
 }
 
-export function PromotionsTable({ promotions }: PromotionsTableProps) {
+export function PromotionsTable({ promotions, onToggleStatus }: PromotionsTableProps) {
   return (
     <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden">
       {/* Header with Filters */}
@@ -110,9 +112,9 @@ export function PromotionsTable({ promotions }: PromotionsTableProps) {
                 >
                   <td className="px-8 py-6">
                     <div>
-                      <p className="text-sm font-bold text-slate-700 group-hover:text-slate-900 transition-colors">
+                      <Link href={`/promotions/${encodeURIComponent(promo.id)}`} className="text-sm font-bold text-slate-700 group-hover:text-slate-900 transition-colors">
                         {promo.name}
-                      </p>
+                      </Link>
                       <p className="text-[11px] text-slate-400 mt-1">
                         {promo.description}
                       </p>
@@ -189,6 +191,8 @@ export function PromotionsTable({ promotions }: PromotionsTableProps) {
                   </td>
                   <td className="px-8 py-6 text-right">
                     <button
+                      onClick={() => onToggleStatus(promo)}
+                      aria-label={`Toggle ${promo.name}`}
                       className={cn(
                         "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none",
                         promo.isActive

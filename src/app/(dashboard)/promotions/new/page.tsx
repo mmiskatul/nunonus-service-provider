@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import {
   Info,
@@ -15,28 +16,87 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { vendorCreatePromotion } from "@/lib/vendor-api";
 
 type OfferType = "percentage" | "fixed" | "happy_hour" | "custom";
 
 export default function AddPromotionPage() {
+  const router = useRouter();
   const [selectedOffer, setSelectedOffer] = useState<OfferType>("percentage");
   const [recurringDays, setRecurringDays] = useState<string[]>([
-    "M",
-    "T",
-    "W",
-    "T",
-    "F",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
   ]);
   const [requirePromoCode, setRequirePromoCode] = useState(true);
   const [firstTimeOnly, setFirstTimeOnly] = useState(false);
+  const [formData, setFormData] = useState({
+    promotionName: "",
+    internalDescription: "",
+    discountValue: "",
+    applicableTo: "All Services",
+    startDate: "",
+    endDate: "",
+    promoCode: "SUMMER20",
+    minimumSpend: "",
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const updateField = (field: keyof typeof formData, value: string) => {
+    setError("");
+    setFormData((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleCreate = async () => {
+    if (!formData.promotionName.trim() || !formData.startDate || !formData.endDate) {
+      setError("Promotion name, start date, and end date are required.");
+      return;
+    }
+    const discountValue = Number(formData.discountValue);
+    if (!Number.isFinite(discountValue) || discountValue < 0) {
+      setError("Enter a valid discount value.");
+      return;
+    }
+    setIsSaving(true);
+    setError("");
+    try {
+      await vendorCreatePromotion({
+        promotion_name: formData.promotionName.trim(),
+        internal_description: formData.internalDescription.trim(),
+        offer_type: {
+          percentage: "percentage",
+          fixed: "fixed_amount",
+          happy_hour: "happy_hour",
+          custom: "custom_deal",
+        }[selectedOffer],
+        discount_value: discountValue,
+        applicable_to: formData.applicableTo,
+        start_date: formData.startDate,
+        end_date: formData.endDate,
+        recurring_days: recurringDays,
+        require_promo_code: requirePromoCode,
+        promo_code: requirePromoCode ? formData.promoCode.trim() || null : null,
+        first_time_customers_only: firstTimeOnly,
+        minimum_spend: formData.minimumSpend.trim() ? Number(formData.minimumSpend) : null,
+        active: true,
+      });
+      router.push("/promotions");
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Failed to create promotion.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const toggleDay = (day: string, idx: number) => {
-    // Handling duplicate day letters (T, T, S, S) by using index or a better key
-    // For simplicity in UI display, we'll just toggle based on a combined key or just accept simple toggle
+    const key = String(idx);
     setRecurringDays((prev) =>
-      prev.includes(`${day}-${idx}`)
-        ? prev.filter((d) => d !== `${day}-${idx}`)
-        : [...prev, `${day}-${idx}`],
+      prev.includes(key)
+        ? prev.filter((d) => d !== key)
+        : [...prev, key],
     );
   };
 
@@ -111,6 +171,8 @@ export default function AddPromotionPage() {
                 <input
                   type="text"
                   placeholder="e.g. Summer Wellness 2026"
+                  value={formData.promotionName}
+                  onChange={(event) => updateField("promotionName", event.target.value)}
                   className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all font-medium"
                 />
               </div>
@@ -121,6 +183,8 @@ export default function AddPromotionPage() {
                 <textarea
                   placeholder="Brief explanation of this promotion for staff..."
                   rows={4}
+                  value={formData.internalDescription}
+                  onChange={(event) => updateField("internalDescription", event.target.value)}
                   className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all font-medium resize-none"
                 />
               </div>
@@ -155,6 +219,8 @@ export default function AddPromotionPage() {
                     <input
                       type="number"
                       placeholder="0"
+                      value={formData.discountValue}
+                      onChange={(event) => updateField("discountValue", event.target.value)}
                       className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all font-medium"
                     />
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 font-bold">
@@ -167,7 +233,7 @@ export default function AddPromotionPage() {
                     Applicable To
                   </label>
                   <div className="relative">
-                    <select className="appearance-none w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all cursor-pointer font-medium text-slate-600">
+                    <select value={formData.applicableTo} onChange={(event) => updateField("applicableTo", event.target.value)} className="appearance-none w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all cursor-pointer font-medium text-slate-600">
                       <option>All Services</option>
                       <option>Spa Only</option>
                       <option>Dining Only</option>
@@ -198,6 +264,8 @@ export default function AddPromotionPage() {
                   </label>
                   <input
                     type="date"
+                    value={formData.startDate}
+                    onChange={(event) => updateField("startDate", event.target.value)}
                     className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all font-medium"
                   />
                 </div>
@@ -207,6 +275,8 @@ export default function AddPromotionPage() {
                   </label>
                   <input
                     type="date"
+                    value={formData.endDate}
+                    onChange={(event) => updateField("endDate", event.target.value)}
                     className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all font-medium"
                   />
                 </div>
@@ -218,10 +288,7 @@ export default function AddPromotionPage() {
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {days.map((day, idx) => {
-                    const id = `${day}-${idx}`;
-                    const isSelected =
-                      recurringDays.includes(id) ||
-                      (idx < 5 && recurringDays.includes(day)); // Rough match for initial state
+                    const isSelected = recurringDays.includes(String(idx));
                     return (
                       <button
                         key={idx}
@@ -277,7 +344,8 @@ export default function AddPromotionPage() {
                 {requirePromoCode && (
                   <input
                     type="text"
-                    defaultValue="SUMMER20"
+                    value={formData.promoCode}
+                    onChange={(event) => updateField("promoCode", event.target.value)}
                     className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all font-medium"
                   />
                 )}
@@ -315,6 +383,8 @@ export default function AddPromotionPage() {
                   <input
                     type="number"
                     placeholder="50.00"
+                    value={formData.minimumSpend}
+                    onChange={(event) => updateField("minimumSpend", event.target.value)}
                     className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all font-medium"
                   />
                 </div>
@@ -323,6 +393,8 @@ export default function AddPromotionPage() {
           </div>
         </div>
       </main>
+
+      {error ? <p className="fixed bottom-24 left-1/2 z-[60] -translate-x-1/2 rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 shadow-lg">{error}</p> : null}
 
       {/* Action Footer */}
       <footer className="fixed bottom-0 left-0 right-0 md:left-20 lg:left-64 bg-white/80 backdrop-blur-xl border-t border-slate-100 p-6 z-50 transition-all">
@@ -333,8 +405,8 @@ export default function AddPromotionPage() {
           >
             Cancel
           </Link>
-          <button className="px-8 py-3.5 bg-[#1e2a5e] hover:bg-[#1a2552] text-white rounded-2xl text-sm font-bold flex items-center gap-2 shadow-xl shadow-slate-900/10 transition-all">
-            Create Promotion
+          <button onClick={handleCreate} disabled={isSaving} className="px-8 py-3.5 bg-[#1e2a5e] hover:bg-[#1a2552] disabled:opacity-60 text-white rounded-2xl text-sm font-bold flex items-center gap-2 shadow-xl shadow-slate-900/10 transition-all">
+            {isSaving ? "Creating..." : "Create Promotion"}
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>

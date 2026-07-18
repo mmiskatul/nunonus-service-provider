@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FiEye, FiEyeOff, FiLock, FiMail } from "react-icons/fi";
 import { login } from "@/components/auth/auth-client";
-import { saveVendorToken } from "@/lib/vendor-api";
 
 export function LoginView() {
   const router = useRouter();
@@ -27,10 +26,8 @@ export function LoginView() {
       setError(result.message ?? "Login failed.");
       return;
     }
-    if (result.data?.access_token) {
-      saveVendorToken(result.data.access_token, result.data.refresh_token);
-    }
-    router.push(nextUrl);
+    router.replace(nextUrl);
+    router.refresh();
   };
 
   return (

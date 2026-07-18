@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   X,
   Phone,
@@ -17,12 +17,21 @@ import { cn } from "@/lib/utils";
 interface BookingDetailsModalProps {
   booking: Booking | null;
   onClose: () => void;
+  onUpdateStatus: (status: string) => void;
+  onReschedule: (date: string, time: string) => void;
+  onGenerateReceipt: () => void;
 }
 
 export function BookingDetailsModal({
   booking,
   onClose,
+  onUpdateStatus,
+  onReschedule,
+  onGenerateReceipt,
 }: BookingDetailsModalProps) {
+  const [rescheduling, setRescheduling] = useState(false);
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
   if (!booking) return null;
 
   return (
@@ -46,6 +55,7 @@ export function BookingDetailsModal({
             </h2>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-2 hover:bg-slate-50 rounded-2xl transition-all group"
           >
@@ -84,18 +94,12 @@ export function BookingDetailsModal({
 
           {/* Customer Info */}
           <div className="flex items-center gap-4">
-            <img
-              src={booking.customer.avatar}
-              alt={booking.customer.name}
-              className="h-20 w-20 rounded-[28px] border-4 border-slate-50 object-cover shadow-sm"
-            />
+            {booking.customer.avatar ? <img src={booking.customer.avatar} alt={booking.customer.name} className="h-20 w-20 rounded-[28px] border-4 border-slate-50 object-cover shadow-sm" /> : <span className="flex h-20 w-20 items-center justify-center rounded-[28px] border-4 border-slate-50 bg-slate-100 text-xl font-black text-slate-500">{booking.customer.name.slice(0, 1).toUpperCase()}</span>}
             <div>
               <h3 className="text-xl font-bold text-slate-800 mb-1">
                 {booking.customer.name}
               </h3>
-              <p className="text-sm font-medium text-slate-400">
-                Customer since 2021
-              </p>
+              <p className="text-sm font-medium text-slate-400">{booking.customerSince ? `Customer since ${booking.customerSince}` : "Customer"}</p>
             </div>
           </div>
 
@@ -110,7 +114,7 @@ export function BookingDetailsModal({
                   Phone
                 </span>
                 <span className="text-sm font-bold text-slate-700">
-                  +1 (555) 234-5678
+                  {booking.phone || "Not provided"}
                 </span>
               </div>
             </div>
@@ -124,8 +128,7 @@ export function BookingDetailsModal({
                   Email
                 </span>
                 <span className="text-sm font-bold text-slate-700">
-                  {booking.customer.name.toLowerCase().replace(" ", ".")}
-                  @goodplace.com
+                  {booking.email || "Not provided"}
                 </span>
               </div>
             </div>
@@ -141,28 +144,28 @@ export function BookingDetailsModal({
             </div>
             <div className="p-5 bg-orange-50/50 rounded-[32px] border border-orange-100/50">
               <p className="text-sm font-medium leading-relaxed text-orange-800/80">
-                "Allergy: Peanuts. Requires a quiet corner table if available.
-                It's a surprise birthday dinner."
+                {booking.specialRequests || "No special requests provided."}
               </p>
             </div>
           </div>
 
           {/* Action Buttons */}
           <div className="space-y-3 pt-4">
-            <button className="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-4 rounded-[22px] shadow-lg shadow-sky-500/25 transition-all flex items-center justify-center gap-3 active:scale-[0.98]">
+            <button type="button" onClick={() => onUpdateStatus("complete")} className="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-4 rounded-[22px] shadow-lg shadow-sky-500/25 transition-all flex items-center justify-center gap-3 active:scale-[0.98]">
               <CheckCircle2 className="h-5 w-5" />
               Mark Completed
             </button>
-            <button className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold py-4 rounded-[22px] border border-slate-100 transition-all flex items-center justify-center gap-3 active:scale-[0.98]">
+            <button type="button" onClick={() => setRescheduling((value) => !value)} className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold py-4 rounded-[22px] border border-slate-100 transition-all flex items-center justify-center gap-3 active:scale-[0.98]">
               <Calendar className="h-5 w-5 text-slate-400" />
               Reschedule
             </button>
+            {rescheduling ? <div className="space-y-3 rounded-2xl border border-slate-100 bg-white p-4"><div className="grid grid-cols-2 gap-3"><label className="text-xs font-bold text-slate-500">Date<input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /></label><label className="text-xs font-bold text-slate-500">Time<input type="time" value={time} onChange={(event) => setTime(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /></label></div><button type="button" disabled={!date || !time} onClick={() => { onReschedule(date, time); setRescheduling(false); }} className="w-full rounded-xl bg-[#1e2a5e] px-4 py-3 text-sm font-bold text-white disabled:opacity-50">Confirm new time</button></div> : null}
 
             <div className="flex items-center justify-between px-6 pt-4">
-              <button className="text-[11px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-600 transition-colors">
+              <button type="button" onClick={() => onUpdateStatus("cancelled")} className="text-[11px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-600 transition-colors">
                 Cancel Booking
               </button>
-              <button className="text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-500 transition-colors">
+              <button type="button" onClick={onGenerateReceipt} className="text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-500 transition-colors">
                 Print Receipt
               </button>
             </div>

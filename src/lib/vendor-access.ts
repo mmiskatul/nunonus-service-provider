@@ -35,6 +35,7 @@ const CATEGORY_VALUES: VendorCategory[] = [
 
 const ALWAYS_VISIBLE_NAV_ITEMS: SidebarNavItem[] = [
   { name: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+  { name: "Customers", icon: UserCircle2, href: "/customers" },
   { name: "Event Management", icon: CalendarPlus2, href: "/events" },
   { name: "Promotions", icon: Tag, href: "/promotions" },
   { name: "Analytics", icon: BarChart3, href: "/analytics" },
@@ -80,6 +81,8 @@ const SHARED_ALLOWED_PREFIXES = [
   "/reviews",
   "/settings",
   "/profile",
+  "/customers",
+  "/notifications",
 ];
 
 function normalizeCategory(value: unknown): VendorCategory | null {

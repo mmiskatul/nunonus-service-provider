@@ -27,8 +27,8 @@ export function resolveAuthHeader(request: Request | NextRequest): string | null
     return `Bearer ${decodeURIComponent(match[1])}`;
   }
 
-  if ("cookies" in request && typeof (request as any).cookies?.get === "function") {
-    const token = (request as any).cookies.get("nunos_vendor_access_token")?.value;
+  if (request instanceof NextRequest) {
+    const token = request.cookies.get("nunos_vendor_access_token")?.value;
     if (token) {
       return `Bearer ${token}`;
     }
@@ -44,8 +44,8 @@ function cookieValue(request: Request | NextRequest, name: string): string | nul
     return decodeURIComponent(match[1]);
   }
 
-  if ("cookies" in request && typeof (request as any).cookies?.get === "function") {
-    return (request as any).cookies.get(name)?.value ?? null;
+  if (request instanceof NextRequest) {
+    return request.cookies.get(name)?.value ?? null;
   }
 
   return null;
@@ -84,18 +84,21 @@ function applyVendorCookies(
   response.cookies.set("nunos_vendor_auth", "true", {
     httpOnly: true,
     sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
   });
   response.cookies.set("nunos_vendor_access_token", accessToken, {
     httpOnly: true,
     sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
     path: "/",
   });
   if (refreshToken) {
     response.cookies.set("nunos_vendor_refresh_token", refreshToken, {
       httpOnly: true,
       sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
       path: "/",
       maxAge: 60 * 60 * 24 * 30,
     });
@@ -163,17 +166,19 @@ export async function proxyPost(
   backendPath: string,
 ): Promise<NextResponse> {
   try {
-    const body = await request.json().catch(() => ({}));
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
+    const contentType = request.headers.get("content-type") || "application/json";
+    const isJson = contentType.includes("application/json");
+    const body: BodyInit = isJson
+      ? JSON.stringify(await request.json().catch(() => ({})))
+      : await request.arrayBuffer();
+    const headers: Record<string, string> = { "Content-Type": contentType };
     const auth = resolveAuthHeader(request);
     if (auth) headers["Authorization"] = auth;
 
     const { response: res, accessToken } = await fetchBackendWithRefresh(request, backendUrl(backendPath), {
       method: "POST",
       headers,
-      body: JSON.stringify(body),
+      body,
     });
     const data = await res.json().catch(() => ({}));
     const nextResponse = NextResponse.json(data, { status: res.status });

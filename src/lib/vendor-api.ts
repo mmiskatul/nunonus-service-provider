@@ -19,85 +19,29 @@ const V = getApiBaseUrl();
 
 // ─── Token management ─────────────────────────────────────────────────────────
 
-export function getVendorToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("vendor_access_token");
-}
-
-function getVendorRefreshToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("vendor_refresh_token");
-}
-
-export function saveVendorToken(token: string, refreshToken?: string): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem("vendor_access_token", token);
-  if (refreshToken) localStorage.setItem("vendor_refresh_token", refreshToken);
-}
-
 export function clearVendorTokens(): void {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem("vendor_access_token");
-  localStorage.removeItem("vendor_refresh_token");
   clearCachedVendorCategories();
 }
 
 // ─── Base request ─────────────────────────────────────────────────────────────
 
-function buildAuthHeaders(extra?: HeadersInit): HeadersInit {
-  const token = getVendorToken();
-  return {
-    ...(extra ?? {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
-
-let vendorRefreshPromise: Promise<string | null> | null = null;
-
-async function refreshVendorAccessToken(): Promise<string | null> {
-  const refreshToken = getVendorRefreshToken();
-  if (!refreshToken) {
-    return null;
-  }
-  if (vendorRefreshPromise) {
-    return vendorRefreshPromise;
-  }
-
-  vendorRefreshPromise = (async () => {
-    const response = await fetch("/api/auth/refresh", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
-    const result = (await response.json().catch(() => ({}))) as VendorAuthResult & {
-      detail?: string;
-      message?: string;
-    };
-    if (!response.ok || !result.access_token) {
-      clearVendorTokens();
-      return null;
-    }
-    saveVendorToken(result.access_token, result.refresh_token ?? result.session_token);
-    return result.access_token;
-  })();
-
-  try {
-    return await vendorRefreshPromise;
-  } finally {
-    vendorRefreshPromise = null;
-  }
+function vendorProxyPath(path: string): string {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return normalized.startsWith("/vendor/")
+    ? `/api/vendor${normalized.slice("/vendor".length)}`
+    : `/api/vendor${normalized}`;
 }
 
 export async function vendorRequest<T>(
   path: string,
   method: "GET" | "POST" | "PATCH" | "DELETE" = "GET",
   body?: Record<string, unknown>,
-  retryOnAuth = true,
 ): Promise<T> {
-  const response = await fetch(`${V}${path}`, {
+  const response = await fetch(vendorProxyPath(path), {
     method,
-    headers: buildAuthHeaders({ "Content-Type": "application/json" }),
+    headers: { "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
+    credentials: "same-origin",
   });
 
   const result = (await response.json().catch(() => ({}))) as T & {
@@ -107,22 +51,19 @@ export async function vendorRequest<T>(
 
   if (!response.ok) {
     if (response.status === 401) {
-      if (retryOnAuth) {
-        const refreshedToken = await refreshVendorAccessToken();
-        if (refreshedToken) {
-          return vendorRequest<T>(path, method, body, false);
-        }
-      }
       clearVendorTokens();
       if (typeof window !== "undefined") {
-        window.location.href = "/auth/login";
+        const next = `${window.location.pathname}${window.location.search}`;
+        window.location.href = `/auth/login?next=${encodeURIComponent(next)}`;
       }
     }
-    throw new Error(
+    const error = new Error(
       (result as { detail?: string }).detail ||
         (result as { message?: string }).message ||
         `Request failed (${response.status})`,
     );
+    (error as Error & { status?: number }).status = response.status;
+    throw error;
   }
 
   return result;
@@ -165,14 +106,6 @@ function q(params: Record<string, unknown>): string {
 }
 
 // ─── Auth ──────────────────────────────────────────────────────────────────────
-
-export interface VendorAuthResult {
-  access_token?: string;
-  refresh_token?: string;
-  session_token?: string;
-  vendor?: Record<string, unknown>;
-  [key: string]: unknown;
-}
 
 export type VendorEventStatus = "draft" | "published" | "archived" | "cancelled";
 export type VendorEventBookingMode = "simple" | "detailed";
@@ -228,36 +161,6 @@ export async function vendorGetPublicLegalDoc(docType: "terms" | "privacy") {
   return vendorPublicRequest<Record<string, unknown>>(`/api/public-legal/${docType}`);
 }
 
-/** POST /vendor/auth/login */
-export async function vendorLogin(payload: {
-  email_or_phone: string;
-  password: string;
-}) {
-  const result = await vendorRequest<VendorAuthResult>(
-    `/vendor/auth/login`,
-    "POST",
-    payload,
-  );
-  if (result.access_token) {
-    saveVendorToken(result.access_token, result.refresh_token ?? result.session_token);
-  }
-  return result;
-}
-
-/** POST /vendor/auth/refresh */
-export async function vendorRefreshSession(refreshToken: string) {
-  const result = await vendorRequest<VendorAuthResult>(
-    `/vendor/auth/refresh`,
-    "POST",
-    { refresh_token: refreshToken },
-    false,
-  );
-  if (result.access_token) {
-    saveVendorToken(result.access_token, result.refresh_token ?? result.session_token);
-  }
-  return result;
-}
-
 /** POST /vendor/auth/forgot-password/request */
 export async function vendorForgotPasswordRequest(payload: {
   email_or_phone: string;
@@ -299,31 +202,6 @@ export async function vendorGetKycStatus() {
 // ─── Dashboard ─────────────────────────────────────────────────────────────────
 
 /** GET /vendor/dashboard/overview */
-export async function vendorGetDashboardOverview() {
-  return vendorRequest<Record<string, unknown>>(`/vendor/dashboard/overview`);
-}
-
-/** GET /vendor/dashboard/booking-trends */
-export async function vendorGetBookingTrends() {
-  return vendorRequest<Record<string, unknown>>(
-    `/vendor/dashboard/booking-trends`,
-  );
-}
-
-/** GET /vendor/dashboard/calendar-preview */
-export async function vendorGetCalendarPreview() {
-  return vendorRequest<Record<string, unknown>>(
-    `/vendor/dashboard/calendar-preview`,
-  );
-}
-
-/** GET /vendor/dashboard/upcoming-bookings */
-export async function vendorGetUpcomingBookings(limit = 10) {
-  return vendorRequest<Record<string, unknown>>(
-    `/vendor/dashboard/upcoming-bookings${q({ limit })}`,
-  );
-}
-
 export async function vendorListEvents(
   params: {
     search?: string;
@@ -356,13 +234,6 @@ export async function vendorUpdateEventStatus(eventId: string, status: VendorEve
 
 export async function vendorDeleteEvent(eventId: string) {
   return vendorRequest<Record<string, unknown>>(`/vendor/events/${eventId}`, "DELETE");
-}
-
-/** GET /vendor/dashboard/recent-reviews */
-export async function vendorGetRecentReviews(limit = 5) {
-  return vendorRequest<Record<string, unknown>>(
-    `/vendor/dashboard/recent-reviews${q({ limit })}`,
-  );
 }
 
 // ─── Booking Management ────────────────────────────────────────────────────────
@@ -843,7 +714,7 @@ export async function vendorReplySupportTicket(
 
 /** GET /vendor/users */
 export async function vendorListUsers(
-  params: { limit?: number; skip?: number } = {},
+  params: { limit?: number; skip?: number; search?: string } = {},
 ) {
   return vendorRequest<Record<string, unknown>>(
     `/vendor/users${q(params)}`,
@@ -875,6 +746,11 @@ export async function vendorMarkNotificationRead(notificationId: string) {
   );
 }
 
+/** DELETE /vendor/notifications/clear */
+export async function vendorClearNotifications() {
+  return vendorRequest<Record<string, unknown>>(`/vendor/notifications/clear`, "DELETE");
+}
+
 /** PATCH /vendor/notifications/settings */
 export async function vendorUpdateNotificationSettings(
   payload: Record<string, unknown>,
@@ -901,14 +777,10 @@ export async function uploadVendorFile(file: File): Promise<string> {
   const formData = new FormData();
   formData.append("file", file);
 
-  const token = getVendorToken();
-  const headers: Record<string, string> = {};
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-
-  const response = await fetch(`${V}/vendor/uploads/image`, {
+  const response = await fetch("/api/vendor/uploads/image", {
     method: "POST",
-    headers,
     body: formData,
+    credentials: "same-origin",
   });
 
   const result = (await response.json().catch(() => ({}))) as {
