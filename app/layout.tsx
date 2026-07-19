@@ -13,7 +13,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    {/* Browser extensions may add attributes to <html> before hydration. */}
+    <html lang="en" suppressHydrationWarning>
       <body>
         <AppProviders>{children}</AppProviders>
       </body>
