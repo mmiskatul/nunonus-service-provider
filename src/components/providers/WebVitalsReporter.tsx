@@ -12,7 +12,8 @@ export function WebVitalsReporter() {
       navigationType: metric.navigationType,
       path: window.location.pathname,
     });
-    if (!navigator.sendBeacon("/api/telemetry/web-vitals", payload)) {
+    const beacon = new Blob([payload], { type: "application/json" });
+    if (!navigator.sendBeacon("/api/telemetry/web-vitals", beacon)) {
       void fetch("/api/telemetry/web-vitals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
