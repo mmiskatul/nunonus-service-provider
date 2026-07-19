@@ -16,6 +16,8 @@ function getApiBaseUrl(): string {
 }
 
 const V = getApiBaseUrl();
+let profileSettingsCache: { value: Record<string, unknown>; expiresAt: number } | null = null;
+let profileSettingsRequest: Promise<Record<string, unknown>> | null = null;
 
 // ─── Token management ─────────────────────────────────────────────────────────
 
@@ -652,9 +654,27 @@ export async function vendorUpdateLegalDoc(
 
 /** GET /vendor/settings/profile */
 export async function vendorGetProfileSettings(signal?: AbortSignal) {
-  const result = await vendorRequest<Record<string, unknown>>(`/vendor/settings/profile`, "GET", undefined, { signal });
-  cacheVendorCategories(result.categories ?? result.category);
-  return result;
+  const now = Date.now();
+  if (profileSettingsCache && profileSettingsCache.expiresAt > now) {
+    return profileSettingsCache.value;
+  }
+  if (profileSettingsRequest) {
+    return profileSettingsRequest;
+  }
+
+  // Several dashboard components need the same profile. Share one in-flight
+  // request and briefly cache the result to avoid a request per component or
+  // React Strict Mode mount.
+  profileSettingsRequest = vendorRequest<Record<string, unknown>>(`/vendor/settings/profile`, "GET", undefined, { signal })
+    .then((result) => {
+      profileSettingsCache = { value: result, expiresAt: Date.now() + 30_000 };
+      cacheVendorCategories(result.categories ?? result.category);
+      return result;
+    })
+    .finally(() => {
+      profileSettingsRequest = null;
+    });
+  return profileSettingsRequest;
 }
 
 /** PATCH /vendor/settings/profile */
@@ -669,6 +689,7 @@ export async function vendorUpdateProfileSettings(
   cacheVendorCategories(
     result.categories ?? payload.categories ?? result.category ?? payload.category,
   );
+  profileSettingsCache = null;
   return result;
 }
 
