@@ -2,8 +2,16 @@
 
 import { useReportWebVitals } from "next/web-vitals";
 
+const reportedMetrics = new Set<string>();
+
 export function WebVitalsReporter() {
   useReportWebVitals((metric) => {
+    const metricKey = `${window.location.pathname}:${metric.name}:${metric.id ?? ""}`;
+    if (reportedMetrics.has(metricKey)) {
+      return;
+    }
+    reportedMetrics.add(metricKey);
+
     const payload = JSON.stringify({
       id: metric.id,
       name: metric.name,
