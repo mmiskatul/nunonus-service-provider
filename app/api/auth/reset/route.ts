@@ -31,7 +31,8 @@ export async function POST(request: Request) {
         new_password: password,
         confirm_password: password,
       }),
-      cache: "no-store"
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
     });
     const payload = (await response.json().catch(() => ({}))) as { detail?: string; message?: string };
     if (!response.ok) {

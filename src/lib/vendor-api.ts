@@ -631,17 +631,6 @@ export async function vendorUpdateGeneralSettings(
   );
 }
 
-/** PATCH /vendor/settings/commission */
-export async function vendorUpdateCommissionSettings(
-  payload: Record<string, unknown>,
-) {
-  return vendorRequest<Record<string, unknown>>(
-    `/vendor/settings/commission`,
-    "PATCH",
-    payload,
-  );
-}
-
 /** GET /vendor/settings/legal/:doc_type */
 export async function vendorGetLegalDoc(docType: string) {
   return vendorRequest<Record<string, unknown>>(

@@ -46,6 +46,7 @@ type LegalDocPayload = {
   title?: string;
   content?: string;
   last_updated?: string;
+  content_by_audience?: Partial<Record<AudienceKey, string>>;
   detail?: string;
 };
 
@@ -56,11 +57,13 @@ async function loadLegalContent(request: Request | NextRequest) {
       method: "GET",
       headers,
       cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
     }),
     fetch(backendUrl("/vendor/settings/legal/privacy"), {
       method: "GET",
       headers,
       cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
     }),
   ]);
 
@@ -95,12 +98,12 @@ async function loadLegalContent(request: Request | NextRequest) {
     },
     content: {
       terms: {
-        apps: "",
-        business: String(termsPayload.content || ""),
+        apps: String(termsPayload.content_by_audience?.apps || ""),
+        business: String(termsPayload.content_by_audience?.business || termsPayload.content || ""),
       },
       privacy: {
-        apps: "",
-        business: String(privacyPayload.content || ""),
+        apps: String(privacyPayload.content_by_audience?.apps || ""),
+        business: String(privacyPayload.content_by_audience?.business || privacyPayload.content || ""),
       },
     },
   };
@@ -111,13 +114,10 @@ async function loadLegalContent(request: Request | NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     return await loadLegalContent(request);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
-        detail:
-          error instanceof Error
-            ? error.message
-            : "Failed to read legal content data",
+        detail: "Failed to read legal content data",
       },
       { status: 502 },
     );
@@ -140,6 +140,7 @@ export async function PATCH(request: Request) {
         audience: payload.audience,
       }),
       cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
     });
     const updatedDoc = (await response.json().catch(() => ({}))) as LegalDocPayload;
 
@@ -148,9 +149,9 @@ export async function PATCH(request: Request) {
     }
 
     return loadLegalContent(request);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { detail: error instanceof Error ? error.message : "Failed to update legal content" },
+      { detail: "Failed to update legal content" },
       { status: 502 },
     );
   }

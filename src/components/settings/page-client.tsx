@@ -15,6 +15,7 @@ import {
   type VendorEventStatus,
 } from "@/lib/vendor-api";
 import { extractVendorCategories, type VendorCategory } from "@/lib/vendor-access";
+import { buildSettingsProfilePayload } from "@/lib/vendor-contracts";
 
 type SettingsTab = "profile" | "notifications" | "security";
 
@@ -39,9 +40,15 @@ type EventFormState = {
 export type SettingsProfileData = {
   business_name?: string;
   name?: string;
+  category?: string;
+  categories?: string[];
+  phone_number?: string;
   phone?: string;
+  email_address?: string;
   email?: string;
+  office_address?: string;
   address?: string;
+  about_business?: string;
   description?: string;
 };
 
@@ -126,10 +133,10 @@ export function SettingsPageClient({
   const [eventStatusMessage, setEventStatusMessage] = useState("");
   const [profileForm, setProfileForm] = useState({
     business_name: String(initialProfile.business_name ?? initialProfile.name ?? ""),
-    phone: String(initialProfile.phone ?? ""),
-    email: String(initialProfile.email ?? ""),
-    address: String(initialProfile.address ?? ""),
-    description: String(initialProfile.description ?? ""),
+    phone: String(initialProfile.phone_number ?? initialProfile.phone ?? ""),
+    email: String(initialProfile.email_address ?? initialProfile.email ?? ""),
+    address: String(initialProfile.office_address ?? initialProfile.address ?? ""),
+    description: String(initialProfile.about_business ?? initialProfile.description ?? ""),
   });
   const [passwordForm, setPasswordForm] = useState({
     old_password: "",
@@ -169,7 +176,12 @@ export function SettingsPageClient({
   const handleSaveProfile = async () => {
     try {
       setSaving(true);
-      await vendorUpdateProfileSettings(profileForm as Record<string, unknown>);
+      await vendorUpdateProfileSettings(
+        buildSettingsProfilePayload(
+          profileForm,
+          initialProfile.categories ?? initialProfile.category,
+        ),
+      );
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {

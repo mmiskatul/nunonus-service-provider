@@ -112,7 +112,15 @@ export default function RestaurantBookingsPage() {
       const result = await vendorGenerateReceipt(booking.backendId);
       const url = String(result.download_url ?? result.receipt_url ?? "");
       if (url) window.open(url, "_blank", "noopener,noreferrer");
-      else setActionError(String(result.message ?? "Receipt generated."));
+      else if (typeof result.content === "string") {
+        const blob = new Blob([result.content], { type: String(result.content_type ?? "text/html;charset=utf-8") });
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = objectUrl;
+        anchor.download = String(result.filename ?? `receipt-${booking.id}.html`);
+        anchor.click();
+        URL.revokeObjectURL(objectUrl);
+      } else setActionError("The receipt response was incomplete. Please try again.");
     } catch (error) { setActionError(error instanceof Error ? error.message : "Failed to generate receipt."); }
   };
 

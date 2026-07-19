@@ -19,7 +19,8 @@ export async function POST(request: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email_or_phone: email }),
-      cache: "no-store"
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
     });
     const payload = (await response.json().catch(() => ({}))) as { detail?: string; message?: string };
     if (!response.ok) {

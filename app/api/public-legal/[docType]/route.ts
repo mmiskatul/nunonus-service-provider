@@ -24,12 +24,13 @@ export async function GET(
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
     });
     const payload = await response.json().catch(() => ({}));
     return NextResponse.json(payload, { status: response.status });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { detail: error instanceof Error ? error.message : "Failed to load legal document." },
+      { detail: "Failed to load legal document." },
       { status: 502 },
     );
   }

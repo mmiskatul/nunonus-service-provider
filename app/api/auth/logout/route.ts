@@ -16,6 +16,7 @@ export async function POST(request: Request) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refresh_token: decodeURIComponent(refreshToken) }),
         cache: "no-store",
+        signal: AbortSignal.timeout(15_000),
       });
     } catch {
       // Best-effort revoke; cookies are cleared below regardless.

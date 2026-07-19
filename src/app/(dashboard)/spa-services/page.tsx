@@ -141,12 +141,11 @@ export default function SpaServicesPage() {
       await Promise.all(
         allFiles.map((file) =>
           vendorJson(
-            file.type === "menu"
-              ? "/vendor/menu-services/menu-assets"
-              : "/vendor/menu-services/gallery-assets",
+            "/vendor/menu-services/assets",
             "POST",
             {
               asset_url: file.assetUrl,
+              asset_type: file.type,
               file_name: file.name,
               mime_type: null,
             },

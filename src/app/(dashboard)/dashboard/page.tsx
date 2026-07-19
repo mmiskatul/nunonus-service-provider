@@ -53,7 +53,9 @@ export default function Dashboard() {
   ].filter(Boolean) as Array<{ label: string; href: string; icon: typeof Hotel }>;
   const pendingBookings = (overview?.upcoming_bookings ?? []).filter((booking) => String(booking.status ?? "").toLowerCase() === "pending").length;
   const unpaidBookings = (overview?.upcoming_bookings ?? []).filter((booking) => ["unpaid", "failed"].includes(String(booking.payment_status ?? booking.payment ?? "").toLowerCase())).length;
-  const unansweredReviews = (overview?.recent_reviews ?? []).filter((review) => !review.reply).length;
+  const unansweredReviews = (overview?.recent_reviews ?? []).filter(
+    (review) => !(review.vendor_reply ?? review.reply),
+  ).length;
   const attentionItems = [
     { label: "Pending confirmations", count: pendingBookings, href: bookingsHref },
     { label: "Payments needing attention", count: unpaidBookings, href: bookingsHref },

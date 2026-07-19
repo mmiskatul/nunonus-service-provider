@@ -82,13 +82,10 @@ function isAccountConflictMessage(message: string) {
   ].includes(message);
 }
 
-const DEFAULT_BACKEND_BASE_URL = "https://nunos-backend.vercel.app";
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || DEFAULT_BACKEND_BASE_URL).replace(/\/+$/, "");
-const API_V1_BASE_URL = `${API_BASE_URL}/api/v1`;
 const REGISTER_DRAFT_STORAGE_KEY = "vendor_registration_draft";
 
 function getApiBaseUrl(): string {
-  return API_V1_BASE_URL;
+  return "/api";
 }
 
 const initialFormData: RegisterFormData = {
@@ -336,7 +333,7 @@ async function uploadRegistrationDocument(file: File) {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`${API_V1_BASE_URL}/vendor/auth/upload-document`, {
+  const response = await fetch("/api/vendor/auth/upload-document", {
     method: "POST",
     body: formData,
   });

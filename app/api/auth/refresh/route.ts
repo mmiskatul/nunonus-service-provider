@@ -20,6 +20,7 @@ export async function POST(request: Request) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: refreshToken }),
       cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
     });
 
     const payload = (await response.json().catch(() => ({}))) as {
