@@ -3,7 +3,7 @@
 import React, { useRef, useState } from "react";
 import { Header } from "@/components/Header";
 import { useToast } from "@/components/ui/ToastProvider";
-import { Bell, CalendarPlus2, Save, Shield, User, X } from "lucide-react";
+import { Bell, CalendarPlus2, Save, Shield, User, X, Hotel, Utensils, Sparkles } from "lucide-react";
 import {
   vendorCreateEvent,
   vendorGetProfileSettings,
@@ -51,6 +51,12 @@ export type SettingsProfileData = {
   address?: string;
   about_business?: string;
   description?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  location_label?: string | null;
+  restaurant_settings?: Record<string, string>;
+  hotel_settings?: Record<string, string>;
+  spa_settings?: Record<string, string>;
 };
 
 export type SettingsNotificationData = {
@@ -140,6 +146,12 @@ export function SettingsPageClient({
     address: String(initialProfile.office_address ?? initialProfile.address ?? ""),
     description: String(initialProfile.about_business ?? initialProfile.description ?? ""),
   });
+  const [serviceTab, setServiceTab] = useState<"restaurant" | "hotel" | "spa">("restaurant");
+  const [serviceSettings, setServiceSettings] = useState({
+    restaurant: { about: initialProfile.restaurant_settings?.about ?? "", hours: initialProfile.restaurant_settings?.hours ?? "", policy: initialProfile.restaurant_settings?.policy ?? "" },
+    hotel: { about: initialProfile.hotel_settings?.about ?? "", hours: initialProfile.hotel_settings?.hours ?? "", policy: initialProfile.hotel_settings?.policy ?? "" },
+    spa: { about: initialProfile.spa_settings?.about ?? "", hours: initialProfile.spa_settings?.hours ?? "", policy: initialProfile.spa_settings?.policy ?? "" },
+  });
   const [passwordForm, setPasswordForm] = useState({
     old_password: "",
     new_password: "",
@@ -179,10 +191,15 @@ export function SettingsPageClient({
     try {
       setSaving(true);
       await vendorUpdateProfileSettings(
-        buildSettingsProfilePayload(
+        {
+          ...buildSettingsProfilePayload(
           profileForm,
           initialProfile.categories ?? initialProfile.category,
-        ),
+          ),
+          restaurant_settings: serviceSettings.restaurant,
+          hotel_settings: serviceSettings.hotel,
+          spa_settings: serviceSettings.spa,
+        },
       );
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -362,6 +379,30 @@ export function SettingsPageClient({
                     rows={4}
                     className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-700 outline-none focus:border-sky-400 resize-none transition"
                   />
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-base font-black text-slate-800">Service-specific settings</h3>
+                      <p className="text-xs text-slate-500">These details are shown for the selected service type. New rooms and services inherit the saved business location above.</p>
+                    </div>
+                    <div className="flex gap-2 rounded-xl bg-white p-1">
+                      {([
+                        ["restaurant", "Restaurant", Utensils],
+                        ["hotel", "Hotel", Hotel],
+                        ["spa", "Spa", Sparkles],
+                      ] as const).map(([id, label, Icon]) => (
+                        <button key={id} type="button" onClick={() => setServiceTab(id)} className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold ${serviceTab === id ? "bg-[#1e2a5e] text-white" : "text-slate-500 hover:bg-slate-100"}`}>
+                          <Icon className="h-3.5 w-3.5" /> {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="block md:col-span-2"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">About this {serviceTab}</span><textarea rows={3} value={serviceSettings[serviceTab].about} onChange={(e) => setServiceSettings((current) => ({ ...current, [serviceTab]: { ...current[serviceTab], about: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder={`Describe your ${serviceTab} offering`} /></label>
+                    <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Opening hours</span><input value={serviceSettings[serviceTab].hours} onChange={(e) => setServiceSettings((current) => ({ ...current, [serviceTab]: { ...current[serviceTab], hours: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="09:00 - 22:00" /></label>
+                    <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Booking / cancellation policy</span><input value={serviceSettings[serviceTab].policy} onChange={(e) => setServiceSettings((current) => ({ ...current, [serviceTab]: { ...current[serviceTab], policy: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Free cancellation up to 24 hours" /></label>
+                  </div>
                 </div>
                 <button
                   onClick={handleSaveProfile}
