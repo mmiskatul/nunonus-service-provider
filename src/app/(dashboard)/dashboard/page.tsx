@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { CalendarPlus2, Hotel, Megaphone, UtensilsCrossed } from "lucide-react";
 import { Header } from "@/components/Header";
 import { StatsCard } from "@/components/StatsCard";
@@ -40,8 +40,11 @@ export default function Dashboard() {
   // Keep the first render identical on the server and browser. Vendor
   // categories arrive from the client query and would otherwise change the
   // quick-action links during hydration.
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => setHydrated(true), []);
+  const hydrated = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
   const overviewQuery = useQuery(dashboardOverviewQuery());
   const profileQuery = useQuery(vendorProfileQuery());
   const overview = overviewQuery.data as DashboardOverview | undefined;
