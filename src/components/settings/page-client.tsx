@@ -166,6 +166,13 @@ export function SettingsPageClient({
   });
   const [eventForm, setEventForm] = useState<EventFormState>(getDefaultEventForm(DEFAULT_CATEGORIES));
   const bannerInputRef = useRef<HTMLInputElement>(null);
+  const configuredCategories = extractVendorCategories(initialProfile.categories ?? initialProfile.category);
+  const availableServiceTabs = (['restaurant', 'hotel', 'spa'] as const).filter((service) => {
+    const categoryText = configuredCategories.join(" ").toLowerCase();
+    return categoryText.includes(service);
+  });
+  const visibleServiceTabs = availableServiceTabs.length ? availableServiceTabs : ["restaurant" as const];
+  const activeServiceTab = visibleServiceTabs.includes(serviceTab) ? serviceTab : visibleServiceTabs[0];
 
   const ensureCategoriesLoaded = async () => {
     if (categoriesLoaded) {
@@ -391,17 +398,17 @@ export function SettingsPageClient({
                         ["restaurant", "Restaurant", Utensils],
                         ["hotel", "Hotel", Hotel],
                         ["spa", "Spa", Sparkles],
-                      ] as const).map(([id, label, Icon]) => (
-                        <button key={id} type="button" onClick={() => setServiceTab(id)} className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold ${serviceTab === id ? "bg-[#1e2a5e] text-white" : "text-slate-500 hover:bg-slate-100"}`}>
+                      ] as const).filter(([id]) => visibleServiceTabs.includes(id)).map(([id, label, Icon]) => (
+                        <button key={id} type="button" onClick={() => setServiceTab(id)} className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold ${activeServiceTab === id ? "bg-[#1e2a5e] text-white" : "text-slate-500 hover:bg-slate-100"}`}>
                           <Icon className="h-3.5 w-3.5" /> {label}
                         </button>
                       ))}
                     </div>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
-                    <label className="block md:col-span-2"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">About this {serviceTab}</span><textarea rows={3} value={serviceSettings[serviceTab].about} onChange={(e) => setServiceSettings((current) => ({ ...current, [serviceTab]: { ...current[serviceTab], about: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder={`Describe your ${serviceTab} offering`} /></label>
-                    <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Opening hours</span><input value={serviceSettings[serviceTab].hours} onChange={(e) => setServiceSettings((current) => ({ ...current, [serviceTab]: { ...current[serviceTab], hours: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="09:00 - 22:00" /></label>
-                    <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Booking / cancellation policy</span><input value={serviceSettings[serviceTab].policy} onChange={(e) => setServiceSettings((current) => ({ ...current, [serviceTab]: { ...current[serviceTab], policy: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Free cancellation up to 24 hours" /></label>
+                    <label className="block md:col-span-2"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">About this {activeServiceTab}</span><textarea rows={3} value={serviceSettings[activeServiceTab].about} onChange={(e) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], about: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder={`Describe your ${activeServiceTab} offering`} /></label>
+                    <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Opening hours</span><input value={serviceSettings[activeServiceTab].hours} onChange={(e) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], hours: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="09:00 - 22:00" /></label>
+                    <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Booking / cancellation policy</span><input value={serviceSettings[activeServiceTab].policy} onChange={(e) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], policy: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Free cancellation up to 24 hours" /></label>
                   </div>
                 </div>
                 <button
