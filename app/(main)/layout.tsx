@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Menu } from "lucide-react";
@@ -23,8 +23,13 @@ export default function MainLayout({
   const queryClient = useQueryClient();
   const pathname = usePathname();
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const hydrated = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
   const profileQuery = useQuery(vendorProfileQuery());
-  const categories = profileQuery.data
+  const categories = hydrated && profileQuery.data
     ? extractVendorCategories(profileQuery.data.categories ?? profileQuery.data.category)
     : extractVendorCategories("Restaurant");
 
