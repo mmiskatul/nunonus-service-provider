@@ -60,7 +60,7 @@ export function Sidebar({
       <aside
         aria-label="Main navigation"
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-white/5 bg-[#1e2a5e] text-white shadow-2xl transition-transform duration-200 md:static md:z-auto md:w-64 md:translate-x-0 md:shadow-none",
+          "fixed inset-y-0 left-0 z-50 flex w-[min(18rem,calc(100vw-2rem))] flex-col border-r border-white/5 bg-[#1e2a5e] text-white shadow-2xl transition-transform duration-200 md:static md:z-auto md:w-64 md:translate-x-0 md:shadow-none",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >

@@ -46,7 +46,7 @@ export function Header({ title = "Business Overview" }: HeaderProps) {
   }, [isNotificationsOpen]);
 
   return (
-    <header className="flex h-20 items-center justify-between border-b border-slate-100 bg-white px-4 sm:px-6 md:h-24 md:px-10">
+    <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-100 bg-white/95 px-4 backdrop-blur sm:px-6 md:h-24 md:px-8 lg:px-10">
       <div className="flex min-w-0 items-center gap-3">
         <button
           type="button"

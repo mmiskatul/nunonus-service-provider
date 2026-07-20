@@ -101,7 +101,7 @@ export default function AddServicePage() {
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-10 bg-slate-50/50 overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50/50 px-4 py-6 sm:px-6 md:px-8 md:py-8 overflow-x-hidden">
       {/* Hidden File Input */}
       <input
         type="file"
@@ -112,7 +112,7 @@ export default function AddServicePage() {
         onChange={(e) => void handleFileSelection(e.target.files)}
       />
 
-      <div className="max-w-[1000px] mx-auto space-y-10">
+      <div className="max-w-[1120px] mx-auto space-y-8">
         {statusMessage ? (
           <p className="text-sm font-bold text-[#1e2a5e]">{statusMessage}</p>
         ) : null}
@@ -158,7 +158,7 @@ export default function AddServicePage() {
         </div>
 
         {/* Form Sections */}
-        <div className="grid grid-cols-1 gap-10 pb-20">
+        <div className="grid grid-cols-1 gap-8 pb-12">
           {/* Basic Information */}
           <section className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
             <div className="p-8 border-b border-slate-50 flex items-center gap-3">

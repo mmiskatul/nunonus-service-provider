@@ -65,13 +65,15 @@ export default function MainLayout({
 
   return (
     <DashboardShellProvider value={shellActions}>
-      <div className="flex h-dvh overflow-hidden">
+      <div className="flex h-dvh overflow-hidden bg-[#f8fafc]">
         <Sidebar
           categories={categories}
           mobileOpen={mobileNavigationOpen}
           onMobileClose={() => setMobileNavigationOpen(false)}
         />
-        <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">{children}</main>
+        <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="min-h-full w-full">{children}</div>
+        </main>
         <button
           type="button"
           aria-label="Open dashboard navigation"
