@@ -9,11 +9,5 @@ export async function POST(request: Request) {
     // should never surface as an application error or pollute the console.
     return new NextResponse(null, { status: 204 });
   }
-  console.info("web_vital", {
-    name: String(body.name),
-    value: Number(body.value),
-    rating: String(body.rating ?? ""),
-    path: String(body.path ?? "").slice(0, 200),
-  });
   return new NextResponse(null, { status: 204 });
 }

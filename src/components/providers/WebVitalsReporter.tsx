@@ -6,7 +6,9 @@ const reportedMetrics = new Set<string>();
 
 export function WebVitalsReporter() {
   useReportWebVitals((metric) => {
-    const metricKey = `${window.location.pathname}:${metric.name}:${metric.id ?? ""}`;
+    // A metric can be emitted more than once with different IDs while Next
+    // refreshes or remounts a route. Keep one sample per metric and route.
+    const metricKey = `${window.location.pathname}:${metric.name}`;
     if (reportedMetrics.has(metricKey)) {
       return;
     }
