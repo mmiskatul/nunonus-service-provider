@@ -95,15 +95,16 @@ const SERVICE_MINUTES = ["00", "15", "30", "45"];
 const SERVICE_PERIODS = ["AM", "PM"];
 
 function splitServiceTime(value: string) {
-  const match = String(value || "").match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  const match = String(value || "").match(/^(?:(\d{1,2})(?::(\d{2}))?)(?:\s*(AM|PM))?$/i);
   return { hour: match?.[1]?.padStart(2, "0") ?? "", minute: match?.[2] ?? "", period: match?.[3]?.toUpperCase() ?? "" };
 }
 
 function setServiceTimePart(value: string, part: "hour" | "minute" | "period", next: string) {
   const current = splitServiceTime(value);
   const updated = { ...current, [part]: next };
-  if (!updated.hour || !updated.minute || !updated.period) return next;
-  return `${updated.hour}:${updated.minute} ${updated.period}`;
+  if (!updated.hour) return "";
+  if (!updated.minute) return updated.hour;
+  return `${updated.hour}:${updated.minute}${updated.period ? ` ${updated.period}` : ""}`;
 }
 
 function validateEventForm(form: EventFormState): string | null {
@@ -897,7 +898,7 @@ function TimeSelects({ label, value, onChange }: { label: string; value: string;
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">{label}</span>
-      <div className="flex gap-2">
+      <div className="flex gap-1 rounded-xl border border-slate-200 bg-white p-1">
         <select aria-label={`${label} hour`} value={parts.hour} onChange={(event) => onChange(setServiceTimePart(value, "hour", event.target.value))} className={selectClass}><option value="">Hour</option>{SERVICE_HOURS.map((hour) => <option key={hour} value={hour}>{hour}</option>)}</select>
         <select aria-label={`${label} minute`} value={parts.minute} onChange={(event) => onChange(setServiceTimePart(value, "minute", event.target.value))} className={selectClass}><option value="">Min</option>{SERVICE_MINUTES.map((minute) => <option key={minute} value={minute}>{minute}</option>)}</select>
         <select aria-label={`${label} period`} value={parts.period} onChange={(event) => onChange(setServiceTimePart(value, "period", event.target.value))} className={selectClass}><option value="">AM/PM</option>{SERVICE_PERIODS.map((period) => <option key={period} value={period}>{period}</option>)}</select>
