@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { Header } from "@/components/Header";
 import { Bell, CalendarPlus2, Save, Shield, User, X } from "lucide-react";
 import {
@@ -292,17 +292,17 @@ export function SettingsPageClient({
   ];
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col">
+    <div className="min-h-full bg-[#f8fafc] flex flex-col">
       <Header title="Settings" />
 
-      <main className="flex-1 p-6 md:p-10">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex gap-2 mb-8 bg-white border border-slate-100 rounded-2xl p-2 shadow-sm">
+      <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        <div className="w-full max-w-6xl mx-auto space-y-7">
+          <div className="flex gap-2 overflow-x-auto bg-white border border-slate-200 rounded-2xl p-2 shadow-sm">
             {tabs.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setActiveTab(id)}
-                className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all flex-1 justify-center ${
+                className={`flex min-w-[170px] items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all flex-1 justify-center ${
                   activeTab === id
                     ? "bg-sky-500 text-white shadow"
                     : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
@@ -314,7 +314,7 @@ export function SettingsPageClient({
             ))}
           </div>
 
-          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
             {activeTab === "profile" && (
               <div className="space-y-6">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
