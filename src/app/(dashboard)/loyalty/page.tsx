@@ -107,7 +107,7 @@ export default function LoyaltyPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] flex flex-col">
+      <div className="min-h-full bg-[#f8fafc] flex flex-col">
         <Header title="Loyalty Program" />
         <div className="flex-1 flex items-center justify-center">
           <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
@@ -117,11 +117,11 @@ export default function LoyaltyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col pb-10">
+    <div className="min-h-full bg-[#f8fafc] flex flex-col pb-10">
       <Header title="Loyalty Program" />
 
-      <main className="flex-1 p-6 md:p-10 space-y-8">
-        <div className="max-w-[1400px] mx-auto space-y-8">
+      <main className="flex-1 space-y-8 px-4 py-6 sm:px-6 lg:px-8">
+        <div className="w-full space-y-8">
           {/* Page Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
             <div>
@@ -139,7 +139,7 @@ export default function LoyaltyPage() {
           </div>
 
           {/* Master Enable Toggle */}
-          <div className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100 flex items-center justify-between">
+          <div className="flex items-center justify-between rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
             <div className="flex gap-6 items-center">
               <div className="h-14 w-14 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500 shadow-sm border border-amber-100/50">
                 <Trophy className="h-7 w-7" />
@@ -175,7 +175,7 @@ export default function LoyaltyPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Earning Rules */}
-            <div className="lg:col-span-7 bg-white rounded-[40px] p-10 shadow-sm border border-slate-100">
+            <div className="lg:col-span-7 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
               <div className="flex items-center gap-3 mb-10">
                 <Zap className="h-5 w-5 text-sky-500" />
                 <h3 className="text-xl font-bold text-slate-800">Points Earning Rule</h3>
@@ -268,7 +268,7 @@ export default function LoyaltyPage() {
 
             {/* Bonus Rules */}
             <div className="lg:col-span-5 space-y-8 flex flex-col">
-              <div className="bg-white rounded-[40px] p-10 shadow-sm border border-slate-100 flex-1">
+              <div className="flex-1 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
                 <div className="flex items-center gap-3 mb-10">
                   <Gift className="h-5 w-5 text-indigo-500" />
                   <h3 className="text-xl font-bold text-slate-800">Bonus Rules</h3>
@@ -314,7 +314,7 @@ export default function LoyaltyPage() {
           </div>
 
           {/* Expiry Policy */}
-          <div className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="flex flex-col items-center justify-between gap-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 md:flex-row">
             <div className="flex gap-6 items-center">
               <div className="h-12 w-12 bg-slate-50 rounded-2xl flex items-center justify-center text-[#1e293b]">
                 <RotateCcw className="h-6 w-6" />
@@ -346,7 +346,7 @@ export default function LoyaltyPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {statsItems.map((stat, i) => (
-                <div key={i} className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100 group hover:shadow-md transition-shadow">
+                <div key={i} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-shadow group hover:shadow-md sm:p-8">
                   <div className="flex items-center justify-between mb-8">
                     <div className={cn("h-10 w-10 bg-slate-50 rounded-xl flex items-center justify-center", stat.color)}>
                       <stat.icon className="h-5 w-5" />
