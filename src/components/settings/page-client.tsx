@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Header } from "@/components/Header";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Bell, CalendarPlus2, Save, Shield, User, X, Hotel, Utensils, Sparkles } from "lucide-react";
@@ -17,6 +17,8 @@ import {
 } from "@/lib/vendor-api";
 import { extractVendorCategories, type VendorCategory } from "@/lib/vendor-access";
 import { buildSettingsProfilePayload } from "@/lib/vendor-contracts";
+
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 type SettingsTab = "profile" | "notifications" | "security";
 
@@ -166,6 +168,10 @@ export function SettingsPageClient({
   });
   const [eventForm, setEventForm] = useState<EventFormState>(getDefaultEventForm(DEFAULT_CATEGORIES));
   const bannerInputRef = useRef<HTMLInputElement>(null);
+  const locationMapRef = useRef<HTMLDivElement>(null);
+  const locationMapInstance = useRef<any>(null);
+  const locationMarkerInstance = useRef<any>(null);
+  const [locationMapOpen, setLocationMapOpen] = useState(false);
   const configuredCategories = extractVendorCategories(initialProfile.categories ?? initialProfile.category);
   const availableServiceTabs = (['restaurant', 'hotel', 'spa'] as const).filter((service) => {
     const categoryText = configuredCategories.join(" ").toLowerCase();
@@ -173,6 +179,35 @@ export function SettingsPageClient({
   });
   const visibleServiceTabs = availableServiceTabs.length ? availableServiceTabs : ["restaurant" as const];
   const activeServiceTab = visibleServiceTabs.includes(serviceTab) ? serviceTab : visibleServiceTabs[0];
+
+  useEffect(() => {
+    if (!locationMapOpen || !locationMapRef.current || !GOOGLE_MAPS_API_KEY) return;
+    const initialize = () => {
+      const google = (window as any).google;
+      if (!google || !locationMapRef.current) return;
+      const current = serviceSettings[activeServiceTab];
+      const center = { lat: Number(current.latitude) || 23.8103, lng: Number(current.longitude) || 90.4125 };
+      const map = new google.maps.Map(locationMapRef.current, { center, zoom: 14, mapTypeControl: false });
+      const marker = new google.maps.Marker({ position: center, map, draggable: true });
+      const update = (lat: number, lng: number, ref: any) => {
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ location: ref }, (results: any, status: string) => {
+          const address = status === "OK" && results?.[0] ? results[0].formatted_address : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+          setServiceSettings((state) => ({ ...state, [activeServiceTab]: { ...state[activeServiceTab], latitude: String(lat), longitude: String(lng), address } }));
+        });
+      };
+      map.addListener("click", (event: any) => { marker.setPosition(event.latLng); update(event.latLng.lat(), event.latLng.lng(), event.latLng); });
+      marker.addListener("dragend", () => { const position = marker.getPosition(); if (position) update(position.lat(), position.lng(), position); });
+      locationMapInstance.current = map;
+      locationMarkerInstance.current = marker;
+    };
+    if ((window as any).google?.maps) { initialize(); return; }
+    const scriptId = "provider-google-maps-script";
+    let script = document.getElementById(scriptId) as HTMLScriptElement | null;
+    if (!script) { script = document.createElement("script"); script.id = scriptId; script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}`; script.async = true; script.defer = true; document.head.appendChild(script); }
+    script.addEventListener("load", initialize);
+    return () => script?.removeEventListener("load", initialize);
+  }, [locationMapOpen, activeServiceTab]);
 
   const ensureCategoriesLoaded = async () => {
     if (categoriesLoaded) {
@@ -406,9 +441,10 @@ export function SettingsPageClient({
                     </div>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
-                    {(["name", "address", "city", "phone", "email", "latitude", "longitude"] as const).map((field) => (
-                      <label key={field} className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">{field.replace("_", " ")}</span><input value={serviceSettings[activeServiceTab][field]} onChange={(e) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], [field]: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder={field === "latitude" ? "23.8103" : field === "longitude" ? "90.4125" : `Enter ${field.replace("_", " ")}`} /></label>
+                    {(["name", "city", "phone", "email"] as const).map((field) => (
+                      <label key={field} className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">{field.replace("_", " ")}</span><input value={serviceSettings[activeServiceTab][field]} onChange={(e) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], [field]: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder={`Enter ${field.replace("_", " ")}`} /></label>
                     ))}
+                    <div className="md:col-span-2"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Location</span><div className="flex flex-wrap items-center gap-3"><input readOnly value={serviceSettings[activeServiceTab].address} placeholder="Choose this service location from the map" className="min-w-[240px] flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600" /><button type="button" onClick={() => setLocationMapOpen(true)} className="rounded-xl bg-[#1e2a5e] px-4 py-3 text-sm font-bold text-white">Choose on map</button></div></div>
                     <label className="block md:col-span-2"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">About this {activeServiceTab}</span><textarea rows={3} value={serviceSettings[activeServiceTab].about} onChange={(e) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], about: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder={`Describe your ${activeServiceTab} offering`} /></label>
                     <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Opening hours</span><input value={serviceSettings[activeServiceTab].hours} onChange={(e) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], hours: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="09:00 - 22:00" /></label>
                     <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Booking / cancellation policy</span><input value={serviceSettings[activeServiceTab].policy} onChange={(e) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], policy: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Free cancellation up to 24 hours" /></label>
@@ -508,6 +544,15 @@ export function SettingsPageClient({
           </div>
         </div>
       </main>
+
+      {locationMapOpen ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 p-4">
+          <div className="w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h3 className="text-lg font-black text-slate-800">Choose {activeServiceTab} location</h3><p className="text-xs text-slate-500">Click the map or drag the pin to the exact location.</p></div><button type="button" onClick={() => setLocationMapOpen(false)} className="rounded-xl px-3 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100">Done</button></div>
+            {!GOOGLE_MAPS_API_KEY ? <div className="p-6 text-sm text-rose-600">Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable the map picker.</div> : <div ref={locationMapRef} className="h-[420px] w-full bg-slate-100" />}
+          </div>
+        </div>
+      ) : null}
 
       {showCreateEventModal ? (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm">
