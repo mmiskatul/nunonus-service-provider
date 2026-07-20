@@ -8,7 +8,6 @@ import {
   Search,
   ChevronDown,
   Reply,
-  CheckCircle2,
   Undo2,
   Send,
   ChevronLeft,
@@ -83,20 +82,20 @@ export default function ReviewsPage() {
   const unrepliedCount = reviews.filter((r) => !r.vendor_reply).length;
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col pb-10">
+    <div className="min-h-full bg-[#f8fafc] flex flex-col pb-10">
       <Header title="Reviews" />
 
-      <main className="flex-1 p-6 md:p-10 space-y-10">
-        <div className="max-w-[1200px] mx-auto space-y-10">
+      <main className="flex-1 space-y-8 px-4 py-6 sm:px-6 lg:px-8">
+        <div className="w-full space-y-8">
           <div>
             <h1 className="text-3xl font-bold text-slate-800">Review Management</h1>
-            <p className="text-sm text-slate-400 mt-1">
+            <p className="text-sm text-slate-500 mt-2">
               Track and respond to your customer feedback across platforms.
             </p>
           </div>
 
           {/* Search & Tabs */}
-          <div className="bg-white rounded-[32px] p-4 shadow-sm border border-slate-50 flex flex-col md:flex-row gap-4">
+          <div className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row">
             <div className="flex-1 relative">
               <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <input
@@ -159,8 +158,8 @@ export default function ReviewsPage() {
                   key={review.id}
                   className="bg-white rounded-[40px] p-10 shadow-sm border border-slate-100 transition-all hover:shadow-md"
                 >
-                  <div className="flex gap-8">
-                    <div className="h-16 w-16 rounded-3xl overflow-hidden shrink-0 ring-8 ring-slate-50/50">
+                  <div className="flex gap-5 sm:gap-8">
+                    <div className="h-12 w-12 rounded-2xl overflow-hidden shrink-0 ring-4 ring-slate-50/50 sm:h-16 sm:w-16 sm:rounded-3xl sm:ring-8">
                       {review.avatar_url ? (
                         <img src={review.avatar_url} alt={review.customer_name ?? "Customer"} className="h-full w-full object-cover" />
                       ) : (
@@ -175,9 +174,6 @@ export default function ReviewsPage() {
                           <h4 className="text-base font-bold text-slate-800">
                             {review.customer_name ?? "Customer"}
                           </h4>
-                          <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-3 py-1 rounded-lg uppercase tracking-wider">
-                            VERIFIED BOOKING
-                          </span>
                         </div>
                         {review.created_at && (
                           <span className="text-xs font-bold text-slate-400">
@@ -200,7 +196,7 @@ export default function ReviewsPage() {
                       </p>
 
                       {review.vendor_reply ? (
-                        <div className="bg-slate-50/50 rounded-[32px] p-8 border border-slate-100">
+                        <div className="rounded-3xl border border-slate-100 bg-slate-50/50 p-5 sm:p-8">
                           <div className="flex items-center justify-between mb-4">
                             <p className="text-[10px] font-black text-sky-600 uppercase tracking-widest flex items-center gap-2">
                               <Undo2 className="h-3 w-3" />
