@@ -782,8 +782,8 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     <div className="min-h-screen bg-[#f8fafc] flex flex-col">
       <Header title="Event Management" />
 
-      <main className="flex-1 p-6 md:p-10 pb-24">
-        <div className="mx-auto max-w-[1400px] space-y-8">
+      <main className="flex-1 px-4 py-6 pb-24 sm:px-6 lg:px-8">
+        <div className="w-full space-y-8">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <h1 className="text-3xl font-bold text-slate-800">Event Venue Management</h1>

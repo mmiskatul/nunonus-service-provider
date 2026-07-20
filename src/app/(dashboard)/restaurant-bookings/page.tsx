@@ -125,8 +125,8 @@ export default function RestaurantBookingsPage() {
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden p-4 md:p-10">
-      <div className="mx-auto max-w-[1400px]">
+    <div className="min-h-full overflow-x-hidden bg-[#f8fafc] px-4 py-6 sm:px-6 lg:px-8">
+      <div className="w-full">
         <BookingsHeader searchQuery={searchQuery} onSearchChange={(value) => { setSearchQuery(value); setCurrentPage(1); }} statusFilter={statusFilter} onStatusChange={(value) => { setStatusFilter(value); setCurrentPage(1); }} dateRange={dateRange} onDateRangeChange={(value) => { setDateRange(value); setCurrentPage(1); }} />
         {bookingsQuery.isFetching && !bookingsQuery.isPending ? <div className="mb-3 text-right text-xs font-bold text-sky-600">Updating results…</div> : null}
         {actionError ? <div role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm font-bold text-red-700">{actionError}</div> : null}
