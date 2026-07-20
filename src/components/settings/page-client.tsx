@@ -185,7 +185,7 @@ export function SettingsPageClient({
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
-      console.warn("Failed to save profile:", err);
+      toast(err instanceof Error ? err.message : "Failed to save profile.", "error");
     } finally {
       setSaving(false);
     }
@@ -199,6 +199,10 @@ export function SettingsPageClient({
     }
     if (passwordForm.new_password.length < 8) {
       setPasswordError("Password must be at least 8 characters.");
+      return;
+    }
+    if (!passwordForm.old_password.trim()) {
+      setPasswordError("Enter your current password.");
       return;
     }
     try {
@@ -225,7 +229,7 @@ export function SettingsPageClient({
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
-      console.warn("Failed to save notification settings:", err);
+      toast(err instanceof Error ? err.message : "Failed to save notification settings.", "error");
     } finally {
       setSaving(false);
     }
