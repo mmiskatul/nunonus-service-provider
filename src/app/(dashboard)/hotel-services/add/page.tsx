@@ -163,7 +163,7 @@ export default function AddRoomPage() {
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-10 bg-slate-50/50 overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50/50 px-4 py-6 sm:px-6 md:px-8 md:py-8 overflow-x-hidden">
       {/* Hidden File Input */}
       <input
         type="file"
@@ -174,21 +174,21 @@ export default function AddRoomPage() {
         onChange={(e) => void handleFileSelection(e.target.files)}
       />
 
-      <div className="max-w-[1000px] mx-auto space-y-10">
+      <div className="max-w-[1120px] mx-auto space-y-8">
         {statusMessage ? (
           <p className="text-sm font-bold text-[#1e2a5e]">{statusMessage}</p>
         ) : null}
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 sm:gap-6">
             <Link
               href="/hotel-services"
-              className="h-14 w-14 flex items-center justify-center bg-white rounded-2xl shadow-sm border border-slate-100 text-slate-400 hover:text-[#1e2a5e] transition-all"
+              className="h-11 w-11 sm:h-14 sm:w-14 flex items-center justify-center bg-white rounded-xl sm:rounded-2xl shadow-sm border border-slate-100 text-slate-400 hover:text-[#1e2a5e] transition-all"
             >
               <ArrowLeft className="h-6 w-6" />
             </Link>
             <div>
-              <h1 className="text-3xl font-black text-slate-800 tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
                 Add New Room
               </h1>
               <p className="text-slate-400 font-bold mt-1 text-sm">
@@ -219,10 +219,10 @@ export default function AddRoomPage() {
         </div>
 
         {/* Form Sections */}
-        <div className="grid grid-cols-1 gap-10 pb-20">
+        <div className="grid grid-cols-1 gap-8 pb-12">
           {/* Basic Information */}
-          <section className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
-            <div className="p-8 border-b border-slate-50 flex items-center gap-3">
+          <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-6 sm:p-7 border-b border-slate-100 flex items-center gap-3">
               <div className="h-10 w-10 flex items-center justify-center bg-sky-50 rounded-xl text-[#3b82f6]">
                 <Info className="h-5 w-5" />
               </div>
@@ -230,7 +230,7 @@ export default function AddRoomPage() {
                 Basic Information
               </h2>
             </div>
-            <div className="p-10 space-y-8">
+            <div className="p-6 sm:p-8 space-y-7">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3">
                   <label className="text-xs font-black text-slate-400 uppercase tracking-[0.15em] ml-1">
@@ -323,8 +323,8 @@ export default function AddRoomPage() {
           </section>
 
           {/* Pricing */}
-          <section className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
-            <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+          <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-6 sm:p-7 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 flex items-center justify-center bg-blue-50 rounded-xl text-blue-600">
                   <DollarSign className="h-5 w-5" />
@@ -358,7 +358,7 @@ export default function AddRoomPage() {
                 </button>
               </div>
             </div>
-            <div className="p-10 grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="p-6 sm:p-8 grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
               <div className="space-y-3">
                 <label className="text-xs font-black text-slate-400 uppercase tracking-[0.15em] ml-1">
                   Base Price per Night ($)
@@ -402,8 +402,8 @@ export default function AddRoomPage() {
           </section>
 
           {/* Amenities */}
-          <section className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
-            <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+          <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-6 sm:p-7 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 flex items-center justify-center bg-indigo-50 rounded-xl text-indigo-600">
                   <Gamepad className="h-5 w-5" />
@@ -416,7 +416,7 @@ export default function AddRoomPage() {
                 + Add custom
               </button>
             </div>
-            <div className="p-10 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="p-6 sm:p-8 grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
               {AMENITIES_OPTIONS.map((amenity) => (
                 <button
                   key={amenity}
@@ -456,8 +456,8 @@ export default function AddRoomPage() {
           </section>
 
           {/* Room Images */}
-          <section className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
-            <div className="p-8 border-b border-slate-50 flex items-center gap-3">
+          <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-6 sm:p-7 border-b border-slate-100 flex items-center gap-3">
               <div className="h-10 w-10 flex items-center justify-center bg-emerald-50 rounded-xl text-emerald-600">
                 <ImageIcon className="h-5 w-5" />
               </div>
@@ -465,14 +465,14 @@ export default function AddRoomPage() {
                 Room Images
               </h2>
             </div>
-            <div className="p-10 space-y-10">
+            <div className="p-6 sm:p-8 space-y-8">
               <div
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
                 className={cn(
-                  "relative border-4 border-dashed rounded-[40px] p-20 flex flex-col items-center justify-center space-y-6 transition-all cursor-pointer group",
+                  "relative border-2 border-dashed rounded-2xl p-10 sm:p-16 flex flex-col items-center justify-center space-y-5 transition-all cursor-pointer group",
                   isDragActive
                     ? "border-[#1e2a5e] bg-slate-50"
                     : "border-slate-50 hover:border-slate-100 hover:bg-slate-50/30",
@@ -531,8 +531,8 @@ export default function AddRoomPage() {
           </section>
 
           {/* Inventory & Policy */}
-          <section className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden mb-10">
-            <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+          <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden mb-4">
+            <div className="p-6 sm:p-7 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 flex items-center justify-center bg-amber-50 rounded-xl text-amber-600">
                   <ClipboardList className="h-5 w-5" />
@@ -566,7 +566,7 @@ export default function AddRoomPage() {
                 </button>
               </div>
             </div>
-            <div className="p-10 space-y-10">
+            <div className="p-6 sm:p-8 space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="space-y-3">
                   <label className="text-xs font-black text-slate-400 uppercase tracking-[0.15em] ml-1">
