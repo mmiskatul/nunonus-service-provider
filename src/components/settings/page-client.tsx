@@ -302,7 +302,7 @@ export function SettingsPageClient({
       <Header title="Settings" />
 
       <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="w-full max-w-6xl mx-auto space-y-7">
+        <div className="w-full space-y-7">
           <div className="flex gap-2 overflow-x-auto bg-white border border-slate-200 rounded-2xl p-2 shadow-sm">
             {tabs.map(({ id, label, icon: Icon }) => (
               <button
