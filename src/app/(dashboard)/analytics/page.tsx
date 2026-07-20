@@ -216,8 +216,8 @@ export default function AnalyticsPage() {
     <div className="min-h-screen bg-[#f8fafc] flex flex-col pb-10">
       <Header title="Analytics" />
 
-      <main className="flex-1 p-6 md:p-10 space-y-8">
-        <div className="mx-auto max-w-[1400px] space-y-8">
+      <main className="flex-1 space-y-8 px-4 py-6 sm:px-6 lg:px-8">
+        <div className="w-full space-y-8">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-3xl font-bold text-slate-800">Business Analytics</h1>

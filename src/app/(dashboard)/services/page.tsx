@@ -449,8 +449,8 @@ export default function ServicesPage() {
     <div className="flex min-h-screen flex-col bg-[#f8fafc]">
       <Header title="Restaurant / Services" />
 
-      <main className="flex-1 p-6 pb-32 md:p-10">
-        <div className="mx-auto max-w-[1400px] space-y-8">
+      <main className="flex-1 px-4 py-6 pb-32 sm:px-6 lg:px-8">
+        <div className="w-full space-y-8">
           {statusMessage ? (
             <p className="text-sm font-bold text-[#1e2a5e]">{statusMessage}</p>
           ) : null}

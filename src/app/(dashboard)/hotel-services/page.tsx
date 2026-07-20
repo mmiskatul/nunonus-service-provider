@@ -176,8 +176,8 @@ export default function HotelServicesPage() {
   const visibleItems = activeTab === "rooms" ? filteredRooms : filteredServices;
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-4 md:p-10">
-      <div className="mx-auto max-w-[1400px] space-y-10">
+    <div className="min-h-screen bg-slate-50/50 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="w-full space-y-8">
         {statusMessage ? (
           <p className="text-sm font-bold text-[#1e2a5e]">{statusMessage}</p>
         ) : null}

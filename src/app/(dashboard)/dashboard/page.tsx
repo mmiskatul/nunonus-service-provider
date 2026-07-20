@@ -76,7 +76,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[#f8fafc]">
       <Header />
-      <main className="mx-auto max-w-[1600px] space-y-8 p-4 sm:p-6 md:p-10">
+      <main className="w-full space-y-8 px-4 py-6 sm:px-6 lg:px-8">
         <section aria-labelledby="quick-actions-title" className="space-y-3">
           <div className="flex items-center justify-between"><h2 id="quick-actions-title" className="text-sm font-bold uppercase tracking-wider text-slate-400">Quick actions</h2><Link href={bookingsHref} prefetch={false} className="text-sm font-bold text-sky-600">View today’s bookings</Link></div>
           <div className="flex gap-3 overflow-x-auto pb-1">{quickActions.map((action) => <Link key={action.href} href={action.href} prefetch={false} className="flex shrink-0 items-center gap-2 rounded-xl border border-slate-100 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:border-sky-200 hover:text-sky-600"><action.icon className="h-4 w-4" />{action.label}</Link>)}</div>
