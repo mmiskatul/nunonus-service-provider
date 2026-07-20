@@ -90,6 +90,15 @@ function getDefaultEventForm(categories: VendorCategory[]): EventFormState {
   };
 }
 
+const SERVICE_TIME_OPTIONS = ["", ...["AM", "PM"].flatMap((period) =>
+  Array.from({ length: 12 }, (_, hour) =>
+    ["00", "15", "30", "45"].map((minute) => {
+      const hourLabel = String(hour + 1).padStart(2, "0");
+      return `${hourLabel}:${minute} ${period}`;
+    }),
+  ).flat(),
+)];
+
 function validateEventForm(form: EventFormState): string | null {
   if (!form.title.trim()) return "Event title is required.";
   if (!form.eventType.trim()) return "Event type is required.";
@@ -446,8 +455,8 @@ export function SettingsPageClient({
                     ))}
                     <div className="md:col-span-2"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Location</span><div className="flex flex-wrap items-center gap-3"><input readOnly value={serviceSettings[activeServiceTab].address} placeholder="Choose this service location from the map" className="min-w-[240px] flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600" /><button type="button" onClick={() => setLocationMapOpen(true)} className="rounded-xl bg-[#1e2a5e] px-4 py-3 text-sm font-bold text-white">Choose on map</button></div></div>
                     <label className="block md:col-span-2"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">About this {activeServiceTab}</span><textarea rows={3} value={serviceSettings[activeServiceTab].about} onChange={(e) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], about: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder={`Describe your ${activeServiceTab} offering`} /></label>
-                    <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Open time</span><input type="time" value={serviceSettings[activeServiceTab].opening_time} onChange={(e) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], opening_time: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" /></label>
-                    <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Close time</span><input type="time" value={serviceSettings[activeServiceTab].closing_time} onChange={(e) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], closing_time: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" /></label>
+                    <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Open time</span><select value={serviceSettings[activeServiceTab].opening_time} onChange={(e) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], opening_time: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400"><option value="">Select open time</option>{SERVICE_TIME_OPTIONS.filter(Boolean).map((time) => <option key={`open-${time}`} value={time}>{time}</option>)}</select></label>
+                    <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Close time</span><select value={serviceSettings[activeServiceTab].closing_time} onChange={(e) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], closing_time: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400"><option value="">Select close time</option>{SERVICE_TIME_OPTIONS.filter(Boolean).map((time) => <option key={`close-${time}`} value={time}>{time}</option>)}</select></label>
                     <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Booking / cancellation policy</span><input value={serviceSettings[activeServiceTab].policy} onChange={(e) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], policy: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Free cancellation up to 24 hours" /></label>
                   </div>
                 </div>
