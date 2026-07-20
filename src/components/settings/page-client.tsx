@@ -2,6 +2,7 @@
 
 import React, { useRef, useState } from "react";
 import { Header } from "@/components/Header";
+import { useToast } from "@/components/ui/ToastProvider";
 import { Bell, CalendarPlus2, Save, Shield, User, X } from "lucide-react";
 import {
   vendorCreateEvent,
