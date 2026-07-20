@@ -123,6 +123,7 @@ export function SettingsPageClient({
   initialProfile: SettingsProfileData;
   initialNotifications: SettingsNotificationData;
 }) {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
