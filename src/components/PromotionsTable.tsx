@@ -34,9 +34,9 @@ export function PromotionsTable({ promotions, onToggleStatus }: PromotionsTableP
   const visiblePromotions = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   return (
-    <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden">
+    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       {/* Header with Filters */}
-      <div className="p-8 border-b border-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+      <div className="flex flex-col justify-between gap-5 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:p-6">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 bg-sky-50 rounded-xl flex items-center justify-center text-sky-500">
             <svg
@@ -59,7 +59,7 @@ export function PromotionsTable({ promotions, onToggleStatus }: PromotionsTableP
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-          <div className="relative group min-w-[280px]">
+          <div className="relative group w-full sm:min-w-[260px]">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-sky-500 transition-colors" />
             <input
               type="text"

@@ -241,11 +241,11 @@ export default function PromotionsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col pb-10">
+    <div className="min-h-full bg-[#f8fafc] flex flex-col pb-10">
       <Header title="Promotions" />
 
-      <main className="flex-1 p-6 md:p-10 space-y-10">
-        <div className="max-w-[1400px] mx-auto space-y-10">
+      <main className="flex-1 space-y-8 px-4 py-6 sm:px-6 lg:px-8">
+        <div className="w-full space-y-8">
           {/* Page Title & Add Button */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
             <div>
@@ -271,7 +271,7 @@ export default function PromotionsPage() {
             {stats.map((stat, idx) => (
               <div
                 key={idx}
-                className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 relative overflow-hidden group hover:shadow-md transition-shadow"
+                className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-shadow group hover:shadow-md"
               >
                 <div className="flex flex-col gap-1">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
@@ -307,7 +307,7 @@ export default function PromotionsPage() {
           )}
 
           {/* Platform Campaigns */}
-          <section className="space-y-6 pt-4">
+          <section className="space-y-6 pt-2">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-slate-800">
