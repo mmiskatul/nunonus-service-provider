@@ -419,11 +419,13 @@ export function SettingsPageClient({
                   </button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[
+                  {[ 
                     { key: "business_name", label: "Business Name", type: "text" },
+                    { key: "owner_full_name", label: "Owner / Contact Name", type: "text" },
                     { key: "phone", label: "Phone", type: "tel" },
                     { key: "email", label: "Email", type: "email" },
                     { key: "address", label: "Address", type: "text" },
+                    { key: "location_label", label: "Public Location Label", type: "text" },
                   ].map(({ key, label, type }) => (
                     <div key={key}>
                       <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">{label}</label>
