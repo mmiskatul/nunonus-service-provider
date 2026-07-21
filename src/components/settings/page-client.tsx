@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Header } from "@/components/Header";
 import { useToast } from "@/components/ui/ToastProvider";
-import { Bell, CalendarPlus2, Save, Shield, User, X, Hotel, Utensils, Sparkles } from "lucide-react";
+import { Bell, CalendarPlus2, Save, Shield, User, X, Hotel, Utensils, Sparkles, ClipboardCheck } from "lucide-react";
 import {
   vendorCreateEvent,
   vendorGetProfileSettings,
@@ -20,7 +20,7 @@ import { buildSettingsProfilePayload } from "@/lib/vendor-contracts";
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
-type SettingsTab = "profile" | "notifications" | "security";
+type SettingsTab = "profile" | "notifications" | "security" | "onboarding";
 
 type EventFormState = {
   title: string;
@@ -53,9 +53,10 @@ export type SettingsProfileData = {
   address?: string;
   about_business?: string;
   description?: string;
+  owner_full_name?: string;
+  location_label?: string;
   latitude?: number | null;
   longitude?: number | null;
-  location_label?: string | null;
   restaurant_settings?: Record<string, any>;
   hotel_settings?: Record<string, any>;
   spa_settings?: Record<string, any>;
@@ -164,6 +165,8 @@ export function SettingsPageClient({
     email: String(initialProfile.email_address ?? initialProfile.email ?? ""),
     address: String(initialProfile.office_address ?? initialProfile.address ?? ""),
     description: String(initialProfile.about_business ?? initialProfile.description ?? ""),
+    owner_full_name: String(initialProfile.owner_full_name ?? ""),
+    location_label: String(initialProfile.location_label ?? ""),
   });
   const [serviceTab, setServiceTab] = useState<"restaurant" | "hotel" | "spa">("restaurant");
   const [serviceSettings, setServiceSettings] = useState({
@@ -255,6 +258,8 @@ export function SettingsPageClient({
           profileForm,
           initialProfile.categories ?? initialProfile.category,
           ),
+          owner_full_name: profileForm.owner_full_name,
+          location_label: profileForm.location_label,
           restaurant_settings: serviceSettings.restaurant,
           hotel_settings: serviceSettings.hotel,
           spa_settings: serviceSettings.spa,
@@ -371,6 +376,7 @@ export function SettingsPageClient({
     { id: "profile", label: "Business Profile", icon: User },
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "security", label: "Password & Security", icon: Shield },
+    { id: "onboarding", label: "Onboarding", icon: ClipboardCheck },
   ];
 
   return (
@@ -558,6 +564,18 @@ export function SettingsPageClient({
                   <Shield className="h-4 w-4" />
                   {saving ? "Updating..." : saved ? "Updated!" : "Update Password"}
                 </button>
+              </div>
+            )}
+
+            {activeTab === "onboarding" && (
+              <div className="space-y-6">
+                <div><h2 className="text-xl font-black text-slate-800 mb-1">Onboarding details</h2><p className="text-sm text-slate-400">Update the registration information used across your provider profile.</p></div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Owner / contact name</span><input value={profileForm.owner_full_name} onChange={(e) => setProfileForm((current) => ({ ...current, owner_full_name: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Full name" /></label>
+                  <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Public location label</span><input value={profileForm.location_label} onChange={(e) => setProfileForm((current) => ({ ...current, location_label: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Dhaka, Bangladesh" /></label>
+                </div>
+                <div className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800">Your Business Profile, service settings, room records, and customer listings use these saved onboarding details.</div>
+                <button onClick={handleSaveProfile} disabled={saving} className="flex items-center gap-2 rounded-xl bg-sky-500 px-6 py-3 text-sm font-bold text-white hover:bg-sky-600 disabled:opacity-60"><Save className="h-4 w-4" />{saving ? "Saving..." : saved ? "Saved!" : "Save Onboarding Details"}</button>
               </div>
             )}
           </div>
