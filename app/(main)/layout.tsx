@@ -23,15 +23,16 @@ export default function MainLayout({
   const queryClient = useQueryClient();
   const pathname = usePathname();
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const [categoryOverride, setCategoryOverride] = useState<ReturnType<typeof extractVendorCategories> | null>(null);
   const hydrated = useSyncExternalStore(
     () => () => undefined,
     () => true,
     () => false,
   );
   const profileQuery = useQuery(vendorProfileQuery());
-  const categories = hydrated && profileQuery.data
+  const categories = categoryOverride ?? (hydrated && profileQuery.data
     ? extractVendorCategories(profileQuery.data.categories ?? profileQuery.data.category)
-    : extractVendorCategories("Restaurant");
+    : extractVendorCategories("Restaurant"));
 
   useEffect(() => {
     if (!profileQuery.data) return;
@@ -48,7 +49,8 @@ export default function MainLayout({
       const nextCategories = extractVendorCategories(
         (event as CustomEvent<unknown>).detail,
       );
-      queryClient.invalidateQueries({ queryKey: vendorQueryKeys.profile });
+      setCategoryOverride(nextCategories);
+      void queryClient.refetchQueries({ queryKey: vendorQueryKeys.profile });
       if (!isRouteAllowedForCategories(pathname, nextCategories)) {
         router.replace(getFallbackRouteForCategories(nextCategories));
       }
