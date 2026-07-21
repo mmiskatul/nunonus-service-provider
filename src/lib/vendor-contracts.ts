@@ -15,7 +15,7 @@ export function buildSettingsProfilePayload(
   const categories = extractVendorCategories(categoryInput);
   return {
     business_name: draft.business_name.trim(),
-    category: categories[0],
+    category: categories[0] ?? "Restaurant",
     categories,
     email_address: draft.email.trim(),
     phone_number: draft.phone.trim(),
