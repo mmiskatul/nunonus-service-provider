@@ -154,7 +154,7 @@ export function SettingsPageClient({
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [categories, setCategories] = useState<VendorCategory[]>(DEFAULT_CATEGORIES);
+  const [categories, setCategories] = useState<VendorCategory[]>(() => extractVendorCategories(initialProfile.categories ?? initialProfile.category));
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
   const [eventSaving, setEventSaving] = useState(false);
@@ -192,7 +192,7 @@ export function SettingsPageClient({
   const locationMapInstance = useRef<any>(null);
   const locationMarkerInstance = useRef<any>(null);
   const [locationMapOpen, setLocationMapOpen] = useState(false);
-  const configuredCategories = extractVendorCategories(initialProfile.categories ?? initialProfile.category);
+  const configuredCategories = categories.length ? categories : extractVendorCategories(initialProfile.categories ?? initialProfile.category);
   const availableServiceTabs = (['restaurant', 'hotel', 'spa'] as const).filter((service) => {
     const categoryText = configuredCategories.join(" ").toLowerCase();
     return categoryText.includes(service);
@@ -214,6 +214,7 @@ export function SettingsPageClient({
         geocoder.geocode({ location: ref }, (results: any, status: string) => {
           const address = status === "OK" && results?.[0] ? results[0].formatted_address : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
           setServiceSettings((state) => ({ ...state, [activeServiceTab]: { ...state[activeServiceTab], latitude: String(lat), longitude: String(lng), address } }));
+          setProfileForm((current) => ({ ...current, location_label: address }));
         });
       };
       map.addListener("click", (event: any) => { marker.setPosition(event.latLng); update(event.latLng.lat(), event.latLng.lng(), event.latLng); });
@@ -256,7 +257,7 @@ export function SettingsPageClient({
         {
           ...buildSettingsProfilePayload(
           profileForm,
-          initialProfile.categories ?? initialProfile.category,
+            categories,
           ),
           owner_full_name: profileForm.owner_full_name,
           location_label: profileForm.location_label,
@@ -575,11 +576,12 @@ export function SettingsPageClient({
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Business name</span><input value={profileForm.business_name} onChange={(e) => setProfileForm((current) => ({ ...current, business_name: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Business name" /></label>
                   <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Business category</span><input readOnly value={configuredCategories.join(", ") || "Restaurant"} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600" /></label>
+                  <div className="block md:col-span-2"><span className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Enabled services</span><div className="flex flex-wrap gap-3">{(["Restaurant", "Hotel", "Spa"] as VendorCategory[]).map((category) => <label key={category} className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700"><input type="checkbox" checked={categories.includes(category)} onChange={() => setCategories((current) => current.includes(category) ? (current.length > 1 ? current.filter((item) => item !== category) : current) : [...current, category])} className="h-4 w-4 accent-sky-500" />{category}</label>)}</div></div>
                   <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Owner / contact name</span><input value={profileForm.owner_full_name} onChange={(e) => setProfileForm((current) => ({ ...current, owner_full_name: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Full name" /></label>
                   <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Email</span><input type="email" value={profileForm.email} onChange={(e) => setProfileForm((current) => ({ ...current, email: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="business@example.com" /></label>
                   <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Phone</span><input value={profileForm.phone} onChange={(e) => setProfileForm((current) => ({ ...current, phone: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Phone number" /></label>
                   <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Business address</span><input value={profileForm.address} onChange={(e) => setProfileForm((current) => ({ ...current, address: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Full business address" /></label>
-                  <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Public location label</span><input value={profileForm.location_label} onChange={(e) => setProfileForm((current) => ({ ...current, location_label: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Dhaka, Bangladesh" /></label>
+                  <div className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Public location</span><div className="flex gap-2"><input readOnly value={profileForm.location_label || serviceSettings[activeServiceTab].address} placeholder="Choose a location from the map" className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600" /><button type="button" onClick={() => setLocationMapOpen(true)} className="rounded-xl bg-[#1e2a5e] px-3 py-2 text-xs font-bold text-white">Map</button></div></div>
                   <label className="block md:col-span-2"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Business description</span><textarea rows={4} value={profileForm.description} onChange={(e) => setProfileForm((current) => ({ ...current, description: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Describe your business and customer experience" /></label>
                 </div>
                 <div className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800">Your Business Profile, service settings, room records, and customer listings use these saved onboarding details.</div>
