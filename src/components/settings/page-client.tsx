@@ -225,7 +225,7 @@ export function SettingsPageClient({
     if ((window as any).google?.maps) { initialize(); return; }
     const scriptId = "provider-google-maps-script";
     let script = document.getElementById(scriptId) as HTMLScriptElement | null;
-    if (!script) { script = document.createElement("script"); script.id = scriptId; script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}`; script.async = true; script.defer = true; document.head.appendChild(script); }
+    if (!script) { script = document.createElement("script"); script.id = scriptId; script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&loading=async`; script.async = true; script.defer = true; document.head.appendChild(script); }
     script.addEventListener("load", initialize);
     return () => script?.removeEventListener("load", initialize);
   }, [locationMapOpen, activeServiceTab]);

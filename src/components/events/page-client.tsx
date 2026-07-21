@@ -530,7 +530,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     if (!script) {
       script = document.createElement("script");
       script.id = scriptId;
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&loading=async`;
       script.async = true;
       script.defer = true;
       document.head.appendChild(script);
