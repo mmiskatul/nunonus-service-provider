@@ -695,6 +695,31 @@ export async function vendorUpdateProfileSettings(
   return result;
 }
 
+/** GET /vendor/settings/services/:service_type */
+export async function vendorGetServiceSettings(
+  serviceType: "restaurant" | "hotel" | "spa",
+  signal?: AbortSignal,
+) {
+  return vendorRequest<{
+    service_type: string;
+    settings: Record<string, unknown>;
+  }>(`/vendor/settings/services/${serviceType}`, "GET", undefined, { signal });
+}
+
+/** PATCH /vendor/settings/services/:service_type */
+export async function vendorUpdateServiceSettings(
+  serviceType: "restaurant" | "hotel" | "spa",
+  payload: Record<string, unknown>,
+) {
+  const result = await vendorRequest<{
+    service_type: string;
+    settings: Record<string, unknown>;
+    listing: Record<string, unknown>;
+  }>(`/vendor/settings/services/${serviceType}`, "PATCH", payload);
+  profileSettingsCache = null;
+  return result;
+}
+
 /** PATCH /vendor/settings/password */
 export async function vendorUpdatePassword(payload: {
   old_password: string;
