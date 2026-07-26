@@ -24,6 +24,12 @@ const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 type SettingsTab = "profile" | "notifications" | "security";
 
+type ServiceOffer = {
+  title: string;
+  description: string;
+  active: boolean;
+};
+
 type EventFormState = {
   title: string;
   category: VendorCategory;
@@ -123,6 +129,20 @@ function setServiceTimePart(value: string, part: "hour" | "minute" | "period", n
   return `${updated.hour}:${updated.minute}${updated.period ? ` ${updated.period}` : ""}`;
 }
 
+function normalizeServiceOffers(value: unknown): ServiceOffer[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(
+      (offer): offer is Record<string, unknown> =>
+        Boolean(offer) && typeof offer === "object",
+    )
+    .map((offer) => ({
+      title: String(offer.title ?? ""),
+      description: String(offer.description ?? ""),
+      active: offer.active !== false,
+    }));
+}
+
 function validateEventForm(form: EventFormState): string | null {
   if (!form.title.trim()) return "Event title is required.";
   if (!form.eventType.trim()) return "Event type is required.";
@@ -212,6 +232,18 @@ export function SettingsPageClient({
   });
   const visibleServiceTabs = availableServiceTabs.length ? availableServiceTabs : ["restaurant" as const];
   const activeServiceTab = visibleServiceTabs.includes(serviceTab) ? serviceTab : visibleServiceTabs[0];
+  const activeServiceOffers = normalizeServiceOffers(
+    serviceSettings[activeServiceTab].special_offers,
+  );
+  const setActiveServiceOffers = (special_offers: ServiceOffer[]) => {
+    setServiceSettings((current) => ({
+      ...current,
+      [activeServiceTab]: {
+        ...current[activeServiceTab],
+        special_offers,
+      },
+    }));
+  };
 
   useEffect(() => {
     if (!locationMapOpen || !locationMapRef.current || !GOOGLE_MAPS_API_KEY) return;
@@ -512,6 +544,116 @@ export function SettingsPageClient({
                           [activeServiceTab]: { ...current[activeServiceTab], amenities },
                         }))}
                       />
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 md:col-span-2 sm:p-5">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <h4 className="text-sm font-black text-slate-800">
+                            Special offers
+                          </h4>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Manage offers shown on this {activeServiceTab} listing.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveServiceOffers([
+                              ...activeServiceOffers,
+                              { title: "", description: "", active: true },
+                            ])
+                          }
+                          className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-xs font-black text-[#1e2a5e] transition hover:bg-slate-200"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Add offer
+                        </button>
+                      </div>
+
+                      <div className="mt-4 space-y-3">
+                        {activeServiceOffers.length ? (
+                          activeServiceOffers.map((offer, index) => (
+                            <div
+                              key={`${activeServiceTab}-offer-${index}`}
+                              className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className="min-w-0 flex-1 space-y-3">
+                                  <input
+                                    value={offer.title}
+                                    onChange={(event) =>
+                                      setActiveServiceOffers(
+                                        activeServiceOffers.map((item, offerIndex) =>
+                                          offerIndex === index
+                                            ? { ...item, title: event.target.value }
+                                            : item,
+                                        ),
+                                      )
+                                    }
+                                    maxLength={120}
+                                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-sky-400"
+                                    placeholder="Offer title"
+                                  />
+                                  <textarea
+                                    value={offer.description}
+                                    onChange={(event) =>
+                                      setActiveServiceOffers(
+                                        activeServiceOffers.map((item, offerIndex) =>
+                                          offerIndex === index
+                                            ? {
+                                                ...item,
+                                                description: event.target.value,
+                                              }
+                                            : item,
+                                        ),
+                                      )
+                                    }
+                                    rows={2}
+                                    maxLength={500}
+                                    className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 outline-none focus:border-sky-400"
+                                    placeholder="Describe the offer"
+                                  />
+                                  <label className="inline-flex items-center gap-2 text-xs font-bold text-slate-500">
+                                    <input
+                                      type="checkbox"
+                                      checked={offer.active}
+                                      onChange={(event) =>
+                                        setActiveServiceOffers(
+                                          activeServiceOffers.map((item, offerIndex) =>
+                                            offerIndex === index
+                                              ? { ...item, active: event.target.checked }
+                                              : item,
+                                          ),
+                                        )
+                                      }
+                                      className="h-4 w-4 accent-sky-500"
+                                    />
+                                    Show this offer in the customer app
+                                  </label>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setActiveServiceOffers(
+                                      activeServiceOffers.filter(
+                                        (_, offerIndex) => offerIndex !== index,
+                                      ),
+                                    )
+                                  }
+                                  aria-label={`Remove offer ${index + 1}`}
+                                  className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-500"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-xs font-semibold text-slate-400">
+                            No special offers added.
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <TimeSelects label="Open time" value={serviceSettings[activeServiceTab].opening_time} onChange={(value) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], opening_time: value } }))} />
                     <TimeSelects label="Close time" value={serviceSettings[activeServiceTab].closing_time} onChange={(value) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], closing_time: value } }))} />

@@ -4,14 +4,10 @@ import React, { useEffect, useState } from "react";
 import {
   BedDouble,
   Filter,
-  MapPin,
   Plus,
-  Save,
   Search,
   Sparkles,
-  Tag,
   Trash2,
-  X,
 } from "lucide-react";
 import Link from "next/link";
 import { RoomCard, Room } from "@/components/RoomCard";
@@ -20,63 +16,11 @@ import { cn } from "@/lib/utils";
 import {
   vendorDeleteRoom,
   vendorDeleteService,
-  vendorGetServiceSettings,
   vendorListRooms,
   vendorListServices,
   vendorUpdateRoomAvailability,
-  vendorUpdateServiceSettings,
   vendorUpdateServiceStatus,
 } from "@/lib/vendor-api";
-
-type HotelOffer = {
-  title: string;
-  description: string;
-  active: boolean;
-};
-
-type HotelOverview = {
-  name: string;
-  address: string;
-  city: string;
-  about: string;
-  amenities: string[];
-  specialOffers: HotelOffer[];
-  published: boolean;
-};
-
-const EMPTY_HOTEL_OVERVIEW: HotelOverview = {
-  name: "",
-  address: "",
-  city: "",
-  about: "",
-  amenities: [],
-  specialOffers: [],
-  published: true,
-};
-
-function mapHotelOverview(settings: Record<string, unknown>): HotelOverview {
-  const offers = Array.isArray(settings.special_offers)
-    ? settings.special_offers
-        .filter((offer): offer is Record<string, unknown> => Boolean(offer) && typeof offer === "object")
-        .map((offer) => ({
-          title: String(offer.title ?? ""),
-          description: String(offer.description ?? ""),
-          active: offer.active !== false,
-        }))
-    : [];
-
-  return {
-    name: String(settings.name ?? ""),
-    address: String(settings.address ?? ""),
-    city: String(settings.city ?? ""),
-    about: String(settings.about ?? ""),
-    amenities: Array.isArray(settings.amenities)
-      ? settings.amenities.map((item) => String(item)).filter(Boolean)
-      : [],
-    specialOffers: offers,
-    published: settings.published !== false,
-  };
-}
 
 export default function HotelServicesPage() {
   const [activeTab, setActiveTab] = useState<"rooms" | "services">("rooms");
@@ -85,15 +29,12 @@ export default function HotelServicesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [isSavingOverview, setIsSavingOverview] = useState(false);
-  const [hotelOverview, setHotelOverview] = useState<HotelOverview>(EMPTY_HOTEL_OVERVIEW);
 
   const loadData = async () => {
     try {
-      const [roomsRes, servicesRes, overviewRes] = await Promise.all([
+      const [roomsRes, servicesRes] = await Promise.all([
         vendorListRooms(),
         vendorListServices("hotel"),
-        vendorGetServiceSettings("hotel"),
       ]);
 
       const mappedRooms = (roomsRes.items || []).map((room: Record<string, unknown>) => ({
@@ -128,7 +69,6 @@ export default function HotelServicesPage() {
 
       setRooms(mappedRooms);
       setServices(mappedServices);
-      setHotelOverview(mapHotelOverview(overviewRes.settings ?? {}));
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : "Failed to load hotel inventory.",
@@ -144,50 +84,6 @@ export default function HotelServicesPage() {
     }, 0);
     return () => window.clearTimeout(timeoutId);
   }, []);
-
-  const saveHotelOverview = async () => {
-    const amenities = Array.from(
-      new Set(hotelOverview.amenities.map((item) => item.trim()).filter(Boolean)),
-    );
-    const specialOffers = hotelOverview.specialOffers
-      .map((offer) => ({
-        title: offer.title.trim(),
-        description: offer.description.trim(),
-        active: offer.active,
-      }))
-      .filter((offer) => offer.title);
-
-    try {
-      setIsSavingOverview(true);
-      setStatusMessage("");
-      const result = await vendorUpdateServiceSettings("hotel", {
-        name: hotelOverview.name.trim(),
-        address: hotelOverview.address.trim(),
-        city: hotelOverview.city.trim(),
-        about: hotelOverview.about.trim(),
-        amenities,
-        special_offers: specialOffers,
-        published: hotelOverview.published,
-      });
-      setHotelOverview(mapHotelOverview(result.settings ?? {}));
-      setStatusMessage("Hotel overview saved and updated in the customer app.");
-    } catch (error) {
-      setStatusMessage(
-        error instanceof Error ? error.message : "Failed to save the hotel overview.",
-      );
-    } finally {
-      setIsSavingOverview(false);
-    }
-  };
-
-  const updateOffer = (index: number, changes: Partial<HotelOffer>) => {
-    setHotelOverview((current) => ({
-      ...current,
-      specialOffers: current.specialOffers.map((offer, offerIndex) =>
-        offerIndex === index ? { ...offer, ...changes } : offer,
-      ),
-    }));
-  };
 
   const toggleRoomStatus = async (id: string) => {
     const room = rooms.find((item) => item.id === id);
@@ -313,233 +209,6 @@ export default function HotelServicesPage() {
             {activeTab === "rooms" ? "Add New Room" : "Add Room Service"}
           </Link>
         </div>
-
-        <section className="overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-sm">
-          <div className="flex flex-col gap-4 border-b border-slate-100 bg-gradient-to-r from-[#1e2a5e] to-[#30458c] px-6 py-6 text-white md:flex-row md:items-center md:justify-between lg:px-8">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-sky-200">
-                Customer app content
-              </p>
-              <h2 className="mt-2 text-2xl font-black">Hotel Overview</h2>
-              <p className="mt-1 text-sm text-white/70">
-                These details appear in the Overview tab of your hotel listing.
-              </p>
-            </div>
-            <label className="inline-flex w-fit items-center gap-3 rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold">
-              <input
-                type="checkbox"
-                checked={hotelOverview.published}
-                onChange={(event) =>
-                  setHotelOverview((current) => ({
-                    ...current,
-                    published: event.target.checked,
-                  }))
-                }
-                className="h-4 w-4 accent-sky-400"
-              />
-              Published in app
-            </label>
-          </div>
-
-          <div className="grid gap-6 p-6 lg:grid-cols-2 lg:p-8">
-            <div className="space-y-5">
-              <label className="block">
-                <span className="mb-2 block text-[11px] font-black uppercase tracking-[0.15em] text-slate-500">
-                  Property name
-                </span>
-                <input
-                  value={hotelOverview.name}
-                  onChange={(event) =>
-                    setHotelOverview((current) => ({ ...current, name: event.target.value }))
-                  }
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3.5 text-sm font-semibold text-slate-700 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-50"
-                  placeholder="Your hotel name"
-                />
-              </label>
-
-              <label className="block">
-                <span className="mb-2 block text-[11px] font-black uppercase tracking-[0.15em] text-slate-500">
-                  About the property
-                </span>
-                <textarea
-                  value={hotelOverview.about}
-                  onChange={(event) =>
-                    setHotelOverview((current) => ({ ...current, about: event.target.value }))
-                  }
-                  rows={5}
-                  maxLength={2000}
-                  className="w-full resize-none rounded-2xl border border-slate-200 px-4 py-3.5 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-50"
-                  placeholder="Describe the property, atmosphere, and guest experience."
-                />
-              </label>
-
-              <div className="grid gap-4 sm:grid-cols-[1fr,180px]">
-                <label className="block">
-                  <span className="mb-2 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.15em] text-slate-500">
-                    <MapPin className="h-4 w-4 text-sky-500" />
-                    Address
-                  </span>
-                  <input
-                    value={hotelOverview.address}
-                    onChange={(event) =>
-                      setHotelOverview((current) => ({
-                        ...current,
-                        address: event.target.value,
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3.5 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-50"
-                    placeholder="Full public address"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-[11px] font-black uppercase tracking-[0.15em] text-slate-500">
-                    City
-                  </span>
-                  <input
-                    value={hotelOverview.city}
-                    onChange={(event) =>
-                      setHotelOverview((current) => ({ ...current, city: event.target.value }))
-                    }
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3.5 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-50"
-                    placeholder="City"
-                  />
-                </label>
-              </div>
-
-              <label className="block">
-                <span className="mb-2 block text-[11px] font-black uppercase tracking-[0.15em] text-slate-500">
-                  Property amenities
-                </span>
-                <input
-                  value={hotelOverview.amenities.join(", ")}
-                  onChange={(event) =>
-                    setHotelOverview((current) => ({
-                      ...current,
-                      amenities: event.target.value.split(",").map((item) => item.trimStart()),
-                    }))
-                  }
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3.5 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-50"
-                  placeholder="Free WiFi, Air Conditioning, Smart TV, Balcony"
-                />
-                <span className="mt-2 block text-xs text-slate-400">
-                  Separate each amenity with a comma. Room-specific amenities are added automatically.
-                </span>
-              </label>
-            </div>
-
-            <div className="rounded-[28px] border border-slate-100 bg-slate-50/70 p-5 lg:p-6">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <span className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.15em] text-slate-500">
-                    <Tag className="h-4 w-4 text-sky-500" />
-                    Special offers
-                  </span>
-                  <p className="mt-2 text-xs text-slate-400">
-                    Add offers shown only on this hotel listing.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setHotelOverview((current) => ({
-                      ...current,
-                      specialOffers: [
-                        ...current.specialOffers,
-                        { title: "", description: "", active: true },
-                      ],
-                    }))
-                  }
-                  className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-black text-[#1e2a5e] shadow-sm ring-1 ring-slate-200 transition hover:ring-sky-300"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add offer
-                </button>
-              </div>
-
-              <div className="mt-5 space-y-4">
-                {hotelOverview.specialOffers.length ? (
-                  hotelOverview.specialOffers.map((offer, index) => (
-                    <div
-                      key={index}
-                      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="min-w-0 flex-1 space-y-3">
-                          <input
-                            value={offer.title}
-                            onChange={(event) => updateOffer(index, { title: event.target.value })}
-                            maxLength={120}
-                            className="w-full rounded-xl border border-slate-200 px-3.5 py-3 text-sm font-bold text-slate-700 outline-none focus:border-sky-400"
-                            placeholder="Offer title"
-                          />
-                          <textarea
-                            value={offer.description}
-                            onChange={(event) =>
-                              updateOffer(index, { description: event.target.value })
-                            }
-                            rows={2}
-                            maxLength={500}
-                            className="w-full resize-none rounded-xl border border-slate-200 px-3.5 py-3 text-sm text-slate-600 outline-none focus:border-sky-400"
-                            placeholder="What does this offer include?"
-                          />
-                          <label className="inline-flex items-center gap-2 text-xs font-bold text-slate-500">
-                            <input
-                              type="checkbox"
-                              checked={offer.active}
-                              onChange={(event) =>
-                                updateOffer(index, { active: event.target.checked })
-                              }
-                              className="h-4 w-4 accent-sky-500"
-                            />
-                            Show this offer in the app
-                          </label>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setHotelOverview((current) => ({
-                              ...current,
-                              specialOffers: current.specialOffers.filter(
-                                (_, offerIndex) => offerIndex !== index,
-                              ),
-                            }))
-                          }
-                          className="rounded-xl p-2 text-slate-300 transition hover:bg-rose-50 hover:text-rose-500"
-                          aria-label={`Remove offer ${index + 1}`}
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-5 py-10 text-center">
-                    <Tag className="mx-auto h-7 w-7 text-slate-300" />
-                    <p className="mt-3 text-sm font-bold text-slate-500">No hotel offers yet</p>
-                    <p className="mt-1 text-xs text-slate-400">
-                      Add an offer when you have a guest promotion to share.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between lg:col-span-2">
-              <p className="text-xs text-slate-400">
-                Saving updates the public hotel Overview in the customer app.
-              </p>
-              <button
-                type="button"
-                onClick={() => void saveHotelOverview()}
-                disabled={isSavingOverview}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-sky-500 px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-sky-500/20 transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <Save className="h-4 w-4" />
-                {isSavingOverview ? "Saving overview..." : "Save hotel overview"}
-              </button>
-            </div>
-          </div>
-        </section>
 
         <section className="grid grid-cols-1 gap-5 md:grid-cols-3">
           {summaryItems.map((item) => (
