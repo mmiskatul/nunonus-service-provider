@@ -52,6 +52,11 @@ export function HotelBookingDetailsModal({
   onUpdateStatus,
 }: HotelBookingDetailsModalProps) {
   if (!booking) return null;
+  const status = booking.status.toLowerCase();
+  const canConfirm = status === "pending";
+  const canCheckIn = status === "confirmed";
+  const canComplete = status === "check in";
+  const canCancel = status === "pending" || status === "confirmed" || status === "check in";
 
   const totalAmount =
     booking.nights * booking.ratePerNight +
@@ -213,18 +218,10 @@ export function HotelBookingDetailsModal({
 
           {/* Actions */}
           <div className="flex flex-col gap-4 pt-4">
-            <div className="grid grid-cols-2 gap-4">
-              <button type="button" onClick={() => onUpdateStatus("complete")} className="flex items-center justify-center py-5 rounded-[24px] bg-slate-50 text-slate-700 font-black text-sm hover:bg-slate-100 transition-all border border-slate-100">
-                Mark complete
-              </button>
-              <button type="button" onClick={() => onUpdateStatus("check_in")} className="flex items-center justify-center gap-3 py-5 rounded-[24px] bg-[#1e2a5e] text-white font-black text-sm hover:bg-[#1a234d] transition-all shadow-xl shadow-[#1e2a5e]/20">
-                <CircleCheck className="h-5 w-5" />
-                Check-in
-              </button>
-            </div>
-            <button type="button" onClick={() => onUpdateStatus("cancelled")} className="text-xs font-black uppercase tracking-widest text-rose-500 hover:text-rose-600 transition-colors py-2">
-              CANCEL RESERVATION
-            </button>
+            {canConfirm ? <button type="button" onClick={() => onUpdateStatus("confirmed")} className="flex items-center justify-center py-5 rounded-[24px] bg-emerald-500 text-white font-black text-sm hover:bg-emerald-600 transition-all">Confirm reservation</button> : null}
+            {canCheckIn ? <button type="button" onClick={() => onUpdateStatus("check_in")} className="flex items-center justify-center gap-3 py-5 rounded-[24px] bg-[#1e2a5e] text-white font-black text-sm hover:bg-[#1a234d] transition-all shadow-xl shadow-[#1e2a5e]/20"><CircleCheck className="h-5 w-5" />Check-in</button> : null}
+            {canComplete ? <button type="button" onClick={() => onUpdateStatus("complete")} className="flex items-center justify-center py-5 rounded-[24px] bg-sky-500 text-white font-black text-sm hover:bg-sky-600 transition-all">Mark complete</button> : null}
+            {canCancel ? <button type="button" onClick={() => onUpdateStatus("cancelled")} className="text-xs font-black uppercase tracking-widest text-rose-500 hover:text-rose-600 transition-colors py-2">CANCEL RESERVATION</button> : <span className="text-center text-xs font-black uppercase tracking-widest text-slate-300 py-2">NO FURTHER ACTIONS</span>}
           </div>
         </div>
       </div>

@@ -129,18 +129,14 @@ export function BookingsTable({ bookings, onViewDetails, onUpdateStatus }: Booki
                 </td>
                 <td className="py-5 text-right">
                   <div className="flex justify-end gap-2">
-                    <button onClick={() => onUpdateStatus(booking, "confirmed")} aria-label="Confirm booking" className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-emerald-500 hover:text-white transition-all">
-                      <Check className="h-4 w-4" />
-                    </button>
+                    {booking.status === "Pending" ? <button onClick={() => onUpdateStatus(booking, "confirmed")} aria-label="Confirm booking" className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-emerald-500 hover:text-white transition-all"><Check className="h-4 w-4" /></button> : null}
                     <button
                       onClick={() => onViewDetails(booking)}
                       className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-sky-500 hover:text-white transition-all"
                     >
                       <Eye className="h-4 w-4" />
                     </button>
-                    <button onClick={() => onUpdateStatus(booking, "cancelled")} aria-label="Cancel booking" className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-rose-500 hover:text-white transition-all">
-                      <X className="h-4 w-4" />
-                    </button>
+                    {booking.status === "Pending" || booking.status === "Confirmed" ? <button onClick={() => onUpdateStatus(booking, "cancelled")} aria-label="Cancel booking" className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-rose-500 hover:text-white transition-all"><X className="h-4 w-4" /></button> : null}
                   </div>
                 </td>
               </tr>
