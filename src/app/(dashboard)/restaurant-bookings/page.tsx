@@ -31,7 +31,7 @@ function toBooking(raw: Record<string, unknown>): Booking {
     customer: { name: customerName, avatar: String(raw.customer_avatar ?? raw.avatar_url ?? "").trim() },
     phone: String(raw.customer_phone ?? ""),
     email: String(raw.customer_email ?? ""),
-    specialRequests: String(raw.special_requests ?? raw.notes ?? ""),
+    specialRequests: String(raw.special_requests ?? raw.special_notes ?? raw.notes ?? ""),
     customerSince: String(raw.customer_since ?? ""),
     date: String(raw.date ?? raw.scheduled_date ?? raw.check_in_date ?? "—"),
     time: String(raw.time ?? raw.scheduled_time ?? "—"),
