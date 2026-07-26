@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Header } from "@/components/Header";
 import {
   Upload,
@@ -12,7 +12,12 @@ import {
   Waves,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { uploadVendorFile, vendorJson } from "@/lib/vendor-api";
+import {
+  uploadVendorFile,
+  vendorDeleteAsset,
+  vendorJson,
+  vendorListAssets,
+} from "@/lib/vendor-api";
 
 interface UploadedFile {
   id: string;
@@ -21,6 +26,7 @@ interface UploadedFile {
   assetUrl: string;
   type: "menu" | "gallery";
   status: "uploading" | "uploaded";
+  persisted?: boolean;
 }
 
 export default function SpaServicesPage() {
@@ -33,6 +39,38 @@ export default function SpaServicesPage() {
 
   const menuInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    void Promise.all([
+      vendorListAssets("menu", "spa"),
+      vendorListAssets("gallery", "spa"),
+    ])
+      .then(([menuResponse, galleryResponse]) => {
+        const mapAsset = (
+          row: Record<string, unknown>,
+          type: "menu" | "gallery",
+        ): UploadedFile => ({
+          id: String(row.id ?? ""),
+          name: String(row.file_name ?? row.name ?? `${type} asset`),
+          previewUrl: String(row.asset_url ?? row.url ?? ""),
+          assetUrl: String(row.asset_url ?? row.url ?? ""),
+          type,
+          status: "uploaded",
+          persisted: true,
+        });
+        setMenuFiles(
+          (menuResponse.items ?? []).map((row) => mapAsset(row, "menu")),
+        );
+        setGalleryFiles(
+          (galleryResponse.items ?? []).map((row) => mapAsset(row, "gallery")),
+        );
+      })
+      .catch((error) => {
+        setStatusMessage(
+          error instanceof Error ? error.message : "Failed to load spa assets.",
+        );
+      });
+  }, []);
 
   const processFiles = async (files: FileList | File[], type: "menu" | "gallery") => {
     for (const file of Array.from(files)) {
@@ -106,20 +144,32 @@ export default function SpaServicesPage() {
     if (files) void processFiles(files, type);
   };
 
-  const removeFile = (id: string, type: "menu" | "gallery") => {
+  const removeFile = async (id: string, type: "menu" | "gallery") => {
+    const rows = type === "menu" ? menuFiles : galleryFiles;
+    const target = rows.find((file) => file.id === id);
+    if (target?.persisted) {
+      try {
+        await vendorDeleteAsset(id);
+      } catch (error) {
+        setStatusMessage(
+          error instanceof Error ? error.message : "Failed to delete spa asset.",
+        );
+        return;
+      }
+    }
     if (type === "menu") {
       setMenuFiles((prev) => {
-        const target = prev.find((f) => f.id === id);
-        if (target) {
-          URL.revokeObjectURL(target.previewUrl);
+        const removed = prev.find((f) => f.id === id);
+        if (removed?.previewUrl.startsWith("blob:")) {
+          URL.revokeObjectURL(removed.previewUrl);
         }
         return prev.filter((f) => f.id !== id);
       });
     } else {
       setGalleryFiles((prev) => {
-        const target = prev.find((f) => f.id === id);
-        if (target) {
-          URL.revokeObjectURL(target.previewUrl);
+        const removed = prev.find((f) => f.id === id);
+        if (removed?.previewUrl.startsWith("blob:")) {
+          URL.revokeObjectURL(removed.previewUrl);
         }
         return prev.filter((f) => f.id !== id);
       });
@@ -127,7 +177,14 @@ export default function SpaServicesPage() {
   };
 
   const handleSave = async () => {
-    const allFiles = [...menuFiles, ...galleryFiles];
+    const allFiles = [...menuFiles, ...galleryFiles].filter(
+      (file) => !file.persisted,
+    );
+
+    if (!allFiles.length) {
+      setStatusMessage("All spa assets are already saved.");
+      return;
+    }
 
     if (allFiles.some((file) => file.status === "uploading")) {
       setStatusMessage("Please wait for uploads to finish.");
@@ -146,11 +203,18 @@ export default function SpaServicesPage() {
             {
               asset_url: file.assetUrl,
               asset_type: file.type,
+              service_type: "spa",
               file_name: file.name,
               mime_type: null,
             },
           ),
         ),
+      );
+      setMenuFiles((current) =>
+        current.map((file) => ({ ...file, persisted: true })),
+      );
+      setGalleryFiles((current) =>
+        current.map((file) => ({ ...file, persisted: true })),
       );
       setStatusMessage("Assets saved.");
     } catch (error) {
@@ -240,7 +304,7 @@ export default function SpaServicesPage() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          removeFile(file.id, "menu");
+                          void removeFile(file.id, "menu");
                         }}
                         className="absolute top-2 right-2 h-6 w-6 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500/80"
                       >
@@ -320,7 +384,7 @@ export default function SpaServicesPage() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          removeFile(file.id, "gallery");
+                          void removeFile(file.id, "gallery");
                         }}
                         className="absolute top-2 right-2 h-6 w-6 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500/80"
                       >

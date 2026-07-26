@@ -92,7 +92,7 @@ export default function HotelServicesPage() {
     try {
       const [roomsRes, servicesRes, overviewRes] = await Promise.all([
         vendorListRooms(),
-        vendorListServices(),
+        vendorListServices("hotel"),
         vendorGetServiceSettings("hotel"),
       ]);
 

@@ -97,6 +97,7 @@ export default function EditServicePage() {
     try {
       await vendorUpdateService(serviceId, {
         name: formData.name,
+        service_type: "hotel",
         category: formData.category,
         price: parseFloat(formData.price) || 0,
         delivery_time: formData.deliveryTime,

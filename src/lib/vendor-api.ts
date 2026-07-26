@@ -322,16 +322,24 @@ export async function vendorGenerateReceipt(bookingId: string) {
 // ─── Menu / Gallery Assets ─────────────────────────────────────────────────────
 
 /** GET /vendor/menu-services/assets */
-export async function vendorListAssets(assetType?: string) {
+export async function vendorListAssets(
+  assetType?: string,
+  serviceType?: "restaurant" | "hotel" | "spa",
+) {
   return vendorRequest<{ items: Record<string, unknown>[] }>(
-    `/vendor/menu-services/assets${q({ asset_type: assetType })}`,
+    `/vendor/menu-services/assets${q({
+      asset_type: assetType,
+      service_type: serviceType,
+    })}`,
   );
 }
 
 /** GET /vendor/menu-services/overview */
-export async function vendorGetMenuServicesOverview() {
+export async function vendorGetMenuServicesOverview(
+  serviceType: "restaurant" | "hotel" | "spa" = "restaurant",
+) {
   return vendorRequest<Record<string, unknown>>(
-    `/vendor/menu-services/overview`,
+    `/vendor/menu-services/overview${q({ service_type: serviceType })}`,
   );
 }
 
@@ -398,9 +406,11 @@ export async function vendorDeleteRoom(roomId: string) {
 // ─── Room Services ───────────────────────────────────────────────────────────
 
 /** GET /vendor/rooms-services/services */
-export async function vendorListServices() {
+export async function vendorListServices(
+  serviceType?: "restaurant" | "hotel" | "spa",
+) {
   return vendorRequest<{ items: Record<string, unknown>[] }>(
-    `/vendor/rooms-services/services`,
+    `/vendor/rooms-services/services${q({ service_type: serviceType })}`,
   );
 }
 

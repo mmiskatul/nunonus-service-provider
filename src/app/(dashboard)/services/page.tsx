@@ -93,9 +93,9 @@ export default function ServicesPage() {
 
   const refreshAssets = async () => {
     const [overviewRes, menuRes, galleryRes] = await Promise.all([
-      vendorGetMenuServicesOverview(),
-      vendorListAssets("menu"),
-      vendorListAssets("gallery"),
+      vendorGetMenuServicesOverview("restaurant"),
+      vendorListAssets("menu", "restaurant"),
+      vendorListAssets("gallery", "restaurant"),
     ]);
 
     const nextMenuAssets = (menuRes.items || []).map((row: Record<string, unknown>) => ({
@@ -117,8 +117,8 @@ export default function ServicesPage() {
     setOverview({
       totalAssets:
         Number(overviewRes.total_assets) || nextMenuAssets.length + nextGalleryAssets.length,
-      menuAssets: Number(overviewRes.menu_assets) || nextMenuAssets.length,
-      galleryAssets: Number(overviewRes.gallery_assets) || nextGalleryAssets.length,
+      menuAssets: Number(overviewRes.menu_assets_count) || nextMenuAssets.length,
+      galleryAssets: Number(overviewRes.gallery_assets_count) || nextGalleryAssets.length,
     });
   };
 
@@ -278,6 +278,7 @@ export default function ServicesPage() {
             {
               asset_url: file.assetUrl,
               asset_type: file.type,
+              service_type: "restaurant",
               file_name: file.name,
               mime_type: isPdfFile(file.name) ? "application/pdf" : null,
             },

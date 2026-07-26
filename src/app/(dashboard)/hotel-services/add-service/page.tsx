@@ -83,6 +83,7 @@ export default function AddServicePage() {
     try {
       const servicePayload = {
         name: formData.name,
+        service_type: "hotel",
         category: formData.category,
         price: parseFloat(formData.price) || 0,
         delivery_time: formData.deliveryTime,

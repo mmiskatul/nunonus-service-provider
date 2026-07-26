@@ -145,6 +145,7 @@ export default function AddRoomPage() {
         base_price: parseFloat(formData.basePrice) || 0,
         weekend_price: parseFloat(formData.weekendPrice) || 0,
         default_discount_percent: parseFloat(formData.discount) || 0,
+        tax_included: formData.taxIncluded,
         amenities: selectedAmenities,
         images: images,
         inventory_count: parseInt(formData.totalInventory) || 1,
