@@ -24,6 +24,7 @@ interface Review {
   customer_avatar?: string;
   star_rating?: number;
   rating?: number;
+  provider_type?: string;
   review_text?: string;
   created_at?: string;
   vendor_reply?: string | null;
@@ -37,6 +38,7 @@ export default function ReviewsPage() {
   const [activeTab, setActiveTab] = useState<"all" | "replied" | "unreplied">("all");
   const [search, setSearch] = useState("");
   const [starFilter, setStarFilter] = useState<number | null>(null);
+  const [serviceFilter, setServiceFilter] = useState<"all" | "restaurant" | "hotel" | "spa" | "event">("all");
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -47,6 +49,7 @@ export default function ReviewsPage() {
     search: search || undefined,
     star_rating: starFilter ?? undefined,
     replied: activeTab === "all" ? undefined : activeTab === "replied",
+    provider_type: serviceFilter === "all" ? undefined : serviceFilter,
   };
   const reviewsKey = vendorQueryKeys.reviews(reviewParams);
   const reviewsQuery = useQuery({
@@ -107,6 +110,24 @@ export default function ReviewsPage() {
                 placeholder="Search by customer name or keywords..."
                 className="w-full bg-slate-50 border border-slate-50 rounded-2xl py-3 pl-14 pr-6 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/10 transition-all"
               />
+            </div>
+
+            <div className="relative">
+              <select
+                className="appearance-none bg-slate-50 border border-slate-100 rounded-2xl py-3 px-6 pr-12 text-sm font-bold text-slate-600 focus:outline-none cursor-pointer hover:bg-slate-100/50 transition-colors"
+                value={serviceFilter}
+                onChange={(e) => {
+                  setServiceFilter(e.target.value as typeof serviceFilter);
+                  setCurrentPage(1);
+                }}
+              >
+                <option value="all">Service: All</option>
+                <option value="restaurant">Restaurant</option>
+                <option value="hotel">Hotel</option>
+                <option value="spa">Spa</option>
+                <option value="event">Event</option>
+              </select>
+              <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
             </div>
 
             <div className="relative">
@@ -192,6 +213,10 @@ export default function ReviewsPage() {
                           />
                         ))}
                       </div>
+
+                      <span className="mb-4 inline-flex rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                        {review.provider_type === "hotel_room" ? "Hotel" : review.provider_type || "Service"}
+                      </span>
 
                       <p className="text-base text-slate-600 leading-relaxed mb-8">
                         {review.review_text ?? ""}

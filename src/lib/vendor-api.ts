@@ -588,6 +588,7 @@ export async function vendorListReviews(
     search?: string;
     star_rating?: number;
     replied?: boolean;
+    provider_type?: "restaurant" | "hotel" | "spa" | "event";
   } = {},
   signal?: AbortSignal,
 ) {
