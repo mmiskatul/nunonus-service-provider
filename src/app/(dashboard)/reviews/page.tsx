@@ -21,7 +21,9 @@ interface Review {
   id: string;
   customer_name?: string;
   avatar_url?: string;
-  star_rating: number;
+  customer_avatar?: string;
+  star_rating?: number;
+  rating?: number;
   review_text?: string;
   created_at?: string;
   vendor_reply?: string | null;
@@ -160,8 +162,8 @@ export default function ReviewsPage() {
                 >
                   <div className="flex gap-5 sm:gap-8">
                     <div className="h-12 w-12 rounded-2xl overflow-hidden shrink-0 ring-4 ring-slate-50/50 sm:h-16 sm:w-16 sm:rounded-3xl sm:ring-8">
-                      {review.avatar_url ? (
-                        <img src={review.avatar_url} alt={review.customer_name ?? "Customer"} className="h-full w-full object-cover" />
+                      {review.avatar_url ?? review.customer_avatar ? (
+                        <img src={review.avatar_url ?? review.customer_avatar} alt={review.customer_name ?? "Customer"} className="h-full w-full object-cover" />
                       ) : (
                         <div className="h-full w-full bg-sky-100 flex items-center justify-center text-sky-600 text-xl font-bold">
                           {(review.customer_name ?? "C").charAt(0).toUpperCase()}
@@ -186,7 +188,7 @@ export default function ReviewsPage() {
                         {[1, 2, 3, 4, 5].map((s) => (
                           <Star
                             key={s}
-                            className={cn("h-4 w-4", s <= review.star_rating ? "fill-amber-400 text-amber-400" : "text-slate-200")}
+                            className={cn("h-4 w-4", s <= (review.star_rating ?? review.rating ?? 0) ? "fill-amber-400 text-amber-400" : "text-slate-200")}
                           />
                         ))}
                       </div>
