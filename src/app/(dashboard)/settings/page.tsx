@@ -1,20 +1,8 @@
-import { SettingsPageClient } from "@/components/settings/page-client";
+import {
+  SettingsPageClient,
+  type SettingsProfileData,
+} from "@/components/settings/page-client";
 import { fetchApiData } from "@/lib/server-api";
-
-type SettingsProfileData = {
-  business_name?: string;
-  name?: string;
-  category?: string;
-  categories?: string[];
-  phone_number?: string;
-  phone?: string;
-  email_address?: string;
-  email?: string;
-  office_address?: string;
-  address?: string;
-  about_business?: string;
-  description?: string;
-};
 
 type SettingsNotificationData = {
   new_booking?: boolean;

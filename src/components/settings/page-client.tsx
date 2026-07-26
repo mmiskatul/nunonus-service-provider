@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Bell, CalendarPlus2, Save, Shield, User, X, Hotel, Utensils, Sparkles, ClipboardCheck, Plus } from "lucide-react";
@@ -18,6 +19,7 @@ import {
 } from "@/lib/vendor-api";
 import { extractVendorCategories, type VendorCategory } from "@/lib/vendor-access";
 import { buildSettingsProfilePayload } from "@/lib/vendor-contracts";
+import { vendorQueryKeys } from "@/lib/vendor-queries";
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
@@ -55,6 +57,7 @@ export type SettingsProfileData = {
   about_business?: string;
   description?: string;
   owner_full_name?: string;
+  website?: string;
   location_label?: string;
   latitude?: number | null;
   longitude?: number | null;
@@ -164,6 +167,7 @@ export function SettingsPageClient({
   initialNotifications: SettingsNotificationData;
 }) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -180,6 +184,7 @@ export function SettingsPageClient({
     description: String(initialProfile.about_business ?? initialProfile.description ?? ""),
     owner_full_name: String(initialProfile.owner_full_name ?? ""),
     location_label: String(initialProfile.location_label ?? ""),
+    website: String(initialProfile.website ?? ""),
   });
   const [serviceTab, setServiceTab] = useState<"restaurant" | "hotel" | "spa">("restaurant");
   const [serviceSettings, setServiceSettings] = useState({
@@ -266,7 +271,8 @@ export function SettingsPageClient({
   const handleSaveProfile = async () => {
     try {
       setSaving(true);
-      await vendorUpdateProfileSettings(
+      await queryClient.cancelQueries({ queryKey: vendorQueryKeys.profile });
+      const updatedProfile = await vendorUpdateProfileSettings(
         {
           ...buildSettingsProfilePayload(
           profileForm,
@@ -274,11 +280,13 @@ export function SettingsPageClient({
           ),
           owner_full_name: profileForm.owner_full_name,
           location_label: profileForm.location_label,
+          website: profileForm.website.trim() || null,
           restaurant_settings: serviceSettings.restaurant,
           hotel_settings: serviceSettings.hotel,
           spa_settings: serviceSettings.spa,
         },
       );
+      queryClient.setQueryData(vendorQueryKeys.profile, updatedProfile);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
@@ -440,6 +448,7 @@ export function SettingsPageClient({
                     { key: "email", label: "Email", type: "email" },
                     { key: "address", label: "Address", type: "text" },
                     { key: "location_label", label: "Public Location Label", type: "text" },
+                    { key: "website", label: "Website", type: "url" },
                   ].map(({ key, label, type }) => (
                     <div key={key}>
                       <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">{label}</label>

@@ -18,6 +18,7 @@ function getApiBaseUrl(): string {
 const V = getApiBaseUrl();
 let profileSettingsCache: { value: Record<string, unknown>; expiresAt: number } | null = null;
 let profileSettingsRequest: Promise<Record<string, unknown>> | null = null;
+let profileSettingsRevision = 0;
 
 // ─── Token management ─────────────────────────────────────────────────────────
 
@@ -677,15 +678,21 @@ export async function vendorGetProfileSettings(signal?: AbortSignal) {
   // Several dashboard components need the same profile. Share one in-flight
   // request and briefly cache the result to avoid a request per component or
   // React Strict Mode mount.
-  profileSettingsRequest = vendorRequest<Record<string, unknown>>(`/vendor/settings/profile`, "GET", undefined, { signal })
+  const requestRevision = profileSettingsRevision;
+  const request = vendorRequest<Record<string, unknown>>(`/vendor/settings/profile`, "GET", undefined, { signal })
     .then((result) => {
-      profileSettingsCache = { value: result, expiresAt: Date.now() + 30_000 };
-      cacheVendorCategories(result.categories ?? result.category);
+      if (requestRevision === profileSettingsRevision) {
+        profileSettingsCache = { value: result, expiresAt: Date.now() + 30_000 };
+        cacheVendorCategories(result.categories ?? result.category);
+      }
       return result;
     })
     .finally(() => {
-      profileSettingsRequest = null;
+      if (profileSettingsRequest === request) {
+        profileSettingsRequest = null;
+      }
     });
+  profileSettingsRequest = request;
   return profileSettingsRequest;
 }
 
@@ -701,7 +708,9 @@ export async function vendorUpdateProfileSettings(
   cacheVendorCategories(
     result.categories ?? payload.categories ?? result.category ?? payload.category,
   );
-  profileSettingsCache = null;
+  profileSettingsRevision += 1;
+  profileSettingsRequest = null;
+  profileSettingsCache = { value: result, expiresAt: Date.now() + 30_000 };
   return result;
 }
 
@@ -915,7 +924,16 @@ export async function uploadVendorProfileAvatar(file: File): Promise<string> {
   if (!response.ok) {
     throw new Error(payload.detail || payload.error || "Failed to upload profile image.");
   }
-  return String(payload.avatar_url || payload.profile_image_url || "");
+  const avatarUrl = String(payload.avatar_url || payload.profile_image_url || "");
+  profileSettingsRevision += 1;
+  profileSettingsRequest = null;
+  profileSettingsCache = profileSettingsCache
+    ? {
+        value: { ...profileSettingsCache.value, avatar_url: avatarUrl },
+        expiresAt: Date.now() + 30_000,
+      }
+    : null;
+  return avatarUrl;
 }
 
 // ─── Generic JSON Helper ──────────────────────────────────────────────────────
