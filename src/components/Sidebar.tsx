@@ -29,7 +29,7 @@ export function Sidebar({
   const navItems = getSidebarItemsForCategories(categories);
   const groups = [
     { label: "Overview", hrefs: ["/dashboard", "/analytics"] },
-    { label: "Operations", hrefs: ["/customers", "/events", "/restaurant-bookings", "/hotel-bookings", "/services", "/hotel-services", "/spa-services"] },
+    { label: "Operations", hrefs: ["/customers", "/events", "/restaurant-bookings", "/hotel-bookings", "/spa-bookings", "/services", "/hotel-services", "/spa-services"] },
     { label: "Engagement", hrefs: ["/promotions", "/loyalty", "/reviews"] },
     { label: "Account", hrefs: ["/settings", "/profile", "/notifications"] },
   ];

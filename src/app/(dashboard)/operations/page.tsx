@@ -29,6 +29,7 @@ const CATEGORY_OPERATIONS: Record<VendorCategory, Operation[]> = {
     { title: "Rooms and services", description: "Update rooms, inventory, availability, and guest services.", href: "/hotel-services", icon: Hotel },
   ],
   Spa: [
+    { title: "Spa bookings", description: "Manage appointments, confirmations, payments, and guest requests.", href: "/spa-bookings", icon: CalendarRange },
     { title: "Spa services", description: "Manage treatments, schedules, and service images.", href: "/spa-services", icon: Waves },
   ],
   "Event Venue": [],

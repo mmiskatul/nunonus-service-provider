@@ -63,14 +63,17 @@ const CATEGORY_NAV_ITEMS: Record<VendorCategory, SidebarNavItem[]> = {
     { name: "Hotel Bookings", icon: CalendarRange, href: "/hotel-bookings" },
     { name: "Hotel / Services", icon: Hotel, href: "/hotel-services" },
   ],
-  Spa: [{ name: "Spa / Services", icon: Waves, href: "/spa-services" }],
+  Spa: [
+    { name: "Spa Bookings", icon: CalendarRange, href: "/spa-bookings" },
+    { name: "Spa / Services", icon: Waves, href: "/spa-services" },
+  ],
   "Event Venue": [],
 };
 
 const CATEGORY_ROUTE_PREFIXES: Record<VendorCategory, string[]> = {
   Restaurant: ["/restaurant-bookings", "/services"],
   Hotel: ["/hotel-bookings", "/hotel-services"],
-  Spa: ["/spa-services"],
+  Spa: ["/spa-bookings", "/spa-services"],
   "Event Venue": [],
 };
 

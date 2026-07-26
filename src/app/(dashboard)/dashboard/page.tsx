@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
-import { CalendarPlus2, Hotel, Megaphone, UtensilsCrossed } from "lucide-react";
+import { CalendarPlus2, Hotel, Megaphone, UtensilsCrossed, Waves } from "lucide-react";
 import { Header } from "@/components/Header";
 import { StatsCard } from "@/components/StatsCard";
 import type { TrendPoint } from "@/components/BookingTrendsChart";
@@ -54,11 +54,12 @@ export default function Dashboard() {
     : [];
   const currency = currencyCode(profile);
   const kpis = overview?.kpis;
-  const bookingsHref = categories.includes("Restaurant") ? "/restaurant-bookings" : categories.includes("Hotel") ? "/hotel-bookings" : "/events";
+  const bookingsHref = categories.includes("Restaurant") ? "/restaurant-bookings" : categories.includes("Hotel") ? "/hotel-bookings" : categories.includes("Spa") ? "/spa-bookings" : "/events";
   const quickActions = [
     categories.includes("Restaurant") ? { label: "Manage menu", href: "/services", icon: UtensilsCrossed } : null,
     categories.includes("Hotel") ? { label: "Add hotel service", href: "/hotel-services/add-service", icon: Hotel } : null,
     categories.includes("Hotel") ? { label: "Update availability", href: "/hotel-services", icon: Hotel } : null,
+    categories.includes("Spa") ? { label: "Manage spa services", href: "/spa-services", icon: Waves } : null,
     { label: "Create promotion", href: "/promotions/new", icon: Megaphone },
     { label: "Create event", href: "/events/new", icon: CalendarPlus2 },
   ].filter(Boolean) as Array<{ label: string; href: string; icon: typeof Hotel }>;
