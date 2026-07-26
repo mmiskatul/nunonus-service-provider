@@ -58,7 +58,7 @@ export function BookingsTable({ bookings, onViewDetails, onUpdateStatus }: Booki
               <th className="pb-6 text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Payment
               </th>
-              <th className="pb-6 text-xs font-semibold uppercase tracking-wider text-slate-400 text-right">
+              <th className="w-[150px] pb-6 text-center text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Actions
               </th>
             </tr>
@@ -127,8 +127,8 @@ export function BookingsTable({ bookings, onViewDetails, onUpdateStatus }: Booki
                     {booking.payment}
                   </span>
                 </td>
-                <td className="py-5 text-right">
-                  <div className="flex justify-end gap-2">
+                <td className="w-[150px] py-5 text-center">
+                  <div className="flex justify-center gap-2">
                     {booking.status === "Pending" ? <button onClick={() => onUpdateStatus(booking, "confirmed")} aria-label="Confirm booking" className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-emerald-500 hover:text-white transition-all"><Check className="h-4 w-4" /></button> : null}
                     <button
                       onClick={() => onViewDetails(booking)}
