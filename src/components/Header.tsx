@@ -3,29 +3,63 @@
 import React from "react";
 import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
+import { usePathname } from "next/navigation";
 
 import { Bell, Menu } from "lucide-react";
 import { NotificationsModal } from "./NotificationsModal";
 import Link from "next/link";
 import { notificationsQuery, vendorProfileQuery } from "@/lib/vendor-queries";
 import { useDashboardShell } from "@/components/DashboardShellContext";
+import { dashboardTitleForPath } from "@/lib/dashboard-title";
 
 interface HeaderProps {
   title?: string;
+  global?: boolean;
 }
 
-export function Header({ title = "Business Overview" }: HeaderProps) {
+function providerInitials(profile: Record<string, unknown> | undefined) {
+  const label = String(
+    profile?.business_name ??
+      profile?.name ??
+      profile?.owner_full_name ??
+      "Provider",
+  ).trim();
+  const words = label.split(/\s+/).filter(Boolean);
+  if (!words.length) return "P";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase();
+}
+
+export function Header({ title, global = false }: HeaderProps) {
+  const dashboardShell = useDashboardShell();
+  if (dashboardShell.hasGlobalHeader && !global) return null;
+  return <HeaderContent title={title} />;
+}
+
+function HeaderContent({ title }: Pick<HeaderProps, "title">) {
   const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
   const notificationRef = React.useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
   const { openNavigation } = useDashboardShell();
   const profileQuery = useQuery(vendorProfileQuery());
-  const notifications = useQuery({ ...notificationsQuery(20, 0), enabled: isNotificationsOpen });
-  const profile = profileQuery.data;
+  const notifications = useQuery(notificationsQuery(20, 0));
+  const profile = profileQuery.data as Record<string, unknown> | undefined;
   const avatarUrl = String(profile?.avatar_url ?? profile?.profile_image_url ?? "");
-  const notificationItems = (notifications.data as { items?: Array<{ is_read?: boolean; read?: boolean }> } | undefined)?.items ?? [];
-  const unreadCount = notifications.data
-    ? notificationItems.filter((item) => !(item.is_read ?? item.read ?? false)).length
+  const notificationPayload = notifications.data as {
+    items?: Array<{ is_read?: boolean; read?: boolean }>;
+    unread_count?: number;
+  } | undefined;
+  const notificationItems = notificationPayload?.items ?? [];
+  const unreadCount = notificationPayload
+    ? Number(
+        notificationPayload.unread_count ??
+          notificationItems.filter(
+            (item) => !(item.is_read ?? item.read ?? false),
+          ).length,
+      )
     : Number(profile?.unread_notifications ?? 0);
+  const resolvedTitle = title ?? dashboardTitleForPath(pathname);
+  const initials = providerInitials(profile);
 
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -56,7 +90,7 @@ export function Header({ title = "Business Overview" }: HeaderProps) {
         >
           <Menu className="h-6 w-6" />
         </button>
-        <h2 className="truncate text-xl font-bold text-slate-800 sm:text-2xl md:text-3xl">{title}</h2>
+        <h2 className="truncate text-xl font-bold text-slate-800 sm:text-2xl md:text-3xl">{resolvedTitle}</h2>
       </div>
 
       <div className="flex items-center space-x-6">
@@ -89,7 +123,12 @@ export function Header({ title = "Business Overview" }: HeaderProps) {
           {avatarUrl ? (
             <Image src={avatarUrl} alt="User profile" width={48} height={48} sizes="48px" className="h-10 w-10 rounded-full border-2 border-slate-200 object-cover transition-all group-hover:border-sky-400 md:h-12 md:w-12" />
           ) : (
-            <span className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-slate-200 bg-slate-100 text-sm font-black text-slate-500 md:h-12 md:w-12">SP</span>
+            <span
+              aria-label={`${String(profile?.business_name ?? profile?.name ?? "Provider")} profile`}
+              className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-slate-200 bg-slate-100 text-sm font-black text-slate-500 md:h-12 md:w-12"
+            >
+              {profileQuery.isPending ? "..." : initials}
+            </span>
           )}
         </Link>
       </div>

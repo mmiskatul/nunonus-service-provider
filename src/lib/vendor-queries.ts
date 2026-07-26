@@ -40,7 +40,9 @@ export const vendorProfileQuery = () =>
   queryOptions({
     queryKey: vendorQueryKeys.profile,
     queryFn: ({ signal }) => vendorGetProfileSettings(signal),
-    staleTime: 5 * 60_000,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: "always",
   });
 
 export const dashboardOverviewQuery = () =>
@@ -72,7 +74,9 @@ export const notificationsQuery = (limit = 20, skip = 0) =>
   queryOptions({
     queryKey: vendorQueryKeys.notifications(limit, skip),
     queryFn: ({ signal }) => vendorListNotifications({ limit, skip }, signal),
-    refetchInterval: 30_000,
+    staleTime: 5_000,
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: "always",
   });
 
 export const analyticsOverviewQuery = (dateFrom?: string, dateTo?: string) =>

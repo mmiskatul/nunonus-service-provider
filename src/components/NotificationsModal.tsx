@@ -30,13 +30,21 @@ export function NotificationsModal({ isOpen, onClose }: NotificationsModalProps)
   const markRead = useMutation({
     mutationFn: vendorMarkNotificationRead,
     onSuccess: (_result, id) => {
-      queryClient.setQueryData(vendorQueryKeys.notifications(20, 0), (current: unknown) => {
-        const payload = current as { items?: NotificationItem[] } | undefined;
+      queryClient.setQueriesData({ queryKey: ["vendor", "notifications"] }, (current: unknown) => {
+        const payload = current as {
+          items?: NotificationItem[];
+          unread_count?: number;
+        } | undefined;
+        const items = payload?.items ?? [];
+        const unreadCount =
+          payload?.unread_count ??
+          items.filter((item) => !(item.is_read ?? item.read ?? false)).length;
         return {
           ...(payload ?? {}),
-          items: (payload?.items ?? []).map((item) =>
+          items: items.map((item) =>
             item.id === id ? { ...item, is_read: true, read: true } : item,
           ),
+          unread_count: Math.max(0, Number(unreadCount) - 1),
         };
       });
       queryClient.setQueryData(vendorQueryKeys.profile, (current: unknown) => {
@@ -77,9 +85,11 @@ export function NotificationsModal({ isOpen, onClose }: NotificationsModalProps)
                 type="button"
                 key={notification.id}
                 onClick={() => isUnread && markRead.mutate(notification.id)}
+                disabled={markRead.isPending}
                 className={cn(
                   "group relative block w-full rounded-3xl border bg-white/50 p-5 text-left transition-all",
                   isUnread ? "border-slate-100 hover:border-sky-200" : "border-slate-50 opacity-70",
+                  markRead.isPending && "cursor-wait",
                 )}
               >
                 {isUnread ? <span className="absolute right-5 top-5 h-2 w-2 rounded-full bg-[#1e2a5e]" /> : null}

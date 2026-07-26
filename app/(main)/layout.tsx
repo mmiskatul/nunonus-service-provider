@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Menu } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
+import { Header } from "@/components/Header";
 import { DashboardShellProvider } from "@/components/DashboardShellContext";
 import { vendorProfileQuery, vendorQueryKeys } from "@/lib/vendor-queries";
 import {
@@ -66,7 +66,10 @@ export default function MainLayout({
   }, [pathname, queryClient, router]);
 
   const shellActions = useMemo(
-    () => ({ openNavigation: () => setMobileNavigationOpen(true) }),
+    () => ({
+      openNavigation: () => setMobileNavigationOpen(true),
+      hasGlobalHeader: true,
+    }),
     [],
   );
 
@@ -79,16 +82,9 @@ export default function MainLayout({
           onMobileClose={() => setMobileNavigationOpen(false)}
         />
         <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+          <Header global />
           <div className="min-h-full w-full">{children}</div>
         </main>
-        <button
-          type="button"
-          aria-label="Open dashboard navigation"
-          onClick={() => setMobileNavigationOpen(true)}
-          className="fixed bottom-5 left-5 z-40 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1e2a5e] text-white shadow-xl shadow-slate-900/20 md:hidden"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
       </div>
     </DashboardShellProvider>
   );

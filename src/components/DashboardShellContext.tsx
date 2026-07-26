@@ -2,8 +2,12 @@
 
 import { createContext, useContext } from "react";
 
-const DashboardShellContext = createContext<{ openNavigation: () => void }>({
+const DashboardShellContext = createContext<{
+  openNavigation: () => void;
+  hasGlobalHeader: boolean;
+}>({
   openNavigation: () => undefined,
+  hasGlobalHeader: false,
 });
 
 export const DashboardShellProvider = DashboardShellContext.Provider;

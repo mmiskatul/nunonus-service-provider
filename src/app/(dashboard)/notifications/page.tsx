@@ -16,18 +16,25 @@ export default function NotificationsPage() {
   const notificationQuery = useQuery(notificationsQuery(100, 0));
   const items = (notificationQuery.data as { items?: NotificationItem[] } | undefined)?.items ?? [];
   const markRead = useMutation({ mutationFn: vendorMarkNotificationRead, onSuccess: (_data, id) => {
-    queryClient.setQueryData(vendorQueryKeys.notifications(100, 0), (current: unknown) => {
-      const payload = current as { items?: NotificationItem[] } | undefined;
-      return { ...(payload ?? {}), items: (payload?.items ?? []).map((item) => item.id === id ? { ...item, is_read: true, read: true } : item) };
+    queryClient.setQueriesData({ queryKey: ["vendor", "notifications"] }, (current: unknown) => {
+      const payload = current as { items?: NotificationItem[]; unread_count?: number } | undefined;
+      const items = payload?.items ?? [];
+      const unreadCount =
+        payload?.unread_count ??
+        items.filter((item) => !(item.is_read ?? item.read ?? false)).length;
+      return {
+        ...(payload ?? {}),
+        items: items.map((item) => item.id === id ? { ...item, is_read: true, read: true } : item),
+        unread_count: Math.max(0, Number(unreadCount) - 1),
+      };
     });
-    queryClient.invalidateQueries({ queryKey: vendorQueryKeys.notifications(20, 0) });
     queryClient.setQueryData(vendorQueryKeys.profile, (current: unknown) => {
       const profile = current as Record<string, unknown> | undefined;
       return { ...(profile ?? {}), unread_notifications: Math.max(0, Number(profile?.unread_notifications ?? 0) - 1) };
     });
   }});
   const clearAll = useMutation({ mutationFn: vendorClearNotifications, onSuccess: () => {
-    queryClient.setQueriesData({ queryKey: ["vendor", "notifications"] }, (current: unknown) => ({ ...((current as object | undefined) ?? {}), items: [] }));
+    queryClient.setQueriesData({ queryKey: ["vendor", "notifications"] }, (current: unknown) => ({ ...((current as object | undefined) ?? {}), items: [], unread_count: 0, total: 0 }));
     queryClient.setQueryData(vendorQueryKeys.profile, (current: unknown) => ({ ...((current as object | undefined) ?? {}), unread_notifications: 0 }));
   }});
   const mutationError = markRead.error ?? clearAll.error;
