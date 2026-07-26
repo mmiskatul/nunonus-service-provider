@@ -11,15 +11,24 @@ import {
   Globe2,
   Headphones,
   Lock,
-  Mail,
   MapPin,
-  Phone,
+  Save,
   Settings,
-  UserRound,
 } from "lucide-react";
 import { Header } from "@/components/Header";
-import { uploadVendorProfileAvatar } from "@/lib/vendor-api";
+import {
+  uploadVendorProfileAvatar,
+  vendorUpdateProfileSettings,
+} from "@/lib/vendor-api";
+import { buildOnboardingProfilePayload } from "@/lib/vendor-contracts";
 import { vendorQueryKeys } from "@/lib/vendor-queries";
+
+const ONBOARDING_CATEGORIES = [
+  "Restaurant",
+  "Hotel",
+  "Spa",
+  "Event Venue",
+] as const;
 
 export type ProfileSettingsData = {
   business_name?: string;
@@ -70,24 +79,20 @@ export function ProfilePageClient({
     text(initialData.avatar_url, initialData.profile_image_url),
   );
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
+  const [onboarding, setOnboarding] = useState(() => ({
+    business_name: text(initialData.business_name, initialData.name),
+    owner_full_name: text(initialData.owner_full_name),
+    email: text(initialData.email_address, initialData.email),
+    phone: text(initialData.phone_number, initialData.phone),
+    categories: profileCategories(initialData).length
+      ? profileCategories(initialData)
+      : ["Restaurant"],
+  }));
 
-  const businessName = text(
-    initialData.business_name,
-    initialData.name,
-    "Business",
-  );
-  const ownerName = text(initialData.owner_full_name, "Owner not provided");
-  const email = text(
-    initialData.email_address,
-    initialData.email,
-    "Email not provided",
-  );
-  const phone = text(
-    initialData.phone_number,
-    initialData.phone,
-    "Phone not provided",
-  );
+  const businessName = onboarding.business_name || "Business";
+  const ownerName = onboarding.owner_full_name || "Owner not provided";
   const address = text(
     initialData.office_address,
     initialData.address,
@@ -101,7 +106,51 @@ export function ProfilePageClient({
     "No business description has been added.",
   );
   const website = text(initialData.website);
-  const categories = profileCategories(initialData);
+  const categories = onboarding.categories;
+
+  const toggleCategory = (category: string) => {
+    setStatusMessage("");
+    setOnboarding((current) => {
+      const selected = current.categories.includes(category);
+      if (selected && current.categories.length === 1) return current;
+      return {
+        ...current,
+        categories: selected
+          ? current.categories.filter((item) => item !== category)
+          : [...current.categories, category],
+      };
+    });
+  };
+
+  const handleSaveOnboarding = async () => {
+    if (!onboarding.business_name.trim()) {
+      setStatusMessage("Business name is required.");
+      return;
+    }
+    if (!onboarding.owner_full_name.trim()) {
+      setStatusMessage("Owner or contact name is required.");
+      return;
+    }
+
+    setSaving(true);
+    setStatusMessage("");
+    try {
+      await queryClient.cancelQueries({ queryKey: vendorQueryKeys.profile });
+      const updated = await vendorUpdateProfileSettings(
+        buildOnboardingProfilePayload(onboarding, onboarding.categories),
+      );
+      queryClient.setQueryData(vendorQueryKeys.profile, updated);
+      setStatusMessage("Onboarding details saved.");
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error
+          ? error.message
+          : "Failed to save onboarding details.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleAvatarUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -134,16 +183,6 @@ export function ProfilePageClient({
       setUploading(false);
     }
   };
-
-  const details = [
-    { label: "Owner / contact", value: ownerName, icon: UserRound },
-    { label: "Email", value: email, icon: Mail },
-    { label: "Phone", value: phone, icon: Phone },
-    { label: "Business address", value: address, icon: MapPin },
-    ...(website
-      ? [{ label: "Website", value: website, icon: Globe2 }]
-      : []),
-  ];
 
   return (
     <div className="min-h-full bg-[#f8fafc]">
@@ -230,54 +269,153 @@ export function ProfilePageClient({
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
           <section className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-            <div>
-              <h2 className="text-lg font-black text-slate-900">
-                Account information
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                This summary is read from the same provider profile used by
-                Settings and customer listings.
-              </p>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-lg font-black text-slate-900">
+                  Onboarding settings
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Edit the account identity and enabled business modules created
+                  during registration.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleSaveOnboarding()}
+                disabled={saving || uploading}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-sky-500 px-5 py-3 text-sm font-black text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Save className="h-4 w-4" />
+                {saving ? "Saving…" : "Save onboarding"}
+              </button>
             </div>
+
             <div className="grid gap-4 sm:grid-cols-2">
-              {details.map(({ label, value, icon: Icon }) => (
-                <div
-                  key={label}
-                  className="flex min-w-0 items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-4"
-                >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-sky-600 shadow-sm">
-                    <Icon className="h-4 w-4" />
+              {[
+                {
+                  key: "business_name",
+                  label: "Business name",
+                  type: "text",
+                  value: onboarding.business_name,
+                },
+                {
+                  key: "owner_full_name",
+                  label: "Owner / contact name",
+                  type: "text",
+                  value: onboarding.owner_full_name,
+                },
+                {
+                  key: "email",
+                  label: "Contact email",
+                  type: "email",
+                  value: onboarding.email,
+                },
+                {
+                  key: "phone",
+                  label: "Contact phone",
+                  type: "tel",
+                  value: onboarding.phone,
+                },
+              ].map(({ key, label, type, value }) => (
+                <label key={key} className="block">
+                  <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wider text-slate-400">
+                    {label}
                   </span>
-                  <div className="min-w-0">
+                  <input
+                    type={type}
+                    value={value}
+                    onChange={(event) =>
+                      setOnboarding((current) => ({
+                        ...current,
+                        [key]: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-100"
+                  />
+                </label>
+              ))}
+            </div>
+
+            <fieldset>
+              <legend className="mb-2 block text-[11px] font-black uppercase tracking-wider text-slate-400">
+                Enabled business modules
+              </legend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {ONBOARDING_CATEGORIES.map((category) => {
+                  const selected = categories.includes(category);
+                  return (
+                    <label
+                      key={category}
+                      className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-bold transition ${
+                        selected
+                          ? "border-sky-300 bg-sky-50 text-sky-800"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-sky-200"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => toggleCategory(category)}
+                        className="h-4 w-4 accent-sky-500"
+                      />
+                      {category}
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-xs text-slate-400">
+                At least one module must remain enabled. Navigation updates
+                immediately after saving.
+              </p>
+            </fieldset>
+
+            <div className="border-t border-slate-100 pt-6">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="flex items-center gap-2 text-sm font-black text-slate-900">
+                    <Building2 className="h-4 w-4 text-sky-500" />
+                    Business profile summary
+                  </h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Address, website, description, and service details are owned
+                    by Business Settings.
+                  </p>
+                </div>
+                <Link
+                  href="/settings"
+                  className="shrink-0 text-xs font-black text-sky-600 hover:text-sky-700"
+                >
+                  Edit settings
+                </Link>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="flex items-start gap-3 rounded-2xl bg-slate-50 p-4">
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  <div>
                     <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                      {label}
+                      Public location
                     </p>
-                    <p className="mt-1 break-words text-sm font-bold text-slate-700">
-                      {value}
+                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                      {locationLabel}
                     </p>
                   </div>
                 </div>
-              ))}
-            </div>
-            <div className="rounded-2xl border border-slate-100 p-5">
-              <div className="flex items-center gap-2 text-sm font-black text-slate-900">
-                <Building2 className="h-4 w-4 text-sky-500" />
-                About the business
+                <div className="flex items-start gap-3 rounded-2xl bg-slate-50 p-4">
+                  <Globe2 className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                      Website
+                    </p>
+                    <p className="mt-1 break-all text-sm font-semibold text-slate-700">
+                      {website || "Not provided"}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <p className="mt-3 text-sm leading-7 text-slate-600">
+              <p className="mt-4 text-sm leading-7 text-slate-600">
                 {description}
               </p>
-            </div>
-            <div className="flex items-start gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
-              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-              <div>
-                <p className="text-xs font-black uppercase tracking-wider text-emerald-700">
-                  Public location
-                </p>
-                <p className="mt-1 text-sm font-semibold text-emerald-900">
-                  {locationLabel}
-                </p>
-              </div>
+              <p className="mt-3 text-xs text-slate-400">{address}</p>
             </div>
           </section>
 

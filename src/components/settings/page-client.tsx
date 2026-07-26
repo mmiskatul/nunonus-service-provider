@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
 import { useToast } from "@/components/ui/ToastProvider";
-import { Bell, CalendarPlus2, Save, Shield, User, X, Hotel, Utensils, Sparkles, ClipboardCheck, Plus } from "lucide-react";
+import { Bell, CalendarPlus2, Save, Shield, User, X, Hotel, Utensils, Sparkles, Plus } from "lucide-react";
 import {
   vendorCreateEvent,
   vendorAddServiceAmenity,
@@ -18,12 +18,11 @@ import {
   type VendorEventStatus,
 } from "@/lib/vendor-api";
 import { extractVendorCategories, type VendorCategory } from "@/lib/vendor-access";
-import { buildSettingsProfilePayload } from "@/lib/vendor-contracts";
 import { vendorQueryKeys } from "@/lib/vendor-queries";
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
-type SettingsTab = "profile" | "notifications" | "security" | "onboarding";
+type SettingsTab = "profile" | "notifications" | "security";
 
 type EventFormState = {
   title: string;
@@ -177,12 +176,8 @@ export function SettingsPageClient({
   const [eventSaving, setEventSaving] = useState(false);
   const [eventStatusMessage, setEventStatusMessage] = useState("");
   const [profileForm, setProfileForm] = useState({
-    business_name: String(initialProfile.business_name ?? initialProfile.name ?? ""),
-    phone: String(initialProfile.phone_number ?? initialProfile.phone ?? ""),
-    email: String(initialProfile.email_address ?? initialProfile.email ?? ""),
     address: String(initialProfile.office_address ?? initialProfile.address ?? ""),
     description: String(initialProfile.about_business ?? initialProfile.description ?? ""),
-    owner_full_name: String(initialProfile.owner_full_name ?? ""),
     location_label: String(initialProfile.location_label ?? ""),
     website: String(initialProfile.website ?? ""),
   });
@@ -274,11 +269,8 @@ export function SettingsPageClient({
       await queryClient.cancelQueries({ queryKey: vendorQueryKeys.profile });
       const updatedProfile = await vendorUpdateProfileSettings(
         {
-          ...buildSettingsProfilePayload(
-          profileForm,
-            categories,
-          ),
-          owner_full_name: profileForm.owner_full_name,
+          office_address: profileForm.address.trim() || null,
+          about_business: profileForm.description.trim(),
           location_label: profileForm.location_label,
           website: profileForm.website.trim() || null,
           restaurant_settings: serviceSettings.restaurant,
@@ -395,10 +387,9 @@ export function SettingsPageClient({
   };
 
   const tabs: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
-    { id: "profile", label: "Business Profile", icon: User },
+    { id: "profile", label: "Business Settings", icon: User },
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "security", label: "Password & Security", icon: Shield },
-    { id: "onboarding", label: "Onboarding", icon: ClipboardCheck },
   ];
 
   return (
@@ -429,8 +420,8 @@ export function SettingsPageClient({
               <div className="space-y-6">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <h2 className="text-xl font-black text-slate-800 mb-1">Business Profile</h2>
-                    <p className="text-sm text-slate-400">Update your business information visible to customers.</p>
+                    <h2 className="text-xl font-black text-slate-800 mb-1">Business Settings</h2>
+                    <p className="text-sm text-slate-400">Manage public business details and service-specific customer information.</p>
                   </div>
                   <button
                     onClick={openCreateEventModal}
@@ -441,11 +432,7 @@ export function SettingsPageClient({
                   </button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[ 
-                    { key: "business_name", label: "Business Name", type: "text" },
-                    { key: "owner_full_name", label: "Owner / Contact Name", type: "text" },
-                    { key: "phone", label: "Phone", type: "tel" },
-                    { key: "email", label: "Email", type: "email" },
+                  {[
                     { key: "address", label: "Address", type: "text" },
                     { key: "location_label", label: "Public Location Label", type: "text" },
                     { key: "website", label: "Website", type: "url" },
@@ -651,24 +638,6 @@ export function SettingsPageClient({
               </div>
             )}
 
-            {activeTab === "onboarding" && (
-              <div className="space-y-6">
-                <div><h2 className="text-xl font-black text-slate-800 mb-1">Onboarding details</h2><p className="text-sm text-slate-400">Update the registration information used across your provider profile.</p></div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Business name</span><input value={profileForm.business_name} onChange={(e) => setProfileForm((current) => ({ ...current, business_name: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Business name" /></label>
-                  <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Business category</span><input readOnly value={configuredCategories.join(", ") || "Restaurant"} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600" /></label>
-                  <div className="block md:col-span-2"><span className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Enabled services</span><div className="flex flex-wrap gap-3">{(["Restaurant", "Hotel", "Spa"] as VendorCategory[]).map((category) => <label key={category} className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700"><input type="checkbox" checked={categories.includes(category)} onChange={() => setCategories((current) => current.includes(category) ? (current.length > 1 ? current.filter((item) => item !== category) : current) : [...current, category])} className="h-4 w-4 accent-sky-500" />{category}</label>)}</div></div>
-                  <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Owner / contact name</span><input value={profileForm.owner_full_name} onChange={(e) => setProfileForm((current) => ({ ...current, owner_full_name: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Full name" /></label>
-                  <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Email</span><input type="email" value={profileForm.email} onChange={(e) => setProfileForm((current) => ({ ...current, email: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="business@example.com" /></label>
-                  <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Phone</span><input value={profileForm.phone} onChange={(e) => setProfileForm((current) => ({ ...current, phone: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Phone number" /></label>
-                  <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Business address</span><input value={profileForm.address} onChange={(e) => setProfileForm((current) => ({ ...current, address: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Full business address" /></label>
-                  <div className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Public location</span><div className="flex gap-2"><input readOnly value={profileForm.location_label || serviceSettings[activeServiceTab].address} placeholder="Choose a location from the map" className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600" /><button type="button" onClick={() => setLocationMapOpen(true)} className="rounded-xl bg-[#1e2a5e] px-3 py-2 text-xs font-bold text-white">Map</button></div></div>
-                  <label className="block md:col-span-2"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Business description</span><textarea rows={4} value={profileForm.description} onChange={(e) => setProfileForm((current) => ({ ...current, description: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Describe your business and customer experience" /></label>
-                </div>
-                <div className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800">Your Business Profile, service settings, room records, and customer listings use these saved onboarding details.</div>
-                <button onClick={handleSaveProfile} disabled={saving} className="flex items-center gap-2 rounded-xl bg-sky-500 px-6 py-3 text-sm font-bold text-white hover:bg-sky-600 disabled:opacity-60"><Save className="h-4 w-4" />{saving ? "Saving..." : saved ? "Saved!" : "Save Onboarding Details"}</button>
-              </div>
-            )}
           </div>
         </div>
       </main>
