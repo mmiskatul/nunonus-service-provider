@@ -248,14 +248,16 @@ export function RegisterView() {
         tradeLicenseDocumentUrl?: string;
         ownerIdDocumentUrl?: string;
       };
-
-      if (parsed.formData) {
-        setFormData((prev) => ({ ...prev, ...parsed.formData }));
-      }
-      setTradeLicenseDocumentName(parsed.tradeLicenseDocumentName ?? "");
-      setOwnerIdDocumentName(parsed.ownerIdDocumentName ?? "");
-      setTradeLicenseDocumentUrl(parsed.tradeLicenseDocumentUrl ?? "");
-      setOwnerIdDocumentUrl(parsed.ownerIdDocumentUrl ?? "");
+      const restoreTimeout = window.setTimeout(() => {
+        if (parsed.formData) {
+          setFormData((prev) => ({ ...prev, ...parsed.formData }));
+        }
+        setTradeLicenseDocumentName(parsed.tradeLicenseDocumentName ?? "");
+        setOwnerIdDocumentName(parsed.ownerIdDocumentName ?? "");
+        setTradeLicenseDocumentUrl(parsed.tradeLicenseDocumentUrl ?? "");
+        setOwnerIdDocumentUrl(parsed.ownerIdDocumentUrl ?? "");
+      }, 0);
+      return () => window.clearTimeout(restoreTimeout);
     } catch {
       sessionStorage.removeItem(REGISTER_DRAFT_STORAGE_KEY);
     }

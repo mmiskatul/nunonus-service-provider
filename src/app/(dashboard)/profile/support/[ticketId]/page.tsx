@@ -37,7 +37,10 @@ export default function SupportTicketPage({
   };
 
   useEffect(() => {
-    void loadTicket();
+    const timeoutId = window.setTimeout(() => {
+      void loadTicket();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
   }, [ticketId]);
 
   const sendReply = async () => {

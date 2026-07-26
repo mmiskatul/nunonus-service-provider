@@ -26,17 +26,22 @@ export default function PromotionDetailPage({
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
-    if (promotion) {
-      setForm({
-        name: String(promotion.promotion_name ?? promotion.name ?? promotion.title ?? ""),
-        description: String(promotion.internal_description ?? promotion.description ?? ""),
-        value: String(promotion.discount_value ?? promotion.value ?? ""),
-        startDate: String(promotion.start_date ?? "").slice(0, 10),
-        endDate: String(promotion.end_date ?? "").slice(0, 10),
-        active: Boolean(promotion.active ?? promotion.is_active ?? true),
-      });
-      setError("");
-    } else if (queryError) setError(queryError instanceof Error ? queryError.message : "Failed to load promotion.");
+    const timeoutId = window.setTimeout(() => {
+      if (promotion) {
+        setForm({
+          name: String(promotion.promotion_name ?? promotion.name ?? promotion.title ?? ""),
+          description: String(promotion.internal_description ?? promotion.description ?? ""),
+          value: String(promotion.discount_value ?? promotion.value ?? ""),
+          startDate: String(promotion.start_date ?? "").slice(0, 10),
+          endDate: String(promotion.end_date ?? "").slice(0, 10),
+          active: Boolean(promotion.active ?? promotion.is_active ?? true),
+        });
+        setError("");
+      } else if (queryError) {
+        setError(queryError instanceof Error ? queryError.message : "Failed to load promotion.");
+      }
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
   }, [promotion, queryError]);
 
   const update = (key: keyof typeof form, value: string | boolean) => setForm((current) => ({ ...current, [key]: value }));
