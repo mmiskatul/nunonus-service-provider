@@ -1,7 +1,7 @@
 "use client";
 
 import { Header } from "@/components/Header";
-import { vendorGetEvent, type VendorEventBookingMode, type VendorEventStatus } from "@/lib/vendor-api";
+import { vendorGetEvent, vendorListBookings, type VendorEventBookingMode, type VendorEventStatus } from "@/lib/vendor-api";
 import { cn } from "@/lib/utils";
 import { CalendarDays, Clock3, MapPin, Tag, Ticket, Users } from "lucide-react";
 import Link from "next/link";
@@ -24,6 +24,21 @@ type VendorEventRecord = {
   description: string;
   banner_image_url?: string | null;
   status: VendorEventStatus;
+};
+
+type EventBooking = {
+  id: string;
+  booking_code?: string;
+  customer_name?: string;
+  customer_email?: string;
+  customer_phone?: string;
+  quantity?: number;
+  guests?: number;
+  status?: string;
+  payment_status?: string;
+  created_at?: string;
+  special_requests?: string | null;
+  total_amount?: number;
 };
 
 function normalizeEvent(row: Record<string, unknown>): VendorEventRecord {
@@ -73,6 +88,9 @@ export function EventDetailClient({ eventId }: { eventId: string }) {
   const [event, setEvent] = useState<VendorEventRecord | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [bookings, setBookings] = useState<EventBooking[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState(true);
+  const [bookingsError, setBookingsError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -81,6 +99,15 @@ export function EventDetailClient({ eventId }: { eventId: string }) {
         const response = await vendorGetEvent(eventId);
         if (!active) return;
         setEvent(normalizeEvent(response));
+        try {
+          const bookingResponse = await vendorListBookings({ event_id: eventId, provider_type: "event", limit: 200 });
+          const rows = Array.isArray(bookingResponse.items) ? bookingResponse.items : [];
+          setBookings(rows.map((row) => ({ ...row, id: String(row.id ?? row._id ?? "") })) as EventBooking[]);
+        } catch (bookingError) {
+          setBookingsError(bookingError instanceof Error ? bookingError.message : "Failed to load attendees.");
+        } finally {
+          setBookingsLoading(false);
+        }
       } catch (err) {
         if (!active) return;
         setError(err instanceof Error ? err.message : "Failed to load event.");
@@ -146,6 +173,17 @@ export function EventDetailClient({ eventId }: { eventId: string }) {
                     Manage Events
                   </Link>
                 </div>
+              </section>
+
+              <section className="rounded-[32px] border border-slate-100 bg-white p-8 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-800">Attendees and bookings</h2>
+                    <p className="mt-1 text-sm text-slate-500">See who booked this event, when they booked, ticket quantity, status, and contact details.</p>
+                  </div>
+                  <span className="rounded-full bg-sky-50 px-3 py-1 text-sm font-bold text-sky-700">{bookings.length} booking{bookings.length === 1 ? "" : "s"}</span>
+                </div>
+                {bookingsLoading ? <p className="mt-6 text-sm text-slate-400">Loading attendees...</p> : bookingsError ? <p className="mt-6 text-sm font-bold text-rose-600">{bookingsError}</p> : bookings.length === 0 ? <p className="mt-6 rounded-2xl bg-slate-50 p-5 text-sm text-slate-500">No one has booked this event yet.</p> : <div className="mt-6 overflow-x-auto"><table className="w-full min-w-[900px] text-left"><thead className="border-b border-slate-100 text-xs font-black uppercase tracking-wider text-slate-400"><tr><th className="pb-3 pr-4">Attendee</th><th className="pb-3 pr-4">Contact</th><th className="pb-3 pr-4">Tickets</th><th className="pb-3 pr-4">Status</th><th className="pb-3 pr-4">Booked at</th><th className="pb-3">Booking</th></tr></thead><tbody className="divide-y divide-slate-100">{bookings.map((booking) => <tr key={booking.id}><td className="py-4 pr-4"><p className="font-bold text-slate-800">{booking.customer_name || "Unnamed attendee"}</p>{booking.special_requests ? <p className="mt-1 max-w-[220px] text-xs text-slate-400">Note: {booking.special_requests}</p> : null}</td><td className="py-4 pr-4 text-sm text-slate-600"><p>{booking.customer_email || "No email"}</p><p className="mt-1 text-xs text-slate-400">{booking.customer_phone || "No phone"}</p></td><td className="py-4 pr-4 text-sm font-bold text-slate-700">{booking.quantity ?? booking.guests ?? 0}</td><td className="py-4 pr-4"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold capitalize text-slate-700">{booking.status || "pending"}</span><p className="mt-2 text-xs text-slate-400">{booking.payment_status || "unpaid"}</p></td><td className="py-4 pr-4 text-sm text-slate-500">{booking.created_at ? new Date(booking.created_at).toLocaleString() : "—"}</td><td className="py-4 text-sm font-bold text-slate-600">{booking.booking_code || booking.id}</td></tr>)}</tbody></table></div>}
               </section>
 
               <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">

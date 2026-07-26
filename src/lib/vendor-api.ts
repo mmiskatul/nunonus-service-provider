@@ -268,6 +268,7 @@ export async function vendorListBookings(
     search?: string;
     status?: string;
     provider_type?: string;
+    event_id?: string;
     date_from?: string;
     date_to?: string;
   } = {},
