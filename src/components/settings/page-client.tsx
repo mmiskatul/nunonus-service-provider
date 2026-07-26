@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { Bell, CalendarPlus2, Save, Shield, User, X, Hotel, Utensils, Sparkles, ClipboardCheck, Plus } from "lucide-react";
 import {
   vendorCreateEvent,
+  vendorAddServiceAmenity,
   vendorGetProfileSettings,
   vendorUpdateNotificationSettings,
   vendorUpdatePassword,
@@ -493,6 +494,23 @@ export function SettingsPageClient({
                         addLabel="Add custom amenity"
                         inputPlaceholder="Enter an amenity"
                         emptyMessage="No amenities selected yet."
+                        onAddCustom={async (amenity) => {
+                          const serviceType = activeServiceTab;
+                          const result = await vendorAddServiceAmenity(serviceType, amenity);
+                          setServiceSettings((current) => ({
+                            ...current,
+                            [serviceType]: {
+                              ...current[serviceType],
+                              amenities: result.amenities,
+                            },
+                          }));
+                          toast(
+                            result.created
+                              ? `${result.amenity} was added to ${serviceType} amenities.`
+                              : `${result.amenity} is already in ${serviceType} amenities.`,
+                            "success",
+                          );
+                        }}
                         onChange={(amenities) => setServiceSettings((current) => ({
                           ...current,
                           [activeServiceTab]: { ...current[activeServiceTab], amenities },
@@ -998,6 +1016,7 @@ function OptionChipEditor({
   inputPlaceholder,
   emptyMessage,
   helpText,
+  onAddCustom,
   onChange,
 }: {
   label: string;
@@ -1007,10 +1026,13 @@ function OptionChipEditor({
   inputPlaceholder: string;
   emptyMessage: string;
   helpText?: string;
+  onAddCustom?: (value: string) => Promise<void>;
   onChange: (values: string[]) => void;
 }) {
   const [addingCustom, setAddingCustom] = useState(false);
   const [customValue, setCustomValue] = useState("");
+  const [savingCustom, setSavingCustom] = useState(false);
+  const [customError, setCustomError] = useState("");
 
   const hasValue = (value: string) =>
     values.some((item) => item.toLocaleLowerCase() === value.toLocaleLowerCase());
@@ -1025,12 +1047,28 @@ function OptionChipEditor({
     onChange(values.filter((item) => item !== value));
   };
 
-  const saveCustomValue = () => {
+  const saveCustomValue = async () => {
     const normalized = customValue.trim();
     if (!normalized) return;
-    addValue(normalized);
-    setCustomValue("");
-    setAddingCustom(false);
+    if (hasValue(normalized)) {
+      setCustomError(`${normalized} is already selected.`);
+      return;
+    }
+    setSavingCustom(true);
+    setCustomError("");
+    try {
+      if (onAddCustom) {
+        await onAddCustom(normalized);
+      } else {
+        addValue(normalized);
+      }
+      setCustomValue("");
+      setAddingCustom(false);
+    } catch (error) {
+      setCustomError(error instanceof Error ? error.message : `Failed to add ${label.toLocaleLowerCase()}.`);
+    } finally {
+      setSavingCustom(false);
+    }
   };
 
   return (
@@ -1095,18 +1133,21 @@ function OptionChipEditor({
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
-                saveCustomValue();
+                void saveCustomValue();
               }
               if (event.key === "Escape") {
                 setCustomValue("");
+                setCustomError("");
                 setAddingCustom(false);
               }
             }}
+            disabled={savingCustom}
             placeholder={inputPlaceholder}
             className="min-w-[220px] flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
           />
-          <button type="button" onClick={saveCustomValue} disabled={!customValue.trim()} className="rounded-lg bg-sky-500 px-4 py-2 text-xs font-bold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-50">Add</button>
-          <button type="button" onClick={() => { setCustomValue(""); setAddingCustom(false); }} className="rounded-lg px-3 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-100">Cancel</button>
+          <button type="button" onClick={() => void saveCustomValue()} disabled={!customValue.trim() || savingCustom} className="rounded-lg bg-sky-500 px-4 py-2 text-xs font-bold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-50">{savingCustom ? "Adding..." : "Add"}</button>
+          <button type="button" onClick={() => { setCustomValue(""); setCustomError(""); setAddingCustom(false); }} disabled={savingCustom} className="rounded-lg px-3 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-100 disabled:opacity-50">Cancel</button>
+          {customError ? <p role="alert" className="w-full text-xs font-semibold text-rose-600">{customError}</p> : null}
         </div>
       ) : null}
 

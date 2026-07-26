@@ -730,6 +730,21 @@ export async function vendorUpdateServiceSettings(
   return result;
 }
 
+/** POST /vendor/settings/services/:service_type/amenities */
+export async function vendorAddServiceAmenity(
+  serviceType: "restaurant" | "hotel" | "spa",
+  name: string,
+) {
+  const result = await vendorRequest<{
+    service_type: "restaurant" | "hotel" | "spa";
+    amenity: string;
+    created: boolean;
+    amenities: string[];
+  }>(`/vendor/settings/services/${serviceType}/amenities`, "POST", { name });
+  profileSettingsCache = null;
+  return result;
+}
+
 /** PATCH /vendor/settings/password */
 export async function vendorUpdatePassword(payload: {
   old_password: string;
