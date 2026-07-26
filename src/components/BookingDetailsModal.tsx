@@ -37,6 +37,7 @@ export function BookingDetailsModal({
   const canConfirm = status === "pending";
   const canComplete = status === "confirmed" || status === "check in";
   const canCancel = status === "pending" || status === "confirmed" || status === "check in";
+  const canReschedule = canCancel;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
@@ -172,11 +173,11 @@ export function BookingDetailsModal({
           <div className="space-y-3 border-t border-slate-100 pt-5">
             {canConfirm ? <button type="button" onClick={() => onUpdateStatus("confirmed")} className="flex w-full items-center justify-center gap-3 rounded-2xl bg-emerald-500 py-3.5 text-sm font-black text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-600 active:scale-[0.99]"><CheckCircle2 className="h-5 w-5" />Confirm Booking</button> : null}
             {canComplete ? <button type="button" onClick={() => onUpdateStatus("complete")} className="flex w-full items-center justify-center gap-3 rounded-2xl bg-sky-500 py-3.5 text-sm font-black text-white shadow-lg shadow-sky-500/20 transition-all hover:bg-sky-600 active:scale-[0.99]"><CheckCircle2 className="h-5 w-5" />Mark Completed</button> : null}
-            <button type="button" onClick={() => setRescheduling((value) => !value)} className="flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white py-3.5 text-sm font-black text-slate-700 transition-all hover:bg-slate-50 active:scale-[0.99]">
+            {canReschedule ? <button type="button" onClick={() => setRescheduling((value) => !value)} className="flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white py-3.5 text-sm font-black text-slate-700 transition-all hover:bg-slate-50 active:scale-[0.99]">
               <Calendar className="h-5 w-5 text-slate-400" />
               Reschedule
-            </button>
-            {rescheduling ? <div className="space-y-3 rounded-2xl border border-slate-100 bg-white p-4"><div className="grid grid-cols-2 gap-3"><label className="text-xs font-bold text-slate-500">Date<input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /></label><label className="text-xs font-bold text-slate-500">Time<input type="time" value={time} onChange={(event) => setTime(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /></label></div><button type="button" disabled={!date || !time} onClick={() => { onReschedule(date, time); setRescheduling(false); }} className="w-full rounded-xl bg-[#1e2a5e] px-4 py-3 text-sm font-bold text-white disabled:opacity-50">Confirm new time</button></div> : null}
+            </button> : null}
+            {canReschedule && rescheduling ? <div className="space-y-3 rounded-2xl border border-slate-100 bg-white p-4"><div className="grid grid-cols-2 gap-3"><label className="text-xs font-bold text-slate-500">Date<input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /></label><label className="text-xs font-bold text-slate-500">Time<input type="time" value={time} onChange={(event) => setTime(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" /></label></div><button type="button" disabled={!date || !time} onClick={() => { onReschedule(date, time); setRescheduling(false); }} className="w-full rounded-xl bg-[#1e2a5e] px-4 py-3 text-sm font-bold text-white disabled:opacity-50">Confirm new time</button></div> : null}
 
             <div className="flex items-center justify-between px-1 pt-2">
               {canCancel ? <button type="button" onClick={() => onUpdateStatus("cancelled")} className="text-[11px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-600 transition-colors">
