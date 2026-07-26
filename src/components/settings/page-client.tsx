@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Header } from "@/components/Header";
 import { useToast } from "@/components/ui/ToastProvider";
-import { Bell, CalendarPlus2, Save, Shield, User, X, Hotel, Utensils, Sparkles, ClipboardCheck } from "lucide-react";
+import { Bell, CalendarPlus2, Save, Shield, User, X, Hotel, Utensils, Sparkles, ClipboardCheck, Plus } from "lucide-react";
 import {
   vendorCreateEvent,
   vendorGetProfileSettings,
@@ -94,6 +94,18 @@ function getDefaultEventForm(categories: VendorCategory[]): EventFormState {
 const SERVICE_HOURS = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0"));
 const SERVICE_MINUTES = ["00", "15", "30", "45"];
 const SERVICE_PERIODS = ["AM", "PM"];
+const BOOKING_TIME_OPTIONS = Array.from({ length: 96 }, (_, index) => {
+  const hour24 = Math.floor(index / 4);
+  const minute = SERVICE_MINUTES[index % 4];
+  const hour12 = String(hour24 % 12 || 12).padStart(2, "0");
+  return `${hour12}:${minute} ${hour24 < 12 ? "AM" : "PM"}`;
+});
+const SERVICE_AMENITY_OPTIONS = {
+  restaurant: ["Free WiFi", "Parking", "Air Conditioning", "Outdoor Seating", "Wheelchair Accessible", "Private Dining", "Family Friendly"],
+  hotel: ["Free WiFi", "Parking", "Air Conditioning", "Swimming Pool", "Gym", "Smart TV", "Balcony", "Coffee Maker"],
+  spa: ["Free WiFi", "Parking", "Air Conditioning", "Sauna", "Steam Room", "Changing Room", "Showers", "Relaxation Lounge"],
+} satisfies Record<"restaurant" | "hotel" | "spa", string[]>;
+const SEATING_PREFERENCE_OPTIONS = ["Indoor", "Outdoor", "Window", "Booth", "Bar", "Private Dining", "No preference"];
 
 function splitServiceTime(value: string) {
   const match = String(value || "").match(/^(?:(\d{1,2})(?::(\d{2}))?)(?:\s*(AM|PM))?$/i);
@@ -473,11 +485,50 @@ export function SettingsPageClient({
                     ))}
                     <div className="md:col-span-2"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Location</span><div className="flex flex-wrap items-center gap-3"><input readOnly value={serviceSettings[activeServiceTab].address} placeholder="Choose this service location from the map" className="min-w-[240px] flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600" /><button type="button" onClick={() => setLocationMapOpen(true)} className="rounded-xl bg-[#1e2a5e] px-4 py-3 text-sm font-bold text-white">Choose on map</button></div></div>
                     <label className="block md:col-span-2"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">About this {activeServiceTab}</span><textarea rows={3} value={serviceSettings[activeServiceTab].about} onChange={(e) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], about: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder={`Describe your ${activeServiceTab} offering`} /></label>
-                    <label className="block md:col-span-2"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Amenities</span><input value={serviceSettings[activeServiceTab].amenities.join(", ")} onChange={(e) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], amenities: e.target.value.split(",").map((item) => item.trim()).filter(Boolean) } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Free WiFi, Parking, Outdoor seating" /></label>
+                    <div className="md:col-span-2">
+                      <OptionChipEditor
+                        label="Amenities"
+                        values={serviceSettings[activeServiceTab].amenities}
+                        suggestions={SERVICE_AMENITY_OPTIONS[activeServiceTab]}
+                        addLabel="Add custom amenity"
+                        inputPlaceholder="Enter an amenity"
+                        emptyMessage="No amenities selected yet."
+                        onChange={(amenities) => setServiceSettings((current) => ({
+                          ...current,
+                          [activeServiceTab]: { ...current[activeServiceTab], amenities },
+                        }))}
+                      />
+                    </div>
                     <TimeSelects label="Open time" value={serviceSettings[activeServiceTab].opening_time} onChange={(value) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], opening_time: value } }))} />
                     <TimeSelects label="Close time" value={serviceSettings[activeServiceTab].closing_time} onChange={(value) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], closing_time: value } }))} />
-                    {activeServiceTab === "restaurant" ? <label className="block md:col-span-2"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Table booking times</span><input value={serviceSettings.restaurant.available_booking_times.join(", ")} onChange={(e) => setServiceSettings((current) => ({ ...current, restaurant: { ...current.restaurant, available_booking_times: e.target.value.split(",").map((item) => item.trim()).filter(Boolean) } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="06:00 PM, 06:30 PM, 07:00 PM" /><span className="mt-1 block text-xs text-slate-400">Only these times will be offered for table bookings in the customer app.</span></label> : null}
-                    {activeServiceTab === "restaurant" ? <label className="block md:col-span-2"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Seating preferences</span><input value={serviceSettings.restaurant.seating_preferences.join(", ")} onChange={(e) => setServiceSettings((current) => ({ ...current, restaurant: { ...current.restaurant, seating_preferences: e.target.value.split(",").map((item) => item.trim()).filter(Boolean) } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Indoor, Outdoor, No preference" /><span className="mt-1 block text-xs text-slate-400">Only these seating choices will be shown in the customer app.</span></label> : null}
+                    {activeServiceTab === "restaurant" ? (
+                      <div className="md:col-span-2">
+                        <BookingTimesEditor
+                          values={serviceSettings.restaurant.available_booking_times}
+                          onChange={(available_booking_times) => setServiceSettings((current) => ({
+                            ...current,
+                            restaurant: { ...current.restaurant, available_booking_times },
+                          }))}
+                        />
+                      </div>
+                    ) : null}
+                    {activeServiceTab === "restaurant" ? (
+                      <div className="md:col-span-2">
+                        <OptionChipEditor
+                          label="Seating preferences"
+                          values={serviceSettings.restaurant.seating_preferences}
+                          suggestions={SEATING_PREFERENCE_OPTIONS}
+                          addLabel="Add custom seating"
+                          inputPlaceholder="Enter a seating preference"
+                          emptyMessage="No seating preferences selected yet."
+                          helpText="Only these seating choices will be shown in the customer app."
+                          onChange={(seating_preferences) => setServiceSettings((current) => ({
+                            ...current,
+                            restaurant: { ...current.restaurant, seating_preferences },
+                          }))}
+                        />
+                      </div>
+                    ) : null}
                     <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Booking / cancellation policy</span><input value={serviceSettings[activeServiceTab].policy} onChange={(e) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], policy: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Free cancellation up to 24 hours" /></label>
                   </div>
                 </div>
@@ -936,6 +987,200 @@ function TimeSelects({ label, value, onChange }: { label: string; value: string;
         <select aria-label={`${label} period`} value={parts.period} onChange={(event) => onChange(setServiceTimePart(value, "period", event.target.value))} className={selectClass}><option value="">AM/PM</option>{SERVICE_PERIODS.map((period) => <option key={period} value={period}>{period}</option>)}</select>
       </div>
     </label>
+  );
+}
+
+function OptionChipEditor({
+  label,
+  values,
+  suggestions,
+  addLabel,
+  inputPlaceholder,
+  emptyMessage,
+  helpText,
+  onChange,
+}: {
+  label: string;
+  values: string[];
+  suggestions: string[];
+  addLabel: string;
+  inputPlaceholder: string;
+  emptyMessage: string;
+  helpText?: string;
+  onChange: (values: string[]) => void;
+}) {
+  const [addingCustom, setAddingCustom] = useState(false);
+  const [customValue, setCustomValue] = useState("");
+
+  const hasValue = (value: string) =>
+    values.some((item) => item.toLocaleLowerCase() === value.toLocaleLowerCase());
+
+  const addValue = (value: string) => {
+    const normalized = value.trim();
+    if (!normalized || hasValue(normalized)) return;
+    onChange([...values, normalized]);
+  };
+
+  const removeValue = (value: string) => {
+    onChange(values.filter((item) => item !== value));
+  };
+
+  const saveCustomValue = () => {
+    const normalized = customValue.trim();
+    if (!normalized) return;
+    addValue(normalized);
+    setCustomValue("");
+    setAddingCustom(false);
+  };
+
+  return (
+    <section aria-label={label} className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</span>
+        {!addingCustom ? (
+          <button
+            type="button"
+            onClick={() => setAddingCustom(true)}
+            className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold text-sky-600 transition hover:bg-sky-50"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {addLabel}
+          </button>
+        ) : null}
+      </div>
+
+      <div className="mt-3 flex min-h-8 flex-wrap gap-2">
+        {values.length ? values.map((value) => (
+          <span key={value} className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700 ring-1 ring-inset ring-sky-100">
+            {value}
+            <button
+              type="button"
+              onClick={() => removeValue(value)}
+              aria-label={`Remove ${value}`}
+              className="rounded-full p-0.5 text-sky-500 transition hover:bg-sky-100 hover:text-sky-800"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+        )) : (
+          <span className="text-xs text-slate-400">{emptyMessage}</span>
+        )}
+      </div>
+
+      {suggestions.some((suggestion) => !hasValue(suggestion)) ? (
+        <div className="mt-3 border-t border-slate-100 pt-3">
+          <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Quick add</p>
+          <div className="flex flex-wrap gap-2">
+            {suggestions.filter((suggestion) => !hasValue(suggestion)).map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                onClick={() => addValue(suggestion)}
+                className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"
+              >
+                <Plus className="h-3 w-3" />
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {addingCustom ? (
+        <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+          <input
+            autoFocus
+            value={customValue}
+            onChange={(event) => setCustomValue(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                saveCustomValue();
+              }
+              if (event.key === "Escape") {
+                setCustomValue("");
+                setAddingCustom(false);
+              }
+            }}
+            placeholder={inputPlaceholder}
+            className="min-w-[220px] flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+          />
+          <button type="button" onClick={saveCustomValue} disabled={!customValue.trim()} className="rounded-lg bg-sky-500 px-4 py-2 text-xs font-bold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-50">Add</button>
+          <button type="button" onClick={() => { setCustomValue(""); setAddingCustom(false); }} className="rounded-lg px-3 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-100">Cancel</button>
+        </div>
+      ) : null}
+
+      {helpText ? <p className="mt-3 text-xs text-slate-400">{helpText}</p> : null}
+    </section>
+  );
+}
+
+function bookingTimeInMinutes(value: string) {
+  const parts = splitServiceTime(value);
+  const hour = Number(parts.hour);
+  const minute = Number(parts.minute);
+  if (!hour || Number.isNaN(minute) || !parts.period) return Number.MAX_SAFE_INTEGER;
+  return ((hour % 12) + (parts.period === "PM" ? 12 : 0)) * 60 + minute;
+}
+
+function BookingTimesEditor({
+  values,
+  onChange,
+}: {
+  values: string[];
+  onChange: (values: string[]) => void;
+}) {
+  const [selectedTime, setSelectedTime] = useState("");
+  const availableOptions = BOOKING_TIME_OPTIONS.filter((time) => !values.includes(time));
+
+  const addTime = () => {
+    if (!selectedTime || values.includes(selectedTime)) return;
+    onChange([...values, selectedTime].sort((left, right) => bookingTimeInMinutes(left) - bookingTimeInMinutes(right)));
+    setSelectedTime("");
+  };
+
+  return (
+    <section aria-label="Table booking times" className="rounded-xl border border-slate-200 bg-white p-4">
+      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Table booking times</span>
+      <div className="mt-3 flex min-h-8 flex-wrap gap-2">
+        {values.length ? values.map((time) => (
+          <span key={time} className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 ring-1 ring-inset ring-indigo-100">
+            {time}
+            <button
+              type="button"
+              onClick={() => onChange(values.filter((value) => value !== time))}
+              aria-label={`Remove ${time}`}
+              className="rounded-full p-0.5 text-indigo-500 transition hover:bg-indigo-100 hover:text-indigo-800"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+        )) : (
+          <span className="text-xs text-slate-400">No table booking times added yet.</span>
+        )}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+        <select
+          aria-label="Select table booking time"
+          value={selectedTime}
+          onChange={(event) => setSelectedTime(event.target.value)}
+          className="min-w-[220px] flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+        >
+          <option value="">Select an available time</option>
+          {availableOptions.map((time) => <option key={time} value={time}>{time}</option>)}
+        </select>
+        <button
+          type="button"
+          onClick={addTime}
+          disabled={!selectedTime}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-sky-500 px-4 py-2 text-xs font-bold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add time
+        </button>
+      </div>
+      <p className="mt-3 text-xs text-slate-400">Only these times will be offered for table bookings in the customer app.</p>
+    </section>
   );
 }
 
