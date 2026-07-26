@@ -21,13 +21,13 @@ import {
   vendorUpdateProfileSettings,
 } from "@/lib/vendor-api";
 import { buildOnboardingProfilePayload } from "@/lib/vendor-contracts";
+import { extractVendorCategories } from "@/lib/vendor-access";
 import { vendorQueryKeys } from "@/lib/vendor-queries";
 
 const ONBOARDING_CATEGORIES = [
   "Restaurant",
   "Hotel",
   "Spa",
-  "Event Venue",
 ] as const;
 
 export type ProfileSettingsData = {
@@ -61,12 +61,7 @@ function profileCategories(data: ProfileSettingsData) {
   const values = Array.isArray(data.categories)
     ? data.categories
     : [data.category];
-  return values
-    .map((value) => text(value))
-    .filter(
-      (value, index, categories) =>
-        Boolean(value) && categories.indexOf(value) === index,
-    );
+  return extractVendorCategories(values);
 }
 
 export function ProfilePageClient({

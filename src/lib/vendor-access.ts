@@ -19,7 +19,7 @@ import {
 export const VENDOR_CATEGORY_CACHE_KEY = "vendor_categories";
 export const VENDOR_CATEGORIES_UPDATED_EVENT = "vendor-categories-updated";
 
-export type VendorCategory = "Restaurant" | "Hotel" | "Spa" | "Event Venue";
+export type VendorCategory = "Restaurant" | "Hotel" | "Spa";
 
 export type SidebarNavItem = {
   name: string;
@@ -31,7 +31,6 @@ const CATEGORY_VALUES: VendorCategory[] = [
   "Restaurant",
   "Hotel",
   "Spa",
-  "Event Venue",
 ];
 
 const ALWAYS_VISIBLE_NAV_ITEMS: SidebarNavItem[] = [
@@ -67,14 +66,12 @@ const CATEGORY_NAV_ITEMS: Record<VendorCategory, SidebarNavItem[]> = {
     { name: "Spa Bookings", icon: CalendarRange, href: "/spa-bookings" },
     { name: "Spa / Services", icon: Waves, href: "/spa-services" },
   ],
-  "Event Venue": [],
 };
 
 const CATEGORY_ROUTE_PREFIXES: Record<VendorCategory, string[]> = {
   Restaurant: ["/restaurant-bookings", "/services"],
   Hotel: ["/hotel-bookings", "/hotel-services"],
   Spa: ["/spa-bookings", "/spa-services"],
-  "Event Venue": [],
 };
 
 const SHARED_ALLOWED_PREFIXES = [

@@ -133,6 +133,15 @@ const defaultCategories: RegistrationCategoryOption[] = [
   },
 ];
 
+function accountRegistrationCategories(
+  categories: RegistrationCategoryOption[] | undefined,
+) {
+  const filtered = (categories ?? []).filter(
+    (category) => category.id.trim().toLowerCase() !== "event venue",
+  );
+  return filtered.length ? filtered : defaultCategories;
+}
+
 const textFieldNames = new Set<keyof Omit<RegisterFormData, "agreeToTerms">>([
   "businessName",
   "ownerFullName",
@@ -464,7 +473,10 @@ export default function RegisterPage() {
         if (!mounted) {
           return;
         }
-        setRegistrationConfig(config);
+        setRegistrationConfig({
+          ...config,
+          categories: accountRegistrationCategories(config.categories),
+        });
       } catch {
         if (mounted) {
           setRegistrationConfig((prev) => prev);

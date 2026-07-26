@@ -786,7 +786,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
         <div className="w-full space-y-8">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-slate-800">Event Venue Management</h1>
+              <h1 className="text-3xl font-bold text-slate-800">Event Management</h1>
               <p className="mt-1 text-sm text-slate-400">
                 Create, edit, publish, archive, and delete vendor events with fixed dates and times.
               </p>
