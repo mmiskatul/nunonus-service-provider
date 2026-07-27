@@ -9,13 +9,8 @@ import {
   Calendar,
   ChevronDown,
   Download,
-  TrendingDown,
-  TrendingUp,
-  DollarSign,
-  Bed,
   Star,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { DatePicker } from "@/components/DatePicker";
 import { Header } from "@/components/Header";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -52,60 +47,6 @@ type AnalyticsOverview = {
     by_service?: Record<string, number>;
   };
 };
-
-type StatItem = {
-  label: string;
-  value: string;
-  trend: string;
-  trendType: "up" | "down";
-  icon: typeof Calendar;
-  color: string;
-  bg: string;
-};
-
-const STAT_BASE: StatItem[] = [
-  {
-    label: "TOTAL BOOKINGS",
-    value: "0",
-    trend: "+0%",
-    trendType: "up",
-    icon: Calendar,
-    color: "text-sky-500",
-    bg: "bg-sky-50",
-  },
-  {
-    label: "TOTAL REVENUE",
-    value: "$0",
-    trend: "+0%",
-    trendType: "up",
-    icon: DollarSign,
-    color: "text-emerald-500",
-    bg: "bg-emerald-50",
-  },
-  {
-    label: "OCCUPANCY RATE",
-    value: "0%",
-    trend: "0%",
-    trendType: "down",
-    icon: Bed,
-    color: "text-rose-500",
-    bg: "bg-rose-50",
-  },
-  {
-    label: "AVERAGE RATING",
-    value: "0.0 / 5.0",
-    trend: "0",
-    trendType: "up",
-    icon: Star,
-    color: "text-amber-500",
-    bg: "bg-amber-50",
-  },
-];
-
-function percentLabel(value?: number) {
-  if (typeof value !== "number" || Number.isNaN(value)) return "0%";
-  return `${value}%`;
-}
 
 export default function AnalyticsPage() {
   const { toast } = useToast();
@@ -180,33 +121,6 @@ export default function AnalyticsPage() {
 
   const overview = overviewQuery.data as AnalyticsOverview | undefined;
   const loading = overviewQuery.isPending;
-  const stats: StatItem[] = [
-    {
-      ...STAT_BASE[0],
-      value: String(overview?.total_bookings ?? overview?.total_bookings_month ?? 0),
-      trend: "Selected range",
-      trendType: "up",
-    },
-    {
-      ...STAT_BASE[1],
-      value: overview?.monthly_revenue != null ? `$${Number(overview.monthly_revenue).toLocaleString()}` : "$0",
-      trend: "Selected range",
-      trendType: "up",
-    },
-    {
-      ...STAT_BASE[2],
-      value: percentLabel(overview?.occupancy_rate ?? overview?.occupancy_tracking?.occupancy_rate),
-      trend: "End date",
-      trendType: "down",
-    },
-    {
-      ...STAT_BASE[3],
-      value: `${Number(overview?.average_rating ?? overview?.reviews_summary?.average_rating ?? 0).toFixed(1)} / 5.0`,
-      trend: `${Number(overview?.reviews_summary?.total_reviews ?? 0)} reviews`,
-      trendType: "up",
-    },
-  ];
-
   const demographics = overview?.demographics ?? {};
   const gender = demographics.gender_distribution ?? {};
   const ageGroups = demographics.age_groups ?? {};
@@ -269,24 +183,6 @@ export default function AnalyticsPage() {
             <div className="rounded-[32px] border border-red-100 bg-white p-10 text-center text-sm text-red-600">Analytics could not be loaded.<button type="button" onClick={() => overviewQuery.refetch()} className="ml-3 rounded-xl bg-slate-100 px-4 py-2 font-bold text-slate-700">Try again</button></div>
           ) : (
             <>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                {stats.map((stat) => (
-                  <div key={stat.label} className="group relative overflow-hidden rounded-[32px] border border-slate-100 bg-white p-8 shadow-sm transition-shadow hover:shadow-md">
-                    <div className="mb-6 flex items-center justify-between">
-                      <div className={cn("flex h-12 w-12 items-center justify-center rounded-2xl transition-transform group-hover:scale-110", stat.bg, stat.color)}>
-                        <stat.icon className="h-6 w-6" />
-                      </div>
-                      <div className="flex items-center gap-1 text-xs font-bold text-slate-400">
-                        {stat.trend.startsWith("+") ? <TrendingUp className="h-3 w-3" /> : stat.trend.startsWith("-") ? <TrendingDown className="h-3 w-3" /> : null}
-                        {stat.trend}
-                      </div>
-                    </div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{stat.label}</p>
-                    <h3 className="mt-1 text-2xl font-bold text-slate-800">{stat.value}</h3>
-                  </div>
-                ))}
-              </div>
-
               <section aria-labelledby="booking-breakdown-title" className="rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
                 <div className="mb-5">
                   <h2 id="booking-breakdown-title" className="text-xl font-bold text-slate-800">Booking breakdown</h2>
