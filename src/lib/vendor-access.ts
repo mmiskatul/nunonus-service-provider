@@ -38,6 +38,7 @@ const ALWAYS_VISIBLE_NAV_ITEMS: SidebarNavItem[] = [
   { name: "Customers", icon: UserCircle2, href: "/customers" },
   { name: "Operations", icon: BriefcaseBusiness, href: "/operations" },
   { name: "Event Management", icon: CalendarPlus2, href: "/events" },
+  { name: "Event Bookings", icon: CalendarRange, href: "/event-bookings" },
   { name: "Promotions", icon: Tag, href: "/promotions" },
   { name: "Analytics", icon: BarChart3, href: "/analytics" },
   { name: "Loyalty Program", icon: UserCircle2, href: "/loyalty" },
