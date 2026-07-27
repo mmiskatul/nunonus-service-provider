@@ -22,6 +22,16 @@ function value(row: EventBooking, ...keys: string[]): string {
   return "—";
 }
 
+function numericValue(row: EventBooking, ...keys: string[]): number {
+  const raw = value(row, ...keys);
+  const parsed = Number(raw.replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizeStatus(row: EventBooking): string {
+  return value(row, "status").trim().toLowerCase();
+}
+
 function statusClass(status: string) {
   const normalized = status.toLowerCase();
   if (["complete", "completed"].includes(normalized)) return "bg-sky-50 text-sky-600";
@@ -35,6 +45,7 @@ export default function EventBookingsPage() {
   const [events, setEvents] = useState<EventOption[]>([]);
   const [eventId, setEventId] = useState("");
   const [bookings, setBookings] = useState<EventBooking[]>([]);
+  const [eventBookings, setEventBookings] = useState<EventBooking[]>([]);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
@@ -92,8 +103,37 @@ export default function EventBookingsPage() {
     }
   };
 
+  const loadEventBookings = async () => {
+    if (!eventId) {
+      setEventBookings([]);
+      return;
+    }
+    try {
+      const items: EventBooking[] = [];
+      let skip = 0;
+      let totalItems = 0;
+      do {
+        const response = await vendorListBookings({
+          limit: 200,
+          skip,
+          provider_type: "event",
+          event_id: eventId,
+        });
+        const pageItems = Array.isArray(response.items) ? response.items : Array.isArray(response.bookings) ? response.bookings : [];
+        items.push(...pageItems as EventBooking[]);
+        totalItems = Number(response.total ?? items.length);
+        skip += pageItems.length;
+        if (pageItems.length === 0) break;
+      } while (items.length < totalItems);
+      setEventBookings(items);
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Event totals could not be loaded.", "error");
+    }
+  };
+
   useEffect(() => { void loadEvents(); }, []);
   useEffect(() => { void loadBookings(); }, [eventId, status, search]);
+  useEffect(() => { void loadEventBookings(); }, [eventId]);
 
   const viewDetails = async (booking: EventBooking) => {
     const bookingId = String(booking.id ?? booking._id ?? "");
@@ -115,7 +155,7 @@ export default function EventBookingsPage() {
     try {
       await vendorUpdateBookingStatus(bookingId, nextStatus);
       toast(`Booking ${nextStatus}.`, "success");
-      await loadBookings(false);
+      await Promise.all([loadBookings(false), loadEventBookings()]);
       if (selected && String(selected.id ?? selected._id) === bookingId) {
         setSelected({ ...selected, status: nextStatus });
       }
@@ -127,6 +167,23 @@ export default function EventBookingsPage() {
   };
 
   const selectedEvent = events.find((event) => event.id === eventId);
+  const capacity = Math.max(Number(selectedEvent?.capacity ?? 0), 0);
+  const ticketPrice = Math.max(Number(selectedEvent?.ticket_price ?? 0), 0);
+  const activeBookings = eventBookings
+    .filter((booking) => ["pending", "confirmed", "check_in"].includes(normalizeStatus(booking)));
+  const bookedSeats = activeBookings
+    .reduce((sum, booking) => sum + numericValue(booking, "quantity", "guests", "guest_count"), 0);
+  const completedBookings = eventBookings.filter((booking) => ["complete", "completed"].includes(normalizeStatus(booking)));
+  const completedTickets = completedBookings.reduce(
+    (sum, booking) => sum + numericValue(booking, "quantity", "guests", "guest_count"),
+    0,
+  );
+  const completedRevenue = completedBookings.reduce((sum, booking) => {
+    const storedTotal = numericValue(booking, "total_amount", "total", "amount");
+    const quantity = numericValue(booking, "quantity", "guests", "guest_count");
+    return sum + (storedTotal || quantity * ticketPrice);
+  }, 0);
+  const availableSeats = Math.max(capacity - bookedSeats, 0);
 
   return (
     <div className="min-h-full bg-[#f8fafc]">
@@ -143,7 +200,7 @@ export default function EventBookingsPage() {
                 {events.map((event) => <option key={event.id} value={event.id}>{event.title}{event.event_date ? ` — ${event.event_date}` : ""}</option>)}
               </select>
             </div>
-            <button type="button" onClick={() => { void loadBookings(false); }} disabled={refreshing} className="flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-60"><RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />Refresh</button>
+            <button type="button" onClick={() => { void Promise.all([loadBookings(false), loadEventBookings()]); }} disabled={refreshing} className="flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-60"><RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />Refresh</button>
           </div>
         </div>
 
@@ -152,7 +209,7 @@ export default function EventBookingsPage() {
           <select value={status} onChange={(event) => setStatus(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm outline-none focus:border-sky-400"><option value="all">All statuses</option><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select>
         </div>
 
-        {selectedEvent ? <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex flex-col justify-between gap-5 lg:flex-row"><div><p className="text-xs font-black uppercase tracking-widest text-sky-600">Selected event</p><h2 className="mt-2 text-2xl font-black text-slate-800">{selectedEvent.title}</h2><p className="mt-2 max-w-3xl text-sm text-slate-500">{selectedEvent.description || "No event description provided."}</p></div><span className={cn("h-fit rounded-lg px-3 py-1 text-xs font-black uppercase", selectedEvent.status === "published" ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-600")}>{selectedEvent.status || "draft"}</span></div><div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5"><div className="rounded-xl bg-slate-50 p-4"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Date</p><p className="mt-1 text-sm font-bold text-slate-700">{selectedEvent.event_date || "—"}</p></div><div className="rounded-xl bg-slate-50 p-4"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Time</p><p className="mt-1 text-sm font-bold text-slate-700">{selectedEvent.start_time || "—"} - {selectedEvent.end_time || "—"}</p></div><div className="rounded-xl bg-slate-50 p-4"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Venue</p><p className="mt-1 text-sm font-bold text-slate-700">{selectedEvent.venue || "—"}</p></div><div className="rounded-xl bg-slate-50 p-4"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Capacity</p><p className="mt-1 text-sm font-bold text-slate-700">{selectedEvent.capacity ?? "—"} seats</p></div><div className="rounded-xl bg-slate-50 p-4"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ticket price</p><p className="mt-1 text-sm font-bold text-slate-700">${selectedEvent.ticket_price ?? 0}</p></div></div></section> : null}
+        {selectedEvent ? <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex flex-col justify-between gap-5 lg:flex-row"><div><p className="text-xs font-black uppercase tracking-widest text-sky-600">Selected event</p><h2 className="mt-2 text-2xl font-black text-slate-800">{selectedEvent.title}</h2><p className="mt-2 max-w-3xl text-sm text-slate-500">{selectedEvent.description || "No event description provided."}</p></div><span className={cn("h-fit rounded-lg px-3 py-1 text-xs font-black uppercase", selectedEvent.status === "published" ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-600")}>{selectedEvent.status || "draft"}</span></div><div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><div className="rounded-xl bg-slate-50 p-4"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Date</p><p className="mt-1 text-sm font-bold text-slate-700">{selectedEvent.event_date || "—"}</p></div><div className="rounded-xl bg-slate-50 p-4"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Time</p><p className="mt-1 text-sm font-bold text-slate-700">{selectedEvent.start_time || "—"} - {selectedEvent.end_time || "—"}</p></div><div className="rounded-xl bg-slate-50 p-4"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Venue</p><p className="mt-1 text-sm font-bold text-slate-700">{selectedEvent.venue || "—"}</p></div></div><div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5"><div className="rounded-xl bg-slate-50 p-4"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total capacity</p><p className="mt-1 text-xl font-black text-slate-800">{capacity}</p><p className="mt-1 text-xs text-slate-400">seats</p></div><div className="rounded-xl bg-sky-50 p-4"><p className="text-[10px] font-black uppercase tracking-widest text-sky-500">Booked seats</p><p className="mt-1 text-xl font-black text-sky-700">{bookedSeats}</p><p className="mt-1 text-xs text-sky-500">{activeBookings.length} active booking{activeBookings.length === 1 ? "" : "s"}</p></div><div className="rounded-xl bg-emerald-50 p-4"><p className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Available seats</p><p className="mt-1 text-xl font-black text-emerald-700">{availableSeats}</p><p className="mt-1 text-xs text-emerald-500">{capacity} capacity - {bookedSeats} booked</p></div><div className="rounded-xl bg-amber-50 p-4"><p className="text-[10px] font-black uppercase tracking-widest text-amber-500">Ticket price</p><p className="mt-1 text-xl font-black text-amber-700">${ticketPrice.toFixed(2)}</p><p className="mt-1 text-xs text-amber-500">per ticket</p></div><div className="rounded-xl bg-violet-50 p-4"><p className="text-[10px] font-black uppercase tracking-widest text-violet-500">Completed revenue</p><p className="mt-1 text-xl font-black text-violet-700">${completedRevenue.toFixed(2)}</p><p className="mt-1 text-xs text-violet-500">{completedTickets} completed ticket{completedTickets === 1 ? "" : "s"} only</p></div></div><p className="mt-3 text-xs font-semibold text-slate-400">Revenue is the sum of each completed booking total. If a booking has no saved total, it is calculated as tickets × ticket price. Cancelled, pending, and confirmed bookings are excluded from revenue.</p></section> : null}
 
         <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5"><h2 className="text-lg font-black text-slate-800">{eventId ? events.find((event) => event.id === eventId)?.title || "Selected event" : "All event bookings"}</h2><span className="text-sm font-bold text-slate-400">{total} booking{total === 1 ? "" : "s"}</span></div>
