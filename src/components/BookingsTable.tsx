@@ -5,6 +5,12 @@ import Image from "next/image";
 import { Check, Eye, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+export function formatBookingTimestamp(value?: string) {
+  if (!value) return "Not recorded";
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
+}
+
 export interface Booking {
   id: string;
   backendId?: string;
@@ -22,6 +28,12 @@ export interface Booking {
   email?: string;
   specialRequests?: string;
   customerSince?: string;
+  requestedAt?: string;
+  acceptedAt?: string;
+  completedAt?: string;
+  canceledAt?: string;
+  statusNote?: string;
+  statusHistory?: Array<{ status?: string; at?: string; actor?: string; label?: string; note?: string }>;
 }
 
 interface BookingsTableProps {

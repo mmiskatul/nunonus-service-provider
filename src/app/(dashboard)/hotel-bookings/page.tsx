@@ -39,6 +39,9 @@ function toHotelBooking(raw: Record<string, unknown>): HotelBooking {
     ratePerNight: ratePerNight || (totalAmount - serviceFee - tourismTax) / (nights || 1), serviceFee, tourismTax,
     status: mapStatus(String(raw.status ?? "")), payment: raw.payment_status === "paid" || raw.payment === "Paid" ? "Paid" : "Unpaid",
     phone: String(raw.customer_phone ?? "—"), email: String(raw.customer_email ?? "—"), specialRequests: String(raw.special_requests ?? raw.special_notes ?? raw.notes ?? ""), guests: `${guests} Guest${Number(guests) !== 1 ? "s" : ""}`,
+    requestedAt: String(raw.requested_at ?? raw.created_at ?? ""), acceptedAt: String(raw.accepted_at ?? ""),
+    completedAt: String(raw.completed_at ?? ""), canceledAt: String(raw.canceled_at ?? ""), statusNote: String(raw.status_note ?? ""),
+    statusHistory: Array.isArray(raw.status_history) ? raw.status_history as HotelBooking["statusHistory"] : [],
   };
 }
 

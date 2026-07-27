@@ -15,6 +15,7 @@ import {
   MessageSquareQuote,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatBookingTimestamp } from "./BookingsTable";
 
 export interface HotelBooking {
   id: string;
@@ -38,6 +39,12 @@ export interface HotelBooking {
   email: string;
   specialRequests: string;
   guests: string;
+  requestedAt?: string;
+  acceptedAt?: string;
+  completedAt?: string;
+  canceledAt?: string;
+  statusNote?: string;
+  statusHistory?: Array<{ status?: string; at?: string; actor?: string; label?: string; note?: string }>;
 }
 
 interface HotelBookingDetailsModalProps {
@@ -132,6 +139,20 @@ export function HotelBookingDetailsModal({
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Booking timeline</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {[["Request sent", booking.requestedAt], ["Accepted by provider", booking.acceptedAt], ["Completed", booking.completedAt], ["Cancelled", booking.canceledAt]].map(([label, value]) => (
+                <div key={label} className="rounded-2xl bg-slate-50 px-3 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+                  <p className="mt-1 text-xs font-bold text-slate-700">{formatBookingTimestamp(value)}</p>
+                </div>
+              ))}
+            </div>
+            {booking.statusNote ? <p className="mt-3 text-xs text-slate-500"><span className="font-black text-slate-700">Provider note:</span> {booking.statusNote}</p> : null}
+            {booking.statusHistory?.length ? <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">{booking.statusHistory.map((event, index) => <div key={`${event.status}-${event.at}-${index}`} className="flex items-start justify-between gap-3 text-xs"><span className="font-bold text-slate-700">{event.label ?? `${String(event.status ?? "Status").replaceAll("_", " ")} by ${event.actor === "customer" ? "customer" : "service provider"}`}</span><span className="shrink-0 text-slate-400">{formatBookingTimestamp(event.at)}</span></div>)}</div> : null}
           </div>
 
           {/* Stay Info Grid */}
