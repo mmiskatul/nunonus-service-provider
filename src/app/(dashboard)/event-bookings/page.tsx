@@ -12,7 +12,7 @@ import {
 } from "@/lib/vendor-api";
 import { cn } from "@/lib/utils";
 
-type EventOption = { id: string; title: string; event_date?: string; status?: string };
+type EventOption = { id: string; title: string; event_date?: string; start_time?: string; end_time?: string; venue?: string; capacity?: number; ticket_price?: number; description?: string; status?: string };
 type EventBooking = Record<string, unknown>;
 
 function value(row: EventBooking, ...keys: string[]): string {
@@ -54,6 +54,12 @@ export default function EventBookingsPage() {
         id: String(row.id ?? row._id ?? ""),
         title: String(row.title ?? "Untitled event"),
         event_date: row.event_date == null ? undefined : String(row.event_date),
+        start_time: row.start_time == null ? undefined : String(row.start_time),
+        end_time: row.end_time == null ? undefined : String(row.end_time),
+        venue: row.venue == null ? undefined : String(row.venue),
+        capacity: row.capacity == null ? undefined : Number(row.capacity),
+        ticket_price: row.ticket_price == null ? undefined : Number(row.ticket_price),
+        description: row.description == null ? undefined : String(row.description),
         status: row.status == null ? undefined : String(row.status),
       })).filter((row) => row.id));
     } catch (error) {
@@ -120,6 +126,8 @@ export default function EventBookingsPage() {
     }
   };
 
+  const selectedEvent = events.find((event) => event.id === eventId);
+
   return (
     <div className="min-h-full bg-[#f8fafc]">
       <Header title="Event Bookings" />
@@ -143,6 +151,8 @@ export default function EventBookingsPage() {
           <div className="relative flex-1"><Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search booking code or customer" className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-sky-400" /></div>
           <select value={status} onChange={(event) => setStatus(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm outline-none focus:border-sky-400"><option value="all">All statuses</option><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select>
         </div>
+
+        {selectedEvent ? <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex flex-col justify-between gap-5 lg:flex-row"><div><p className="text-xs font-black uppercase tracking-widest text-sky-600">Selected event</p><h2 className="mt-2 text-2xl font-black text-slate-800">{selectedEvent.title}</h2><p className="mt-2 max-w-3xl text-sm text-slate-500">{selectedEvent.description || "No event description provided."}</p></div><span className={cn("h-fit rounded-lg px-3 py-1 text-xs font-black uppercase", selectedEvent.status === "published" ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-600")}>{selectedEvent.status || "draft"}</span></div><div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5"><div className="rounded-xl bg-slate-50 p-4"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Date</p><p className="mt-1 text-sm font-bold text-slate-700">{selectedEvent.event_date || "—"}</p></div><div className="rounded-xl bg-slate-50 p-4"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Time</p><p className="mt-1 text-sm font-bold text-slate-700">{selectedEvent.start_time || "—"} - {selectedEvent.end_time || "—"}</p></div><div className="rounded-xl bg-slate-50 p-4"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Venue</p><p className="mt-1 text-sm font-bold text-slate-700">{selectedEvent.venue || "—"}</p></div><div className="rounded-xl bg-slate-50 p-4"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Capacity</p><p className="mt-1 text-sm font-bold text-slate-700">{selectedEvent.capacity ?? "—"} seats</p></div><div className="rounded-xl bg-slate-50 p-4"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ticket price</p><p className="mt-1 text-sm font-bold text-slate-700">${selectedEvent.ticket_price ?? 0}</p></div></div></section> : null}
 
         <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5"><h2 className="text-lg font-black text-slate-800">{eventId ? events.find((event) => event.id === eventId)?.title || "Selected event" : "All event bookings"}</h2><span className="text-sm font-bold text-slate-400">{total} booking{total === 1 ? "" : "s"}</span></div>
