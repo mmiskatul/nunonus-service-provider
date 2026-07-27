@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 import {
   Calendar,
   ChevronDown,
@@ -43,6 +43,13 @@ type AnalyticsOverview = {
     average_rating?: number;
     total_reviews?: number;
     breakdown?: Record<string, number>;
+  };
+  booking_breakdown?: {
+    completed?: number;
+    cancelled?: number;
+    pending?: number;
+    confirmed?: number;
+    by_service?: Record<string, number>;
   };
 };
 
@@ -111,9 +118,10 @@ export default function AnalyticsPage() {
   const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>(() => {
     const from = searchParams.get("from");
     const to = searchParams.get("to");
+    const today = new Date();
     return {
-      start: from && /^\d{4}-\d{2}-\d{2}$/.test(from) ? new Date(`${from}T00:00:00`) : null,
-      end: to && /^\d{4}-\d{2}-\d{2}$/.test(to) ? new Date(`${to}T00:00:00`) : null,
+      start: from && /^\d{4}-\d{2}-\d{2}$/.test(from) ? new Date(`${from}T00:00:00`) : subDays(today, 29),
+      end: to && /^\d{4}-\d{2}-\d{2}$/.test(to) ? new Date(`${to}T00:00:00`) : today,
     };
   });
   const dateFrom = dateRange.start ? format(dateRange.start, "yyyy-MM-dd") : undefined;
@@ -204,6 +212,8 @@ export default function AnalyticsPage() {
   const ageGroups = demographics.age_groups ?? {};
   const occupancy = overview?.occupancy_tracking ?? {};
   const reviews = overview?.reviews_summary ?? {};
+  const bookingBreakdown = overview?.booking_breakdown ?? {};
+  const serviceCounts = bookingBreakdown.by_service ?? {};
   const breakdown = reviews.breakdown ?? {};
   const rangeText =
     dateRange.start && dateRange.end
@@ -276,6 +286,39 @@ export default function AnalyticsPage() {
                   </div>
                 ))}
               </div>
+
+              <section aria-labelledby="booking-breakdown-title" className="rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
+                <div className="mb-5">
+                  <h2 id="booking-breakdown-title" className="text-xl font-bold text-slate-800">Booking breakdown</h2>
+                  <p className="mt-1 text-sm text-slate-400">All booking outcomes and service types in the selected range.</p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {[
+                    ["Completed", bookingBreakdown.completed ?? 0, "text-emerald-600", "bg-emerald-50"],
+                    ["Cancelled", bookingBreakdown.cancelled ?? 0, "text-rose-600", "bg-rose-50"],
+                    ["Pending", bookingBreakdown.pending ?? 0, "text-amber-600", "bg-amber-50"],
+                    ["Confirmed", bookingBreakdown.confirmed ?? 0, "text-sky-600", "bg-sky-50"],
+                  ].map(([label, value, color, background]) => (
+                    <div key={String(label)} className={`rounded-2xl p-4 ${background}`}>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
+                      <p className={`mt-2 text-2xl font-black ${color}`}>{value}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-5 border-t border-slate-100 pt-5">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">By service type</p>
+                  {Object.keys(serviceCounts).length > 0 ? (
+                    <div className="mt-3 flex flex-wrap gap-3">
+                      {Object.entries(serviceCounts).map(([service, count]) => (
+                        <div key={service} className="rounded-xl border border-slate-100 px-4 py-3">
+                          <span className="text-sm font-bold capitalize text-slate-700">{service}</span>
+                          <span className="ml-3 text-sm font-black text-[#1e2a5e]">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : <p className="mt-3 text-sm text-slate-400">No service-type booking data available.</p>}
+                </div>
+              </section>
 
               <div className="grid grid-cols-1 gap-8 xl:grid-cols-3">
                 <div className="xl:col-span-2 rounded-[40px] border border-slate-100 bg-white p-10 shadow-sm">
