@@ -124,6 +124,9 @@ export default function AnalyticsPage() {
   const demographics = overview?.demographics ?? {};
   const gender = demographics.gender_distribution ?? {};
   const ageGroups = demographics.age_groups ?? {};
+  const femalePercent = Number(gender.female ?? 0);
+  const malePercent = Number(gender.male ?? 0);
+  const otherPercent = Math.max(0, 100 - femalePercent - malePercent);
   const occupancy = overview?.occupancy_tracking ?? {};
   const reviews = overview?.reviews_summary ?? {};
   const bookingBreakdown = overview?.booking_breakdown ?? {};
@@ -224,35 +227,30 @@ export default function AnalyticsPage() {
                   <h3 className="mb-10 text-xl font-bold text-slate-800">Customer Demographics</h3>
                   <div className="flex flex-col gap-12 md:flex-row md:items-center">
                     <div className="relative h-64 w-64 shrink-0">
-                      <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
-                        <circle cx="50" cy="50" r="40" fill="transparent" stroke="#eff6ff" strokeWidth="12" />
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="40"
-                          fill="transparent"
-                          stroke="#38bdf8"
-                          strokeWidth="12"
-                          strokeDasharray="251.2"
-                          strokeDashoffset={251.2 * (1 - ((gender.female ?? 0) / 100))}
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-sm font-black uppercase tracking-widest text-slate-400">Gender</span>
-                        <span className="text-[10px] font-medium text-slate-400">Distribution</span>
+                      <div
+                        className="h-full w-full rounded-full p-8"
+                        style={{ background: `conic-gradient(#38bdf8 0 ${femalePercent}%, #bae6fd ${femalePercent}% ${femalePercent + malePercent}%, #e2e8f0 ${femalePercent + malePercent}% 100%)` }}
+                      >
+                        <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-white">
+                          <span className="text-sm font-black uppercase tracking-widest text-slate-400">Gender</span>
+                          <span className="text-[10px] font-medium text-slate-400">Live distribution</span>
+                        </div>
                       </div>
                     </div>
 
                     <div className="flex-1 space-y-6">
-                      <div className="mb-10 flex items-center gap-6">
+                      <div className="mb-10 flex flex-wrap items-center gap-6">
                         <div className="flex items-center gap-2">
                           <div className="h-3 w-3 rounded-full bg-sky-500" />
-                          <span className="text-xs font-bold text-slate-600">Female ({gender.female ?? 0}%)</span>
+                          <span className="text-xs font-bold text-slate-600">Female ({femalePercent}%)</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="h-3 w-3 rounded-full bg-sky-100" />
-                          <span className="text-xs font-bold text-slate-400">Male ({gender.male ?? 0}%)</span>
+                          <span className="text-xs font-bold text-slate-400">Male ({malePercent}%)</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="h-3 w-3 rounded-full bg-slate-200" />
+                          <span className="text-xs font-bold text-slate-400">Other ({otherPercent}%)</span>
                         </div>
                       </div>
 
