@@ -229,7 +229,7 @@ export default function AnalyticsPage() {
                     <div className="relative h-64 w-64 shrink-0">
                       <div
                         className="h-full w-full rounded-full p-8"
-                        style={{ background: `conic-gradient(#38bdf8 0 ${femalePercent}%, #bae6fd ${femalePercent}% ${femalePercent + malePercent}%, #e2e8f0 ${femalePercent + malePercent}% 100%)` }}
+                        style={{ background: `conic-gradient(#ec4899 0 ${femalePercent}%, #bae6fd ${femalePercent}% ${femalePercent + malePercent}%, #e2e8f0 ${femalePercent + malePercent}% 100%)` }}
                       >
                         <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-white">
                           <span className="text-sm font-black uppercase tracking-widest text-slate-400">Gender</span>
@@ -241,7 +241,7 @@ export default function AnalyticsPage() {
                     <div className="flex-1 space-y-6">
                       <div className="mb-10 flex flex-wrap items-center gap-6">
                         <div className="flex items-center gap-2">
-                          <div className="h-3 w-3 rounded-full bg-sky-500" />
+                          <div className="h-3 w-3 rounded-full bg-pink-500" />
                           <span className="text-xs font-bold text-slate-600">Female ({femalePercent}%)</span>
                         </div>
                         <div className="flex items-center gap-2">
