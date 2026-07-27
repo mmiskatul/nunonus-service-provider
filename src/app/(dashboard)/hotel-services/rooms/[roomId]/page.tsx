@@ -171,7 +171,7 @@ export default function EditRoomPage() {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-50/50 p-4 md:p-10">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50/50 px-4 py-5 md:px-8 md:py-8">
       <input
         type="file"
         ref={fileInputRef}
@@ -181,7 +181,7 @@ export default function EditRoomPage() {
         onChange={(event) => void handleFileSelection(event.target.files)}
       />
 
-      <div className="mx-auto max-w-[1000px] space-y-10">
+      <div className="mx-auto w-full max-w-[1440px] space-y-8">
         {statusMessage ? <p className="text-sm font-bold text-[#1e2a5e]">{statusMessage}</p> : null}
 
         <div className="flex items-center justify-between">
@@ -335,6 +335,7 @@ export default function EditRoomPage() {
             <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
               {images.map((src, index) => (
                 <div key={`${src}-${index}`} className="group relative aspect-[4/3] overflow-hidden rounded-[32px]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={src} alt="Room preview" className="h-full w-full object-cover transition-transform group-hover:scale-110" />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
                     <button onClick={() => removeImage(index)} className="rounded-2xl bg-white p-3 text-rose-500 transition-transform hover:scale-110">
