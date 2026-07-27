@@ -8,7 +8,6 @@ import { CalendarPlus2, Hotel, Megaphone, UtensilsCrossed, Waves } from "lucide-
 import { Header } from "@/components/Header";
 import { StatsCard } from "@/components/StatsCard";
 import type { TrendPoint } from "@/components/BookingTrendsChart";
-import { UpcomingBookingsTable, type UpcomingBooking } from "@/components/UpcomingBookingsTable";
 import { AllBookingsTable, type DashboardBooking } from "@/components/AllBookingsTable";
 import { CalendarPreview, type CalendarPreviewPayload } from "@/components/CalendarPreview";
 import { RecentReviews, type RecentReview } from "@/components/RecentReviews";
@@ -104,9 +103,8 @@ export default function Dashboard() {
               <StatsCard title="Occupancy rate" value={`${Number(kpis?.occupancy_rate ?? 0)}%`} trend={{ value: "Current utilization", type: "neutral" }} />
               <StatsCard title="Average rating" value={Number(kpis?.average_rating ?? 0).toFixed(1)} trend={{ value: "Out of 5", type: "rating" }} />
             </section>
-            <AllBookingsTable bookings={overview?.booking_rows} />
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8"><div className="lg:col-span-2"><BookingTrendsChart trends={overview?.booking_trends} /></div><CalendarPreview initialData={overview?.calendar_preview} /></div>
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8"><div className="lg:col-span-2"><UpcomingBookingsTable bookings={overview?.upcoming_bookings} viewAllHref={bookingsHref} /></div><RecentReviews reviews={overview?.recent_reviews} /></div>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8"><div className="lg:col-span-2"><AllBookingsTable bookings={overview?.booking_rows} /></div><RecentReviews reviews={overview?.recent_reviews} /></div>
           </>
         )}
       </main>

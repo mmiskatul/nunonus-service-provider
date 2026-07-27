@@ -52,7 +52,7 @@ export function AllBookingsTable({ bookings = [] }: { bookings?: DashboardBookin
     <section aria-labelledby="all-bookings-title" className="overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h3 id="all-bookings-title" className="text-lg font-bold text-slate-800">Bookings by service type</h3>
+          <h3 id="all-bookings-title" className="text-lg font-bold text-slate-800">Bookings</h3>
           <p className="mt-1 text-sm text-slate-400">All current-month bookings across your services.</p>
         </div>
         <Link href="/analytics" prefetch={false} className="text-sm font-semibold text-sky-500">View analytics</Link>
