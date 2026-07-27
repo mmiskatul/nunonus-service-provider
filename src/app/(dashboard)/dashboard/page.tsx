@@ -9,6 +9,7 @@ import { Header } from "@/components/Header";
 import { StatsCard } from "@/components/StatsCard";
 import type { TrendPoint } from "@/components/BookingTrendsChart";
 import { UpcomingBookingsTable, type UpcomingBooking } from "@/components/UpcomingBookingsTable";
+import { AllBookingsTable, type DashboardBooking } from "@/components/AllBookingsTable";
 import { CalendarPreview, type CalendarPreviewPayload } from "@/components/CalendarPreview";
 import { RecentReviews, type RecentReview } from "@/components/RecentReviews";
 import { dashboardOverviewQuery, vendorProfileQuery } from "@/lib/vendor-queries";
@@ -22,6 +23,7 @@ const BookingTrendsChart = dynamic(
 type DashboardOverview = {
   kpis?: { total_bookings_month?: number; todays_bookings?: number; monthly_revenue?: number; occupancy_rate?: number; average_rating?: number };
   booking_breakdown?: { by_service?: Record<string, number> };
+  booking_rows?: DashboardBooking[];
   booking_trends?: TrendPoint[];
   calendar_preview?: CalendarPreviewPayload;
   upcoming_bookings?: UpcomingBooking[];
@@ -55,7 +57,6 @@ export default function Dashboard() {
     : [];
   const currency = currencyCode(profile);
   const kpis = overview?.kpis;
-  const serviceCounts = overview?.booking_breakdown?.by_service ?? {};
   const bookingsHref = categories.includes("Restaurant") ? "/restaurant-bookings" : categories.includes("Hotel") ? "/hotel-bookings" : categories.includes("Spa") ? "/spa-bookings" : "/events";
   const quickActions = [
     categories.includes("Restaurant") ? { label: "Manage menu", href: "/services", icon: UtensilsCrossed } : null,
@@ -103,28 +104,7 @@ export default function Dashboard() {
               <StatsCard title="Occupancy rate" value={`${Number(kpis?.occupancy_rate ?? 0)}%`} trend={{ value: "Current utilization", type: "neutral" }} />
               <StatsCard title="Average rating" value={Number(kpis?.average_rating ?? 0).toFixed(1)} trend={{ value: "Out of 5", type: "rating" }} />
             </section>
-            <section aria-labelledby="dashboard-service-breakdown-title" className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 id="dashboard-service-breakdown-title" className="text-lg font-bold text-slate-800">Bookings by service type</h2>
-                  <p className="mt-1 text-sm text-slate-400">Current month booking totals.</p>
-                </div>
-                <Link href="/analytics" prefetch={false} className="text-sm font-bold text-sky-600">View analytics</Link>
-              </div>
-              {Object.keys(serviceCounts).length > 0 ? (
-                <div className="mt-5 overflow-hidden rounded-xl border border-slate-100">
-                  <div className="grid grid-cols-[1fr_auto] border-b border-slate-100 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    <span>Service type</span><span>Bookings</span>
-                  </div>
-                  {Object.entries(serviceCounts).map(([service, count]) => (
-                    <div key={service} className="grid grid-cols-[1fr_auto] items-center border-b border-slate-100 px-4 py-3 last:border-b-0">
-                      <span className="text-sm font-bold capitalize text-slate-700">{service}</span>
-                      <span className="text-sm font-black text-[#1e2a5e]">{count}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : <p className="mt-5 text-sm text-slate-400">No bookings this month.</p>}
-            </section>
+            <AllBookingsTable bookings={overview?.booking_rows} />
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8"><div className="lg:col-span-2"><BookingTrendsChart trends={overview?.booking_trends} /></div><CalendarPreview initialData={overview?.calendar_preview} /></div>
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8"><div className="lg:col-span-2"><UpcomingBookingsTable bookings={overview?.upcoming_bookings} viewAllHref={bookingsHref} /></div><RecentReviews reviews={overview?.recent_reviews} /></div>
           </>
