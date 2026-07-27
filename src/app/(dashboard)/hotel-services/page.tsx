@@ -13,6 +13,7 @@ import Link from "next/link";
 import { RoomCard, Room } from "@/components/RoomCard";
 import { ServiceCard, ServiceItem } from "@/components/ServiceCard";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   vendorDeleteRoom,
   vendorDeleteService,
@@ -29,6 +30,12 @@ export default function HotelServicesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    name: string;
+    type: "room" | "service";
+  } | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const loadData = async () => {
     try {
@@ -134,8 +141,10 @@ export default function HotelServicesPage() {
       await vendorDeleteRoom(id);
       setRooms((prev) => prev.filter((item) => item.id !== id));
       setStatusMessage("Room deleted.");
+      return true;
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "Failed to delete room.");
+      return false;
     }
   };
 
@@ -144,10 +153,25 @@ export default function HotelServicesPage() {
       await vendorDeleteService(id);
       setServices((prev) => prev.filter((item) => item.id !== id));
       setStatusMessage("Service deleted.");
+      return true;
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : "Failed to delete service.",
       );
+      return false;
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    try {
+      const deleted = deleteTarget.type === "room"
+        ? await deleteRoom(deleteTarget.id)
+        : await deleteService(deleteTarget.id);
+      if (deleted) setDeleteTarget(null);
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -293,7 +317,7 @@ export default function HotelServicesPage() {
                     key={room.id}
                     room={room}
                     onToggleStatus={toggleRoomStatus}
-                    onDelete={(id) => void deleteRoom(id)}
+                    onDelete={(id) => setDeleteTarget({ id, name: room.name, type: "room" })}
                     editHref={`/hotel-services/rooms/${room.id}`}
                   />
                 ))
@@ -302,13 +326,23 @@ export default function HotelServicesPage() {
                     key={service.id}
                     service={service}
                     onToggleStatus={toggleServiceStatus}
-                    onDelete={(id) => void deleteService(id)}
+                    onDelete={(id) => setDeleteTarget({ id, name: service.name, type: "service" })}
                     editHref={`/hotel-services/services/${service.id}`}
                   />
                 ))}
           </div>
         )}
       </div>
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title={`Delete this ${deleteTarget?.type ?? "listing"}?`}
+        message={`"${deleteTarget?.name ?? "This listing"}" will be permanently removed.`}
+        confirmLabel={`Delete ${deleteTarget?.type ?? "listing"}`}
+        destructive
+        busy={deleteBusy}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => void confirmDelete()}
+      />
     </div>
   );
 }

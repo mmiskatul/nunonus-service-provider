@@ -21,6 +21,8 @@ import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { vendorQueryKeys } from "@/lib/vendor-queries";
+import { useUnsavedChanges } from "@/lib/use-unsaved-changes";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const MAPBOX_ACCESS_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || "";
 const DEFAULT_TIMEZONE = "Asia/Dhaka";
@@ -306,6 +308,10 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     ...getDefaultForm(DEFAULT_CATEGORIES),
     timezone: detectedTimezone,
   }));
+  const [formBaseline, setFormBaseline] = useState<FormState>(() => ({
+    ...getDefaultForm(DEFAULT_CATEGORIES),
+    timezone: detectedTimezone,
+  }));
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(startInCreateMode);
   const [statusMessage, setStatusMessage] = useState("");
@@ -316,6 +322,12 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   const [showMapModal, setShowMapModal] = useState(false);
   const [showBannerPreview, setShowBannerPreview] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [pendingEventAction, setPendingEventAction] = useState<{
+    event: VendorEventRecord;
+    action: "archive" | "delete";
+  } | null>(null);
+  const [eventActionBusy, setEventActionBusy] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
@@ -347,6 +359,8 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     }
     return options;
   }, [currentLocationLabel, form.category, savedRestaurantLocation]);
+  const formDirty = showForm && JSON.stringify(form) !== JSON.stringify(formBaseline);
+  useUnsavedChanges(formDirty && !saving);
 
   const loadEvents = async (filters?: { search?: string; status?: string }) => {
     const response = await vendorListEvents({
@@ -371,6 +385,12 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
       timezone: current.timezone || detectedTimezone,
       venue: current.venue || nextSavedLocation,
     }));
+    setFormBaseline((current) => ({
+      ...current,
+      category: nextCategories.includes(current.category) ? current.category : nextCategories[0],
+      timezone: current.timezone || detectedTimezone,
+      venue: current.venue || nextSavedLocation,
+    }));
     return { nextCategories, nextSavedLocation };
   };
 
@@ -386,6 +406,12 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
         setCategories(nextCategories);
         setSavedRestaurantLocation(nextSavedLocation);
         setForm((current) => ({
+          ...current,
+          category: nextCategories.includes(current.category) ? current.category : nextCategories[0],
+          timezone: current.timezone || detectedTimezone,
+          venue: current.venue || nextSavedLocation,
+        }));
+        setFormBaseline((current) => ({
           ...current,
           category: nextCategories.includes(current.category) ? current.category : nextCategories[0],
           timezone: current.timezone || detectedTimezone,
@@ -515,18 +541,21 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   }, [events]);
 
   const resetForm = () => {
-    setForm({
+    const nextForm = {
       ...getDefaultForm(categories),
       timezone: detectedTimezone,
       venue: savedRestaurantLocation,
       latitude: null,
       longitude: null,
-    });
+    };
+    setForm(nextForm);
+    setFormBaseline(nextForm);
     setEditingId(null);
     setShowForm(false);
     setShowMapModal(false);
     setShowBannerPreview(false);
     setShowSaveConfirm(false);
+    setShowDiscardConfirm(false);
     setShowDetailModal(false);
     setDetailLoading(false);
     setDetailError("");
@@ -544,13 +573,15 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     } catch {
       // Keep the form usable even if the profile refresh fails.
     }
-    setForm({
+    const nextForm = {
       ...getDefaultForm(nextCategories),
       timezone: detectedTimezone,
       venue: nextSavedLocation,
       latitude: null,
       longitude: null,
-    });
+    };
+    setForm(nextForm);
+    setFormBaseline(nextForm);
     setEditingId(null);
     setShowForm(true);
     setTempAddress("");
@@ -679,7 +710,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     setEditingId(event.id);
     setShowForm(true);
     setStatusMessage("");
-    setForm({
+    const nextForm: FormState = {
       title: event.title,
       category: categories.includes(event.category as VendorCategory)
         ? (event.category as VendorCategory)
@@ -699,12 +730,35 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
       description: event.description,
       bannerImageUrl: event.banner_image_url ?? "",
       status: event.status,
-    });
+    };
+    setForm(nextForm);
+    setFormBaseline(nextForm);
     setTempAddress(event.venue);
     setTempCoords({
       lat: event.latitude ?? tempCoords.lat,
       lng: event.longitude ?? tempCoords.lng,
     });
+  };
+
+  const requestCloseForm = () => {
+    if (formDirty) {
+      setShowDiscardConfirm(true);
+      return;
+    }
+    resetForm();
+  };
+
+  const confirmEventAction = async () => {
+    if (!pendingEventAction) return;
+    setEventActionBusy(true);
+    try {
+      const succeeded = pendingEventAction.action === "delete"
+        ? await handleDelete(pendingEventAction.event.id)
+        : await handleStatusChange(pendingEventAction.event.id, "archived");
+      if (succeeded) setPendingEventAction(null);
+    } finally {
+      setEventActionBusy(false);
+    }
   };
 
   const handleDelete = async (eventId: string) => {
@@ -716,8 +770,10 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
         resetForm();
       }
       setStatusMessage("Event deleted.");
+      return true;
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "Failed to delete event.");
+      return false;
     }
   };
 
@@ -727,8 +783,10 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
       await loadEvents({ search, status: statusFilter });
       await queryClient.invalidateQueries({ queryKey: vendorQueryKeys.events() });
       setStatusMessage(`Event marked as ${nextStatus}.`);
+      return true;
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "Failed to update event status.");
+      return false;
     }
   };
 
@@ -913,13 +971,13 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                                 {event.status === "published" ? "Move to draft" : "Publish"}
                               </button>
                               <button
-                                onClick={() => void handleStatusChange(event.id, "archived")}
+                                onClick={() => setPendingEventAction({ event, action: "archive" })}
                                 className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100"
                               >
                                 Archive
                               </button>
                               <button
-                                onClick={() => void handleDelete(event.id)}
+                                onClick={() => setPendingEventAction({ event, action: "delete" })}
                                 className="inline-flex items-center gap-1.5 rounded-lg bg-rose-50 px-3 py-2 text-xs font-bold text-rose-600 transition hover:bg-rose-100"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
@@ -953,7 +1011,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                 </p>
               </div>
               <button
-                onClick={resetForm}
+                onClick={requestCloseForm}
                 className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
                 aria-label="Close event form"
               >
@@ -1235,7 +1293,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
 
             <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-5 py-4 md:px-6">
               <button
-                onClick={resetForm}
+                onClick={requestCloseForm}
                 className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
               >
                 Cancel
@@ -1461,6 +1519,29 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
           </div>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={showDiscardConfirm}
+        title="Discard unsaved changes?"
+        message="Your event changes have not been saved and will be lost."
+        confirmLabel="Discard changes"
+        destructive
+        onClose={() => setShowDiscardConfirm(false)}
+        onConfirm={resetForm}
+      />
+
+      <ConfirmDialog
+        open={Boolean(pendingEventAction)}
+        title={pendingEventAction?.action === "delete" ? "Delete this event?" : "Archive this event?"}
+        message={pendingEventAction?.action === "delete"
+          ? `"${pendingEventAction.event.title}" and its event record will be permanently deleted.`
+          : `"${pendingEventAction?.event.title ?? "This event"}" will be hidden from active event listings.`}
+        confirmLabel={pendingEventAction?.action === "delete" ? "Delete event" : "Archive event"}
+        destructive={pendingEventAction?.action === "delete"}
+        busy={eventActionBusy}
+        onClose={() => setPendingEventAction(null)}
+        onConfirm={() => void confirmEventAction()}
+      />
 
       {showBannerPreview && form.bannerImageUrl ? (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm">

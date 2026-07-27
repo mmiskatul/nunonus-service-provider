@@ -13,11 +13,12 @@ import {
   Image as ImageIcon,
   ClipboardList,
 } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { uploadVendorFile, vendorCreateRoom } from "@/lib/vendor-api";
 import { useToast } from "@/components/ui/ToastProvider";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useUnsavedChanges } from "@/lib/use-unsaved-changes";
 
 const AMENITIES_OPTIONS = [
   "Free WiFi",
@@ -30,26 +31,28 @@ const AMENITIES_OPTIONS = [
   "Work Desk",
 ];
 
+const INITIAL_ROOM_FORM = {
+  name: "",
+  size: "",
+  maxGuests: "2 Guests",
+  bedType: "King Size",
+  numberOfBeds: "1",
+  description: "",
+  basePrice: "",
+  weekendPrice: "",
+  discount: "0",
+  taxIncluded: true,
+  activeStatus: true,
+  totalInventory: "1",
+  minStay: "1",
+  maxStay: "30",
+};
+
 export default function AddRoomPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    size: "",
-    maxGuests: "2 Guests",
-    bedType: "King Size",
-    numberOfBeds: "1",
-    description: "",
-    basePrice: "",
-    weekendPrice: "",
-    discount: "0",
-    taxIncluded: true,
-    activeStatus: true,
-    totalInventory: "1",
-    minStay: "1",
-    maxStay: "30",
-  });
+  const [formData, setFormData] = useState(INITIAL_ROOM_FORM);
 
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
 
@@ -57,7 +60,13 @@ export default function AddRoomPage() {
 
   const [isDragActive, setIsDragActive] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const hasUnsavedChanges =
+    JSON.stringify(formData) !== JSON.stringify(INITIAL_ROOM_FORM) ||
+    selectedAmenities.length > 0 ||
+    images.length > 0;
+  useUnsavedChanges(hasUnsavedChanges && !isSubmitting);
 
   const handleFileSelection = async (files: FileList | null) => {
     if (!files) return;
@@ -176,12 +185,13 @@ export default function AddRoomPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4 sm:gap-6">
-            <Link
-              href="/hotel-services"
+            <button
+              type="button"
+              onClick={() => hasUnsavedChanges ? setDiscardConfirmOpen(true) : router.push("/hotel-services")}
               className="h-11 w-11 sm:h-14 sm:w-14 flex items-center justify-center bg-white rounded-xl sm:rounded-2xl shadow-sm border border-slate-100 text-slate-400 hover:text-[#1e2a5e] transition-all"
             >
               <ArrowLeft className="h-6 w-6" />
-            </Link>
+            </button>
             <div>
               <h1 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
                 Add New Room
@@ -193,6 +203,8 @@ export default function AddRoomPage() {
           </div>
           <div className="flex items-center gap-4">
             <button
+              type="button"
+              onClick={() => hasUnsavedChanges ? setDiscardConfirmOpen(true) : router.push("/hotel-services")}
               disabled={isSubmitting}
               className="px-6 py-4 text-sm font-black text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
             >
@@ -611,6 +623,15 @@ export default function AddRoomPage() {
           </section>
         </div>
       </div>
+      <ConfirmDialog
+        open={discardConfirmOpen}
+        title="Discard this room?"
+        message="The room details, amenities, and uploaded images you entered will be lost."
+        confirmLabel="Discard room"
+        destructive
+        onClose={() => setDiscardConfirmOpen(false)}
+        onConfirm={() => router.push("/hotel-services")}
+      />
     </div>
   );
 }

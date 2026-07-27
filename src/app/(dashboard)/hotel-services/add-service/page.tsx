@@ -12,31 +12,38 @@ import {
   Image as ImageIcon,
   Clock,
 } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { uploadVendorFile, vendorCreateService } from "@/lib/vendor-api";
 import { useToast } from "@/components/ui/ToastProvider";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useUnsavedChanges } from "@/lib/use-unsaved-changes";
 
 const SERVICE_CATEGORIES = ["Food", "Laundry", "Cleaning", "Wellness", "Other"];
+const INITIAL_SERVICE_FORM = {
+  name: "",
+  category: "Food",
+  price: "25.00",
+  deliveryTime: "30-45 MIN",
+  description: "",
+  activeStatus: true,
+};
 
 export default function AddServicePage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    category: "Food",
-    price: "25.00",
-    deliveryTime: "30-45 MIN",
-    description: "",
-    activeStatus: true,
-  });
+  const [formData, setFormData] = useState(INITIAL_SERVICE_FORM);
 
   const [images, setImages] = useState<string[]>([]);
   const [isDragActive, setIsDragActive] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const hasUnsavedChanges =
+    JSON.stringify(formData) !== JSON.stringify(INITIAL_SERVICE_FORM) ||
+    images.length > 0;
+  useUnsavedChanges(hasUnsavedChanges && !isSubmitting);
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -119,12 +126,13 @@ export default function AddServicePage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <Link
-              href="/hotel-services"
+            <button
+              type="button"
+              onClick={() => hasUnsavedChanges ? setDiscardConfirmOpen(true) : router.push("/hotel-services")}
               className="h-14 w-14 flex items-center justify-center bg-white rounded-2xl shadow-sm border border-slate-100 text-slate-400 hover:text-[#1e2a5e] transition-all"
             >
               <ArrowLeft className="h-6 w-6" />
-            </Link>
+            </button>
             <div>
               <h1 className="text-3xl font-black text-slate-800 tracking-tight">
                 Add Room Service
@@ -136,7 +144,7 @@ export default function AddServicePage() {
           </div>
           <div className="flex items-center gap-4">
             <button
-              onClick={() => router.back()}
+              onClick={() => hasUnsavedChanges ? setDiscardConfirmOpen(true) : router.push("/hotel-services")}
               disabled={isSubmitting}
               className="px-6 py-4 text-sm font-black text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
             >
@@ -370,6 +378,15 @@ export default function AddServicePage() {
           </section>
         </div>
       </div>
+      <ConfirmDialog
+        open={discardConfirmOpen}
+        title="Discard this service?"
+        message="The service details and uploaded images you entered will be lost."
+        confirmLabel="Discard service"
+        destructive
+        onClose={() => setDiscardConfirmOpen(false)}
+        onConfirm={() => router.push("/hotel-services")}
+      />
     </div>
   );
 }

@@ -11,6 +11,8 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useUnsavedChanges } from "@/lib/use-unsaved-changes";
 import {
   uploadVendorFile,
   vendorDeleteAsset,
@@ -87,9 +89,13 @@ export default function ServicesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [overview, setOverview] = useState<OverviewState>(INITIAL_OVERVIEW);
+  const [deleteTarget, setDeleteTarget] = useState<SavedAsset | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const menuInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const hasUnsavedChanges = menuFiles.length > 0 || galleryFiles.length > 0;
+  useUnsavedChanges(hasUnsavedChanges && !isSaving);
 
   const refreshAssets = async () => {
     const [overviewRes, menuRes, galleryRes] = await Promise.all([
@@ -242,14 +248,18 @@ export default function ServicesPage() {
   };
 
   const deleteSavedAsset = async (asset: SavedAsset) => {
+    setDeleteBusy(true);
     try {
       await vendorDeleteAsset(asset.id);
       await refreshAssets();
       setStatusMessage("Asset deleted.");
+      setDeleteTarget(null);
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : "Failed to delete asset.",
       );
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -432,7 +442,7 @@ export default function ServicesPage() {
                   </a>
                 </div>
                 <button
-                  onClick={() => void deleteSavedAsset(asset)}
+                  onClick={() => setDeleteTarget(asset)}
                   className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 transition hover:bg-rose-100"
                   aria-label={`Delete ${asset.name}`}
                 >
@@ -539,6 +549,16 @@ export default function ServicesPage() {
           )}
         </div>
       </main>
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete this restaurant asset?"
+        message={`"${deleteTarget?.name ?? "This asset"}" will be permanently removed from customer-facing content.`}
+        confirmLabel="Delete asset"
+        destructive
+        busy={deleteBusy}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => deleteTarget && void deleteSavedAsset(deleteTarget)}
+      />
     </div>
   );
 }

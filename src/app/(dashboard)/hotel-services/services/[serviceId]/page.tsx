@@ -12,7 +12,6 @@ import {
   Upload,
   Utensils,
 } from "lucide-react";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -20,6 +19,8 @@ import {
   vendorGetService,
   vendorUpdateService,
 } from "@/lib/vendor-api";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useUnsavedChanges } from "@/lib/use-unsaved-changes";
 
 const SERVICE_CATEGORIES = ["Food", "Laundry", "Cleaning", "Wellness", "Other"];
 
@@ -42,20 +43,27 @@ export default function EditServicePage() {
     description: "",
     activeStatus: true,
   });
+  const [baseline, setBaseline] = useState("");
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
+  const hasUnsavedChanges = Boolean(baseline) && baseline !== JSON.stringify({ formData, images });
+  useUnsavedChanges(hasUnsavedChanges && !isSubmitting);
 
   useEffect(() => {
     void (async () => {
       try {
         const service = await vendorGetService(serviceId);
-        setFormData({
+        const nextFormData = {
           name: String(service.name ?? ""),
           category: String(service.category ?? "Food"),
           price: String(service.price ?? 0),
           deliveryTime: String(service.delivery_time ?? ""),
           description: String(service.description ?? ""),
           activeStatus: Boolean(service.active_status ?? service.available ?? true),
-        });
-        setImages(Array.isArray(service.images) ? service.images.map((item) => String(item)) : []);
+        };
+        const nextImages = Array.isArray(service.images) ? service.images.map((item) => String(item)) : [];
+        setFormData(nextFormData);
+        setImages(nextImages);
+        setBaseline(JSON.stringify({ formData: nextFormData, images: nextImages }));
       } catch (error) {
         setStatusMessage(error instanceof Error ? error.message : "Failed to load service.");
       } finally {
@@ -137,9 +145,9 @@ export default function EditServicePage() {
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <Link href="/hotel-services" className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-100 bg-white text-slate-400 shadow-sm transition-all hover:text-[#1e2a5e]">
+            <button type="button" onClick={() => hasUnsavedChanges ? setDiscardConfirmOpen(true) : router.push("/hotel-services")} className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-100 bg-white text-slate-400 shadow-sm transition-all hover:text-[#1e2a5e]">
               <ArrowLeft className="h-6 w-6" />
-            </Link>
+            </button>
             <div>
               <h1 className="text-3xl font-black tracking-tight text-slate-800">Edit Service</h1>
               <p className="mt-1 text-sm font-bold text-slate-400">Update guest-facing service details and imagery.</p>
@@ -248,6 +256,15 @@ export default function EditServicePage() {
           </div>
         </section>
       </div>
+      <ConfirmDialog
+        open={discardConfirmOpen}
+        title="Discard service changes?"
+        message="Your unsaved service details and image changes will be lost."
+        confirmLabel="Discard changes"
+        destructive
+        onClose={() => setDiscardConfirmOpen(false)}
+        onConfirm={() => router.push("/hotel-services")}
+      />
     </div>
   );
 }

@@ -11,6 +11,8 @@ import {
   Waves,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useUnsavedChanges } from "@/lib/use-unsaved-changes";
 import {
   uploadVendorFile,
   vendorDeleteAsset,
@@ -35,9 +37,18 @@ export default function SpaServicesPage() {
   const [isDraggingGallery, setIsDraggingGallery] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    name: string;
+    type: "menu" | "gallery";
+  } | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
 
   const menuInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const hasUnsavedChanges = [...menuFiles, ...galleryFiles].some((file) => !file.persisted);
+  useUnsavedChanges(hasUnsavedChanges && !isSaving);
 
   useEffect(() => {
     void Promise.all([
@@ -147,13 +158,16 @@ export default function SpaServicesPage() {
     const rows = type === "menu" ? menuFiles : galleryFiles;
     const target = rows.find((file) => file.id === id);
     if (target?.persisted) {
+      setDeleteBusy(true);
       try {
         await vendorDeleteAsset(id);
       } catch (error) {
         setStatusMessage(
           error instanceof Error ? error.message : "Failed to delete spa asset.",
         );
-        return;
+        return false;
+      } finally {
+        setDeleteBusy(false);
       }
     }
     if (type === "menu") {
@@ -173,6 +187,27 @@ export default function SpaServicesPage() {
         return prev.filter((f) => f.id !== id);
       });
     }
+    return true;
+  };
+
+  const requestRemoveFile = (id: string, type: "menu" | "gallery") => {
+    const rows = type === "menu" ? menuFiles : galleryFiles;
+    const target = rows.find((file) => file.id === id);
+    if (target?.persisted) {
+      setDeleteTarget({ id, name: target.name, type });
+      return;
+    }
+    void removeFile(id, type);
+  };
+
+  const discardUnsavedFiles = () => {
+    for (const file of [...menuFiles, ...galleryFiles]) {
+      if (!file.persisted && file.previewUrl.startsWith("blob:")) URL.revokeObjectURL(file.previewUrl);
+    }
+    setMenuFiles((current) => current.filter((file) => file.persisted));
+    setGalleryFiles((current) => current.filter((file) => file.persisted));
+    setDiscardConfirmOpen(false);
+    setStatusMessage("Unsaved uploads discarded.");
   };
 
   const handleSave = async () => {
@@ -303,7 +338,7 @@ export default function SpaServicesPage() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          void removeFile(file.id, "menu");
+                          requestRemoveFile(file.id, "menu");
                         }}
                         className="absolute top-2 right-2 h-6 w-6 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500/80"
                       >
@@ -383,7 +418,7 @@ export default function SpaServicesPage() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          void removeFile(file.id, "gallery");
+                          requestRemoveFile(file.id, "gallery");
                         }}
                         className="absolute top-2 right-2 h-6 w-6 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500/80"
                       >
@@ -418,7 +453,7 @@ export default function SpaServicesPage() {
       {/* Action Footer */}
       <footer className="fixed bottom-0 left-0 right-0 md:left-20 lg:left-64 bg-white/80 backdrop-blur-xl border-t border-slate-100 p-6 z-50 transition-all">
         <div className="max-w-[1400px] mx-auto flex items-center justify-end gap-4">
-          <button className="px-8 py-3.5 rounded-2xl text-sm font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all">
+          <button type="button" onClick={() => hasUnsavedChanges ? setDiscardConfirmOpen(true) : setStatusMessage("There are no unsaved changes.")} className="px-8 py-3.5 rounded-2xl text-sm font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all">
             Discard
           </button>
           <button
@@ -431,6 +466,30 @@ export default function SpaServicesPage() {
           </button>
         </div>
       </footer>
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete this spa asset?"
+        message={`"${deleteTarget?.name ?? "This asset"}" will be permanently removed from customer-facing content.`}
+        confirmLabel="Delete asset"
+        destructive
+        busy={deleteBusy}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          void removeFile(deleteTarget.id, deleteTarget.type).then((deleted) => {
+            if (deleted) setDeleteTarget(null);
+          });
+        }}
+      />
+      <ConfirmDialog
+        open={discardConfirmOpen}
+        title="Discard unsaved uploads?"
+        message="Newly selected spa files will be removed from this form."
+        confirmLabel="Discard uploads"
+        destructive
+        onClose={() => setDiscardConfirmOpen(false)}
+        onConfirm={discardUnsavedFiles}
+      />
     </div>
   );
 }

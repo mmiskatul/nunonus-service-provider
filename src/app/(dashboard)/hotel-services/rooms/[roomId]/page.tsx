@@ -12,7 +12,6 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -20,6 +19,8 @@ import {
   vendorGetRoom,
   vendorUpdateRoom,
 } from "@/lib/vendor-api";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useUnsavedChanges } from "@/lib/use-unsaved-changes";
 
 const AMENITIES_OPTIONS = [
   "Free WiFi",
@@ -60,12 +61,16 @@ export default function EditRoomPage() {
   });
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
+  const [baseline, setBaseline] = useState("");
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
+  const hasUnsavedChanges = Boolean(baseline) && baseline !== JSON.stringify({ formData, selectedAmenities, images });
+  useUnsavedChanges(hasUnsavedChanges && !isSubmitting);
 
   useEffect(() => {
     void (async () => {
       try {
         const room = await vendorGetRoom(roomId);
-        setFormData({
+        const nextFormData = {
           name: String(room.name ?? ""),
           size: String(room.size_sqm ?? ""),
           maxGuests: `${Number(room.max_guests ?? 2)} Guests`,
@@ -80,11 +85,13 @@ export default function EditRoomPage() {
           totalInventory: String(room.inventory_count ?? 1),
           minStay: String(room.min_stay_nights ?? 1),
           maxStay: String(room.max_stay_nights ?? 30),
-        });
-        setSelectedAmenities(
-          Array.isArray(room.amenities) ? room.amenities.map((item) => String(item)) : [],
-        );
-        setImages(Array.isArray(room.images) ? room.images.map((item) => String(item)) : []);
+        };
+        const nextAmenities = Array.isArray(room.amenities) ? room.amenities.map((item) => String(item)) : [];
+        const nextImages = Array.isArray(room.images) ? room.images.map((item) => String(item)) : [];
+        setFormData(nextFormData);
+        setSelectedAmenities(nextAmenities);
+        setImages(nextImages);
+        setBaseline(JSON.stringify({ formData: nextFormData, selectedAmenities: nextAmenities, images: nextImages }));
       } catch (error) {
         setStatusMessage(error instanceof Error ? error.message : "Failed to load room.");
       } finally {
@@ -186,12 +193,13 @@ export default function EditRoomPage() {
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <Link
-              href="/hotel-services"
+            <button
+              type="button"
+              onClick={() => hasUnsavedChanges ? setDiscardConfirmOpen(true) : router.push("/hotel-services")}
               className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-100 bg-white text-slate-400 shadow-sm transition-all hover:text-[#1e2a5e]"
             >
               <ArrowLeft className="h-6 w-6" />
-            </Link>
+            </button>
             <div>
               <h1 className="text-3xl font-black tracking-tight text-slate-800">Edit Room</h1>
               <p className="mt-1 text-sm font-bold text-slate-400">
@@ -348,6 +356,15 @@ export default function EditRoomPage() {
           </div>
         </section>
       </div>
+      <ConfirmDialog
+        open={discardConfirmOpen}
+        title="Discard room changes?"
+        message="Your unsaved room details, amenities, and image changes will be lost."
+        confirmLabel="Discard changes"
+        destructive
+        onClose={() => setDiscardConfirmOpen(false)}
+        onConfirm={() => router.push("/hotel-services")}
+      />
     </div>
   );
 }
