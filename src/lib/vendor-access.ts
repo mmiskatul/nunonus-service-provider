@@ -78,6 +78,7 @@ const CATEGORY_ROUTE_PREFIXES: Record<VendorCategory, string[]> = {
 const SHARED_ALLOWED_PREFIXES = [
   "/dashboard",
   "/events",
+  "/event-bookings",
   "/promotions",
   "/analytics",
   "/loyalty",
