@@ -5,16 +5,9 @@ import {
   X,
   Phone,
   Mail,
-  CheckCircle2,
-  Calendar,
-  ArrowRightLeft,
   CircleCheck,
-  CircleDashed,
-  Hotel,
-  Clock,
   MessageSquareQuote,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { formatBookingTimestamp } from "./BookingsTable";
 
 export interface HotelBooking {
@@ -232,7 +225,7 @@ export function HotelBookingDetailsModal({
             </div>
             <div className="p-6 bg-amber-50/40 rounded-[32px] border border-amber-100/50">
               <p className="text-sm font-bold leading-relaxed text-slate-600 italic">
-                "{booking.specialRequests}"
+                “{booking.specialRequests}”
               </p>
             </div>
           </div>

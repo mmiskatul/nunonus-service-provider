@@ -17,6 +17,7 @@ import {
 export const vendorQueryKeys = {
   all: ["vendor"] as const,
   profile: ["vendor", "profile"] as const,
+  events: (filters: Record<string, unknown> = {}) => ["vendor", "events", filters] as const,
   dashboard: ["vendor", "dashboard"] as const,
   dashboardOverview: ["vendor", "dashboard", "overview"] as const,
   bookingTrends: ["vendor", "dashboard", "booking-trends"] as const,

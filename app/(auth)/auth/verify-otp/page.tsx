@@ -280,7 +280,7 @@ function VerifyCodeInner() {
 
       sessionStorage.removeItem("pending_vendor_registration");
       sessionStorage.removeItem(REGISTER_DRAFT_STORAGE_KEY);
-      router.push("/registration-submitted");
+      router.push("/auth/registration-submitted");
     } catch (error) {
       setMessage(getErrorMessage(error, "Verification failed."));
     } finally {

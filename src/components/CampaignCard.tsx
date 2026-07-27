@@ -62,14 +62,14 @@ export function CampaignCard({
       <div className="space-y-3 mb-6">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-slate-400">
-            Requirement
+            {requirement}
           </span>
           <span className="text-xs font-bold text-sky-600">
             {requirementValue}
           </span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-slate-400">Duration</span>
+          <span className="text-xs font-medium text-slate-400">{duration}</span>
           <span className="text-xs font-bold text-slate-700">
             {durationValue}
           </span>

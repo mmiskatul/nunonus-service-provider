@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, Eye, RefreshCw, Search, X } from "lucide-react";
 import { Header } from "@/components/Header";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -10,6 +11,8 @@ import {
   vendorListEvents,
   vendorUpdateBookingStatus,
 } from "@/lib/vendor-api";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
+import { vendorQueryKeys } from "@/lib/vendor-queries";
 import { cn } from "@/lib/utils";
 
 type EventOption = { id: string; title: string; event_date?: string; start_time?: string; end_time?: string; venue?: string; capacity?: number; ticket_price?: number; description?: string; status?: string };
@@ -40,132 +43,136 @@ function statusClass(status: string) {
   return "bg-amber-50 text-amber-600";
 }
 
+function normalizeEvents(response: Record<string, unknown>): EventOption[] {
+  const items = Array.isArray(response.items) ? response.items : [];
+  return items.map((row) => ({
+    id: String(row.id ?? row._id ?? ""),
+    title: String(row.title ?? "Untitled event"),
+    event_date: row.event_date == null ? undefined : String(row.event_date),
+    start_time: row.start_time == null ? undefined : String(row.start_time),
+    end_time: row.end_time == null ? undefined : String(row.end_time),
+    venue: row.venue == null ? undefined : String(row.venue),
+    capacity: row.capacity == null ? undefined : Number(row.capacity),
+    ticket_price: row.ticket_price == null ? undefined : Number(row.ticket_price),
+    description: row.description == null ? undefined : String(row.description),
+    status: row.status == null ? undefined : String(row.status),
+  })).filter((row) => row.id);
+}
+
+function bookingItems(response: Record<string, unknown>): EventBooking[] {
+  return (Array.isArray(response.items)
+    ? response.items
+    : Array.isArray(response.bookings)
+      ? response.bookings
+      : []) as EventBooking[];
+}
+
+async function listAllEventBookings(eventId: string, signal?: AbortSignal) {
+  const items: EventBooking[] = [];
+  let skip = 0;
+  let totalItems = 0;
+  do {
+    const response = await vendorListBookings({
+      limit: 200,
+      skip,
+      provider_type: "event",
+      event_id: eventId,
+    }, signal);
+    const pageItems = bookingItems(response);
+    items.push(...pageItems);
+    totalItems = Number(response.total ?? items.length);
+    skip += pageItems.length;
+    if (pageItems.length === 0) break;
+  } while (items.length < totalItems);
+  return items;
+}
+
 export default function EventBookingsPage() {
   const { toast } = useToast();
-  const [events, setEvents] = useState<EventOption[]>([]);
+  const queryClient = useQueryClient();
   const [eventId, setEventId] = useState("");
-  const [bookings, setBookings] = useState<EventBooking[]>([]);
-  const [eventBookings, setEventBookings] = useState<EventBooking[]>([]);
-  const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
-  const [loading, setLoading] = useState(true);
-  const [eventsLoading, setEventsLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [selected, setSelected] = useState<EventBooking | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [updatingId, setUpdatingId] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim(), 350);
 
-  const loadEvents = async () => {
-    setEventsLoading(true);
-    try {
-      const response = await vendorListEvents();
-      const items = Array.isArray(response.items) ? response.items : [];
-      setEvents(items.map((row) => ({
-        id: String(row.id ?? row._id ?? ""),
-        title: String(row.title ?? "Untitled event"),
-        event_date: row.event_date == null ? undefined : String(row.event_date),
-        start_time: row.start_time == null ? undefined : String(row.start_time),
-        end_time: row.end_time == null ? undefined : String(row.end_time),
-        venue: row.venue == null ? undefined : String(row.venue),
-        capacity: row.capacity == null ? undefined : Number(row.capacity),
-        ticket_price: row.ticket_price == null ? undefined : Number(row.ticket_price),
-        description: row.description == null ? undefined : String(row.description),
-        status: row.status == null ? undefined : String(row.status),
-      })).filter((row) => row.id));
-    } catch (error) {
-      toast(error instanceof Error ? error.message : "Events could not be loaded.", "error");
-    } finally {
-      setEventsLoading(false);
-    }
-  };
+  const eventsQuery = useQuery({
+    queryKey: vendorQueryKeys.events(),
+    queryFn: ({ signal }) => vendorListEvents({}, signal),
+    staleTime: 30_000,
+  });
+  const bookingsQuery = useQuery({
+    queryKey: vendorQueryKeys.bookings({
+      view: "events",
+      eventId: eventId || null,
+      status,
+      search: debouncedSearch,
+    }),
+    queryFn: ({ signal }) => vendorListBookings({
+      limit: 100,
+      skip: 0,
+      provider_type: "event",
+      event_id: eventId || undefined,
+      status: status === "all" ? undefined : status,
+      search: debouncedSearch || undefined,
+    }, signal),
+  });
+  const eventSummaryQuery = useQuery({
+    queryKey: vendorQueryKeys.bookings({ view: "event-summary", eventId }),
+    queryFn: ({ signal }) => listAllEventBookings(eventId, signal),
+    enabled: Boolean(eventId),
+    staleTime: 10_000,
+  });
 
-  const loadBookings = async (showSpinner = true) => {
-    if (showSpinner) setLoading(true);
-    else setRefreshing(true);
-    try {
-      const response = await vendorListBookings({
-        limit: 100,
-        skip: 0,
-        provider_type: "event",
-        event_id: eventId || undefined,
-        status: status === "all" ? undefined : status,
-        search: search.trim() || undefined,
-      });
-      const items = Array.isArray(response.items) ? response.items : Array.isArray(response.bookings) ? response.bookings : [];
-      setBookings(items as EventBooking[]);
-      setTotal(Number(response.total ?? items.length));
-    } catch (error) {
-      toast(error instanceof Error ? error.message : "Event bookings could not be loaded.", "error");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+  const events = eventsQuery.data ? normalizeEvents(eventsQuery.data) : [];
+  const bookings = bookingsQuery.data ? bookingItems(bookingsQuery.data) : [];
+  const eventBookings = eventSummaryQuery.data ?? [];
+  const total = Number(bookingsQuery.data?.total ?? bookings.length);
+  const loading = bookingsQuery.isPending;
+  const eventsLoading = eventsQuery.isPending;
+  const refreshing = bookingsQuery.isFetching || eventSummaryQuery.isFetching;
 
-  const loadEventBookings = async () => {
-    if (!eventId) {
-      setEventBookings([]);
-      return;
-    }
-    try {
-      const items: EventBooking[] = [];
-      let skip = 0;
-      let totalItems = 0;
-      do {
-        const response = await vendorListBookings({
-          limit: 200,
-          skip,
-          provider_type: "event",
-          event_id: eventId,
-        });
-        const pageItems = Array.isArray(response.items) ? response.items : Array.isArray(response.bookings) ? response.bookings : [];
-        items.push(...pageItems as EventBooking[]);
-        totalItems = Number(response.total ?? items.length);
-        skip += pageItems.length;
-        if (pageItems.length === 0) break;
-      } while (items.length < totalItems);
-      setEventBookings(items);
-    } catch (error) {
-      toast(error instanceof Error ? error.message : "Event totals could not be loaded.", "error");
-    }
-  };
+  const detailsMutation = useMutation({
+    mutationFn: vendorGetBooking,
+    onSuccess: (booking) => setSelected(booking),
+    onError: (error) => toast(error instanceof Error ? error.message : "Booking details could not be loaded.", "error"),
+  });
 
-  useEffect(() => { void loadEvents(); }, []);
-  useEffect(() => { void loadBookings(); }, [eventId, status, search]);
-  useEffect(() => { void loadEventBookings(); }, [eventId]);
+  const statusMutation = useMutation({
+    mutationFn: ({ bookingId, nextStatus }: { bookingId: string; nextStatus: string }) =>
+      vendorUpdateBookingStatus(bookingId, nextStatus),
+    onSuccess: async (_, variables) => {
+      toast(`Booking ${variables.nextStatus}.`, "success");
+      await queryClient.invalidateQueries({ queryKey: ["vendor", "bookings"] });
+      setSelected((current) => current && String(current.id ?? current._id) === variables.bookingId
+        ? { ...current, status: variables.nextStatus }
+        : current);
+    },
+    onError: (error) => toast(error instanceof Error ? error.message : "Booking status could not be updated.", "error"),
+  });
 
   const viewDetails = async (booking: EventBooking) => {
     const bookingId = String(booking.id ?? booking._id ?? "");
     if (!bookingId) return;
-    setDetailLoading(true);
-    try {
-      setSelected(await vendorGetBooking(bookingId));
-    } catch (error) {
-      toast(error instanceof Error ? error.message : "Booking details could not be loaded.", "error");
-    } finally {
-      setDetailLoading(false);
-    }
+    await detailsMutation.mutateAsync(bookingId).catch(() => undefined);
   };
 
   const updateStatus = async (booking: EventBooking, nextStatus: string) => {
     const bookingId = String(booking.id ?? booking._id ?? "");
     if (!bookingId) return;
-    setUpdatingId(bookingId);
-    try {
-      await vendorUpdateBookingStatus(bookingId, nextStatus);
-      toast(`Booking ${nextStatus}.`, "success");
-      await Promise.all([loadBookings(false), loadEventBookings()]);
-      if (selected && String(selected.id ?? selected._id) === bookingId) {
-        setSelected({ ...selected, status: nextStatus });
-      }
-    } catch (error) {
-      toast(error instanceof Error ? error.message : "Booking status could not be updated.", "error");
-    } finally {
-      setUpdatingId("");
-    }
+    await statusMutation.mutateAsync({ bookingId, nextStatus }).catch(() => undefined);
   };
 
+  const refreshPage = async () => {
+    await Promise.all([
+      eventsQuery.refetch(),
+      bookingsQuery.refetch(),
+      eventId ? eventSummaryQuery.refetch() : Promise.resolve(),
+    ]);
+  };
+
+  const detailLoading = detailsMutation.isPending;
+  const updatingId = statusMutation.isPending ? statusMutation.variables?.bookingId ?? "" : "";
   const selectedEvent = events.find((event) => event.id === eventId);
   const capacity = Math.max(Number(selectedEvent?.capacity ?? 0), 0);
   const ticketPrice = Math.max(Number(selectedEvent?.ticket_price ?? 0), 0);
@@ -200,9 +207,11 @@ export default function EventBookingsPage() {
                 {events.map((event) => <option key={event.id} value={event.id}>{event.title}{event.event_date ? ` — ${event.event_date}` : ""}</option>)}
               </select>
             </div>
-            <button type="button" onClick={() => { void Promise.all([loadBookings(false), loadEventBookings()]); }} disabled={refreshing} className="flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-60"><RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />Refresh</button>
+            <button type="button" onClick={() => { void refreshPage(); }} disabled={refreshing} className="flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-60"><RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />Refresh</button>
           </div>
         </div>
+
+        {eventsQuery.isError || bookingsQuery.isError || eventSummaryQuery.isError ? <div role="alert" className="flex flex-col gap-3 rounded-2xl border border-rose-100 bg-rose-50 px-5 py-4 text-sm font-semibold text-rose-700 sm:flex-row sm:items-center sm:justify-between"><span>Some event booking data could not be loaded.</span><button type="button" onClick={() => { void refreshPage(); }} className="rounded-xl bg-white px-4 py-2 text-xs font-black uppercase tracking-wider text-rose-600 shadow-sm">Try again</button></div> : null}
 
         <div className="flex flex-col gap-3 sm:flex-row">
           <div className="relative flex-1"><Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search booking code or customer" className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-sky-400" /></div>

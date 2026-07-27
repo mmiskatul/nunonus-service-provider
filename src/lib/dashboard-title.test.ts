@@ -5,6 +5,7 @@ describe("dashboardTitleForPath", () => {
   it("maps top-level management pages", () => {
     expect(dashboardTitleForPath("/dashboard")).toBe("Business Overview");
     expect(dashboardTitleForPath("/spa-bookings")).toBe("Spa Bookings");
+    expect(dashboardTitleForPath("/event-bookings")).toBe("Event Bookings");
   });
 
   it("maps dynamic detail pages", () => {

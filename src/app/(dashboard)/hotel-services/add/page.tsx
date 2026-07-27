@@ -41,29 +41,19 @@ export default function AddRoomPage() {
     bedType: "King Size",
     numberOfBeds: "1",
     description: "",
-    basePrice: "299.00",
-    weekendPrice: "349.00",
+    basePrice: "",
+    weekendPrice: "",
     discount: "0",
     taxIncluded: true,
     activeStatus: true,
-    totalInventory: "12",
+    totalInventory: "1",
     minStay: "1",
     maxStay: "30",
   });
 
-  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([
-    "Free WiFi",
-    "Air Conditioning",
-    "Smart TV",
-    "Balcony",
-  ]);
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
 
-  const [images, setImages] = useState<string[]>([
-    "https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=400&q=80",
-    "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=400&q=80",
-    "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=400&q=80",
-    "https://images.unsplash.com/photo-1582719478250-c89cae4df85b?w=400&q=80",
-  ]);
+  const [images, setImages] = useState<string[]>([]);
 
   const [isDragActive, setIsDragActive] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
@@ -129,6 +119,10 @@ export default function AddRoomPage() {
   const handleSave = async () => {
     if (!formData.name) {
       toast("Please enter a room name.", "error");
+      return;
+    }
+    if (!formData.basePrice || Number(formData.basePrice) < 0) {
+      toast("Please enter a valid base price.", "error");
       return;
     }
 
@@ -510,6 +504,7 @@ export default function AddRoomPage() {
                   >
                     <img
                       src={src}
+                      alt={`${formData.name || "Room"} preview ${i + 1}`}
                       className="w-full h-full object-cover transition-transform group-hover:scale-110"
                     />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">

@@ -11,7 +11,6 @@ import {
   GlassWater,
   Sparkles,
   Calendar,
-  Check,
   ChevronDown,
   ChevronRight,
 } from "lucide-react";

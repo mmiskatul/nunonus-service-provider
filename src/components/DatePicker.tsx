@@ -106,7 +106,7 @@ export function DatePicker({
       </div>
 
       <div className="grid grid-cols-7 gap-1">
-        {days.map((day, i) => {
+        {days.map((day) => {
           const selected = isSelected(day);
           const inRange = isInRange(day);
 

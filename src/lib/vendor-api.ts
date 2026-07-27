@@ -231,8 +231,9 @@ export async function vendorListEvents(
     status?: string;
     category?: string;
   } = {},
+  signal?: AbortSignal,
 ) {
-  return vendorRequest<Record<string, unknown>>(`/vendor/events${q(params)}`);
+  return vendorRequest<Record<string, unknown>>(`/vendor/events${q(params)}`, "GET", undefined, { signal });
 }
 
 export async function vendorCreateEvent(payload: VendorEventPayload) {
@@ -273,9 +274,13 @@ export async function vendorListBookings(
     date_from?: string;
     date_to?: string;
   } = {},
+  signal?: AbortSignal,
 ) {
   return vendorRequest<Record<string, unknown>>(
     `/vendor/booking-management/bookings${q(params)}`,
+    "GET",
+    undefined,
+    { signal },
   );
 }
 
@@ -574,8 +579,8 @@ export async function vendorExportAnalytics(params: { date_from?: string; date_t
 // ─── Loyalty ──────────────────────────────────────────────────────────────────
 
 /** GET /vendor/loyalty/settings */
-export async function vendorGetLoyaltySettings() {
-  return vendorRequest<Record<string, unknown>>(`/vendor/loyalty/settings`);
+export async function vendorGetLoyaltySettings(signal?: AbortSignal) {
+  return vendorRequest<Record<string, unknown>>(`/vendor/loyalty/settings`, "GET", undefined, { signal });
 }
 
 /** PATCH /vendor/loyalty/settings */

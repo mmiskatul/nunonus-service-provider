@@ -18,7 +18,9 @@ import { cn } from "@/lib/utils";
 import { extractVendorCategories, type VendorCategory } from "@/lib/vendor-access";
 import { CalendarDays, CheckCircle2, CircleX, Clock3, Eye, FilePenLine, MapPin, Pencil, Plus, Search, Trash2, Upload, Users, X } from "lucide-react";
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { vendorQueryKeys } from "@/lib/vendor-queries";
 
 const MAPBOX_ACCESS_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || "";
 const DEFAULT_TIMEZONE = "Asia/Dhaka";
@@ -296,6 +298,7 @@ function buildSavedLocationLabel(category: string) {
 }
 
 export function EventsPageClient({ startInCreateMode = false }: { startInCreateMode?: boolean }) {
+  const queryClient = useQueryClient();
   const detectedTimezone = useMemo(() => detectBrowserTimezone(), []);
   const [categories, setCategories] = useState<VendorCategory[]>(DEFAULT_CATEGORIES);
   const [events, setEvents] = useState<VendorEventRecord[]>([]);
@@ -658,6 +661,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
         setStatusMessage("Event created.");
       }
       await loadEvents({ search, status: statusFilter });
+      await queryClient.invalidateQueries({ queryKey: vendorQueryKeys.events() });
       resetForm();
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "Failed to save event.");
@@ -707,6 +711,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     try {
       await vendorDeleteEvent(eventId);
       await loadEvents({ search, status: statusFilter });
+      await queryClient.invalidateQueries({ queryKey: vendorQueryKeys.events() });
       if (editingId === eventId) {
         resetForm();
       }
@@ -720,6 +725,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     try {
       await vendorUpdateEventStatus(eventId, nextStatus);
       await loadEvents({ search, status: statusFilter });
+      await queryClient.invalidateQueries({ queryKey: vendorQueryKeys.events() });
       setStatusMessage(`Event marked as ${nextStatus}.`);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "Failed to update event status.");

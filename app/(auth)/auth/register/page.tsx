@@ -1280,14 +1280,14 @@ export default function RegisterPage() {
         
         {/* Footer block matches screenshot links */}
         <div className="w-full max-w-[1100px] border-t border-slate-200 mt-16 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] text-slate-400 font-bold mx-auto pb-16">
-          <span className="text-xs font-black text-slate-800">ProBook</span>
+          <span className="text-xs font-black text-slate-800">Nunonus Provider</span>
           <div className="flex flex-wrap items-center gap-6">
-            <Link href="/privacy" className="hover:underline">Privacy Policy</Link>
-            <Link href="/terms" className="hover:underline">Terms of Service</Link>
-            <Link href="/support" className="hover:underline">Partner Support</Link>
-            <Link href="/contact" className="hover:underline">Contact Us</Link>
+            <Link href="/legal/privacy" className="hover:underline">Privacy Policy</Link>
+            <Link href="/legal/terms" className="hover:underline">Terms of Service</Link>
+            <Link href="/auth/login" className="hover:underline">Partner Login</Link>
+            <Link href="/auth/forgot-password" className="hover:underline">Account Help</Link>
           </div>
-          <span>© 2024 ProBook Global. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} Nunonus. All rights reserved.</span>
         </div>
       </div>
     </>

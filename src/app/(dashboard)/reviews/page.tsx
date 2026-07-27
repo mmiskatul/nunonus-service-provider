@@ -235,7 +235,7 @@ export default function ReviewsPage() {
                               </p>
                             )}
                           </div>
-                          <p className="text-sm text-slate-500 italic leading-relaxed">"{review.vendor_reply}"</p>
+                          <p className="text-sm text-slate-500 italic leading-relaxed">“{review.vendor_reply}”</p>
                         </div>
                       ) : replyingTo === review.id ? (
                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">

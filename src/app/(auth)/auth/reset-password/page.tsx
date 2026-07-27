@@ -43,7 +43,7 @@ export default function ResetPasswordPage() {
         setMessage(result.message ?? "Reset failed.");
         return;
       }
-      router.push("/auth/success");
+      router.push("/auth/password-changed");
     } finally {
       setIsSubmitting(false);
     }

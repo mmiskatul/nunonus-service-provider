@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ChevronRight,
   LogOut,
@@ -26,10 +27,11 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const navItems = getSidebarItemsForCategories(categories);
   const groups = [
     { label: "Overview", hrefs: ["/dashboard", "/analytics"] },
-    { label: "Operations", hrefs: ["/customers", "/events", "/event-bookings", "/restaurant-bookings", "/hotel-bookings", "/spa-bookings", "/services", "/hotel-services", "/spa-services"] },
+    { label: "Operations", hrefs: ["/operations", "/customers", "/events", "/event-bookings", "/restaurant-bookings", "/hotel-bookings", "/spa-bookings", "/services", "/hotel-services", "/spa-services"] },
     { label: "Engagement", hrefs: ["/promotions", "/loyalty", "/reviews"] },
     { label: "Account", hrefs: ["/settings", "/profile", "/notifications"] },
   ];
@@ -43,6 +45,7 @@ export function Sidebar({
       await fetch("/api/auth/logout", { method: "POST" });
     } finally {
       clearVendorTokens();
+      queryClient.clear();
       router.replace("/auth/login");
     }
   };

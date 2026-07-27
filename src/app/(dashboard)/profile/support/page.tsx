@@ -4,10 +4,6 @@ import React, { useState } from "react";
 import { Header } from "@/components/Header";
 import {
   ArrowLeft,
-  Search,
-  CheckCircle2,
-  Clock,
-  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";

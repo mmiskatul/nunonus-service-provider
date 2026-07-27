@@ -405,6 +405,7 @@ export function SettingsPageClient({
     setEventStatusMessage("");
     try {
       await vendorCreateEvent(toEventPayload(eventForm));
+      await queryClient.invalidateQueries({ queryKey: vendorQueryKeys.events() });
       setEventStatusMessage("Event created.");
       setTimeout(() => {
         closeCreateEventModal();

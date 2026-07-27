@@ -5,6 +5,7 @@ const EXACT_TITLES: Record<string, string> = {
   "/operations": "Operations",
   "/events": "Event Management",
   "/events/new": "Create Event",
+  "/event-bookings": "Event Bookings",
   "/hotel-bookings": "Hotel Bookings",
   "/hotel-services": "Hotel / Services",
   "/hotel-services/add": "Add Hotel Room",

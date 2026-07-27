@@ -41,8 +41,7 @@ export default function HotelServicesPage() {
         id: String(room.id ?? ""),
         name: String(room.name ?? "Room"),
         image:
-          String((room.images as string[] | undefined)?.[0] ?? "") ||
-          "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80",
+          String((room.images as string[] | undefined)?.[0] ?? ""),
         price: Number(room.base_price ?? 0),
         size: Number(room.size_sqm ?? 0),
         maxGuests: Number(room.max_guests ?? 1),
@@ -61,8 +60,7 @@ export default function HotelServicesPage() {
         category: String(service.category ?? "Other") as ServiceItem["category"],
         price: Number(service.price ?? 0),
         image:
-          String((service.images as string[] | undefined)?.[0] ?? "") ||
-          "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=400&q=80",
+          String((service.images as string[] | undefined)?.[0] ?? ""),
         available: Boolean(service.available ?? service.active_status ?? true),
         deliveryTime: String(service.delivery_time ?? "UPON REQUEST"),
       })) as ServiceItem[];

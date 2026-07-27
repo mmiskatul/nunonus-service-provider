@@ -5,14 +5,7 @@ import {
   Users,
   BedDouble,
   Maximize2,
-  Wifi,
-  Wind,
-  Tv,
-  Wine,
-  Coffee,
-  ShieldCheck,
-  Palmtree,
-  Laptop,
+  ImageIcon,
   Pencil,
   Trash2,
 } from "lucide-react";
@@ -32,19 +25,6 @@ export interface Room {
   status: "Available" | "Unavailable" | "Under Maintenance";
 }
 
-const AMENITY_ICONS: Record<string, any> = {
-  "Wi-Fi": Wifi,
-  AC: Wind,
-  "Smart TV": Tv,
-  "Mini-bar": Wine,
-  "Coffee Maker": Coffee,
-  Workstation: Laptop,
-  "Ocean View": Palmtree,
-  Balcony: Palmtree,
-  "Safe Box": ShieldCheck,
-  Bathtub: BedDouble, // Fallback icon
-};
-
 interface RoomCardProps {
   room: Room;
   onToggleStatus: (id: string) => void;
@@ -57,11 +37,18 @@ export function RoomCard({ room, onToggleStatus, onDelete, editHref }: RoomCardP
     <div className="group bg-white rounded-[40px] shadow-sm border border-slate-50 overflow-hidden transition-all hover:shadow-xl hover:shadow-slate-200/50">
       {/* Image Section */}
       <div className="relative h-[240px]">
-        <img
-          src={room.image}
-          alt={room.name}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-        />
+        {room.image ? (
+          <img
+            src={room.image}
+            alt={room.name}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+        ) : (
+          <div className="flex h-full w-full flex-col items-center justify-center bg-slate-100 text-slate-400">
+            <ImageIcon className="h-9 w-9" />
+            <span className="mt-2 text-xs font-bold">No room image</span>
+          </div>
+        )}
 
         {/* Top Badges */}
         <div className="absolute top-6 left-6 flex items-center gap-2">

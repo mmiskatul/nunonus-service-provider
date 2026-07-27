@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
 import { useToast } from "@/components/ui/ToastProvider";
 import {
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { vendorGetLoyaltySettings, vendorUpdateLoyaltySettings } from "@/lib/vendor-api";
+import { vendorQueryKeys } from "@/lib/vendor-queries";
 
 interface LoyaltySettings {
   enable_loyalty_program?: boolean;
@@ -33,52 +35,59 @@ interface LoyaltySettings {
   repeat_booking_rate?: number;
 }
 
+const DEFAULT_LOYALTY_SETTINGS: LoyaltySettings = {
+  enable_loyalty_program: false,
+  points_rule_type: "points_per_currency",
+  points_earned: 1,
+  currency_unit: 1,
+  percentage_value: 0,
+  first_booking_bonus: 0,
+  review_bonus_points: 0,
+  points_expiry_policy: "1 Year",
+};
+
 export default function LoyaltyPage() {
   const { toast } = useToast();
-  const [settings, setSettings] = useState<LoyaltySettings>({
-    enable_loyalty_program: true,
-    points_rule_type: "points_per_currency",
-    points_earned: 5,
-    currency_unit: 1,
-    percentage_value: 10,
-    first_booking_bonus: 100,
-    review_bonus_points: 25,
-    points_expiry_policy: "1 Year",
+  const queryClient = useQueryClient();
+  const [draft, setDraft] = useState<LoyaltySettings>({});
+  const settingsQuery = useQuery({
+    queryKey: vendorQueryKeys.loyalty,
+    queryFn: ({ signal }) => vendorGetLoyaltySettings(signal),
   });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const settings = {
+    ...DEFAULT_LOYALTY_SETTINGS,
+    ...(settingsQuery.data as LoyaltySettings | undefined),
+    ...draft,
+  };
+  const setSettings = (updater: (current: LoyaltySettings) => LoyaltySettings) => {
+    setDraft((currentDraft) => updater({
+      ...DEFAULT_LOYALTY_SETTINGS,
+      ...(settingsQuery.data as LoyaltySettings | undefined),
+      ...currentDraft,
+    }));
+  };
 
-  useEffect(() => {
-    vendorGetLoyaltySettings()
-      .then((data) => {
-        const d = data as LoyaltySettings;
-        if (d && Object.keys(d).length > 0) setSettings(d);
-      })
-      .catch(() => {/* keep defaults */})
-      .finally(() => setLoading(false));
-  }, []);
+  const saveMutation = useMutation({
+    mutationFn: vendorUpdateLoyaltySettings,
+    onSuccess: (updated) => {
+      queryClient.setQueryData(vendorQueryKeys.loyalty, updated);
+      setDraft({});
+      toast("Loyalty settings saved.", "success");
+    },
+    onError: (error) => toast("Failed to save: " + (error instanceof Error ? error.message : String(error)), "error"),
+  });
 
   const handleSave = async () => {
-    setSaving(true);
-    try {
-      await vendorUpdateLoyaltySettings({
-        enable_loyalty_program: settings.enable_loyalty_program ?? true,
+    await saveMutation.mutateAsync({
+        enable_loyalty_program: settings.enable_loyalty_program ?? false,
         points_rule_type: settings.points_rule_type ?? "points_per_currency",
-        points_earned: settings.points_earned ?? 5,
+        points_earned: settings.points_earned ?? 1,
         currency_unit: settings.currency_unit ?? 1,
         percentage_value: settings.percentage_value ?? 0,
         first_booking_bonus: settings.first_booking_bonus ?? 0,
         review_bonus_points: settings.review_bonus_points ?? 0,
         points_expiry_policy: settings.points_expiry_policy ?? "1 Year",
-      });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch (err) {
-      toast("Failed to save: " + (err instanceof Error ? err.message : String(err)), "error");
-    } finally {
-      setSaving(false);
-    }
+      }).catch(() => undefined);
   };
 
   const statsItems = [
@@ -105,13 +114,28 @@ export default function LoyaltyPage() {
     },
   ];
 
-  if (loading) {
+  if (settingsQuery.isPending) {
     return (
       <div className="min-h-full bg-[#f8fafc] flex flex-col">
         <Header title="Loyalty Program" />
         <div className="flex-1 flex items-center justify-center">
           <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
         </div>
+      </div>
+    );
+  }
+
+  if (settingsQuery.isError) {
+    return (
+      <div className="min-h-full bg-[#f8fafc]">
+        <Header title="Loyalty Program" />
+        <main className="flex min-h-[60vh] items-center justify-center p-6">
+          <div className="max-w-md rounded-3xl border border-rose-100 bg-white p-8 text-center shadow-sm">
+            <h1 className="text-xl font-black text-slate-800">Loyalty settings could not be loaded</h1>
+            <p className="mt-2 text-sm text-slate-500">No default settings were applied. Retry to safely manage your program.</p>
+            <button type="button" onClick={() => void settingsQuery.refetch()} className="mt-5 rounded-xl bg-[#1e2a5e] px-5 py-3 text-sm font-bold text-white">Try again</button>
+          </div>
+        </main>
       </div>
     );
   }
@@ -130,11 +154,11 @@ export default function LoyaltyPage() {
             </div>
             <button
               onClick={handleSave}
-              disabled={saving}
+              disabled={saveMutation.isPending}
               className="flex items-center gap-2 bg-[#1e2a5e] hover:bg-[#1a2552] text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-xl shadow-slate-900/10 transition-all disabled:opacity-60"
             >
               <Save className="h-4 w-4" />
-              {saving ? "Saving…" : saved ? "Saved!" : "Save Changes"}
+              {saveMutation.isPending ? "Saving…" : saveMutation.isSuccess ? "Saved!" : "Save Changes"}
             </button>
           </div>
 

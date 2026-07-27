@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   Save,
   Upload,
-  Plus,
   Trash2,
   Info,
   DollarSign,

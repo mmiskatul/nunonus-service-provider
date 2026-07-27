@@ -8,6 +8,7 @@ import {
   Utensils,
   Waves,
   Clock,
+  ImageIcon,
   Pencil,
   Trash2,
 } from "lucide-react";
@@ -51,11 +52,18 @@ export function ServiceCard({
     <div className="group bg-white rounded-[40px] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 overflow-hidden flex flex-col h-full">
       {/* Image Container */}
       <div className="relative h-56 overflow-hidden">
-        <img
-          src={service.image}
-          alt={service.name}
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-        />
+        {service.image ? (
+          <img
+            src={service.image}
+            alt={service.name}
+            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+          />
+        ) : (
+          <div className="flex h-full w-full flex-col items-center justify-center bg-slate-100 text-slate-400">
+            <ImageIcon className="h-9 w-9" />
+            <span className="mt-2 text-xs font-bold">No service image</span>
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
         {/* Category Badge */}

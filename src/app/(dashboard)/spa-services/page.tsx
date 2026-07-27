@@ -8,7 +8,6 @@ import {
   Info,
   Check,
   X,
-  Plus,
   Waves,
 } from "lucide-react";
 import { cn } from "@/lib/utils";

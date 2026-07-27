@@ -8,8 +8,6 @@ import {
   FileText,
   CheckCircle2,
   Calendar,
-  Printer,
-  Trash2,
 } from "lucide-react";
 import { Booking, formatBookingTimestamp } from "./BookingsTable";
 import { cn } from "@/lib/utils";
