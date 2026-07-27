@@ -257,7 +257,7 @@ export default function AnalyticsPage() {
                       {Object.entries(ageGroups).map(([label, value]) => (
                         <div key={label} className="space-y-2">
                           <div className="flex items-center justify-between text-[10px] font-black tracking-wider">
-                            <span className="text-slate-400">{label.toUpperCase()} YEARS</span>
+                            <span className="text-slate-400">{label === "under_18" ? "UNDER 18" : `${label.toUpperCase()} YEARS`}</span>
                             <span className="text-slate-600">{value as number}%</span>
                           </div>
                           <div className="h-2 w-full rounded-full bg-slate-50">

@@ -9,6 +9,7 @@ import { Header } from "@/components/Header";
 import { StatsCard } from "@/components/StatsCard";
 import type { TrendPoint } from "@/components/BookingTrendsChart";
 import { AllBookingsTable, type DashboardBooking } from "@/components/AllBookingsTable";
+import type { UpcomingBooking } from "@/components/UpcomingBookingsTable";
 import { CalendarPreview, type CalendarPreviewPayload } from "@/components/CalendarPreview";
 import { RecentReviews, type RecentReview } from "@/components/RecentReviews";
 import { dashboardOverviewQuery, vendorProfileQuery } from "@/lib/vendor-queries";
