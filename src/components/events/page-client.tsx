@@ -20,7 +20,7 @@ import { CalendarDays, Clock3, Eye, MapPin, Pencil, Plus, Search, Trash2, Upload
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+const MAPBOX_ACCESS_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || "";
 const DEFAULT_TIMEZONE = "Asia/Dhaka";
 const TIMEZONE_OPTIONS = [
   "Asia/Dhaka",
@@ -404,147 +404,57 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   }, []);
 
   useEffect(() => {
-    if (!showMapModal) {
-      mapInitializedRef.current = false;
-      return;
-    }
-
-    if (!GOOGLE_MAPS_API_KEY || mapInitializedRef.current) {
-      return;
-    }
-
+    if (!showMapModal || !MAPBOX_ACCESS_TOKEN || mapInitializedRef.current) return;
     mapInitializedRef.current = true;
+    let map: any;
+    let cancelled = false;
 
-    const initialCoords = tempCoords;
-    const initialAddress = tempAddress.trim();
-    const venueAddress = form.venue.trim();
-
-    const initMap = () => {
-      const google = (window as Window & { google?: any }).google;
-      if (!google) return;
-
-      const mapDiv = document.getElementById("event-google-map-element");
-      if (!mapDiv) return;
-
-      const map = new google.maps.Map(mapDiv, {
-        center: initialCoords,
-        zoom: 14,
-        disableDefaultUI: false,
-        zoomControl: true,
-      });
-
-      const marker = new google.maps.Marker({
-        position: initialCoords,
-        map,
-        draggable: true,
-      });
-
-      const updateLocation = (lat: number, lng: number, locationRef: any) => {
-        setTempCoords({ lat, lng });
-        const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({ location: locationRef }, (results: any, status: any) => {
-          if (status === "OK" && results?.[0]) {
-            setTempAddress(results[0].formatted_address);
-          } else {
-            setTempAddress(`Coordinate (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
-          }
-        });
-      };
-
-      const tryGeolocation = () => {
-        if (!navigator.geolocation) {
-          updateLocation(initialCoords.lat, initialCoords.lng, initialCoords);
-          return;
-        }
-
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const pos = {
-              lat: position.coords.latitude,
-              lng: position.coords.longitude,
-            };
-            map.setCenter(pos);
-            marker.setPosition(pos);
-            updateLocation(pos.lat, pos.lng, pos);
-          },
-          () => {
-            updateLocation(initialCoords.lat, initialCoords.lng, initialCoords);
-          },
-        );
-      };
-
-      if (venueAddress.length > 3) {
-        const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({ address: venueAddress }, (results: any, status: any) => {
-          if (status === "OK" && results?.[0]) {
-            const loc = results[0].geometry.location;
-            const next = { lat: loc.lat(), lng: loc.lng() };
-            map.setCenter(next);
-            marker.setPosition(next);
-            setTempCoords(next);
-            setTempAddress(results[0].formatted_address);
-          } else {
-            updateLocation(initialCoords.lat, initialCoords.lng, initialCoords);
-          }
-        });
-      } else if (initialAddress.length > 3) {
-        const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({ address: initialAddress }, (results: any, status: any) => {
-          if (status === "OK" && results?.[0]) {
-            const loc = results[0].geometry.location;
-            const next = { lat: loc.lat(), lng: loc.lng() };
-            map.setCenter(next);
-            marker.setPosition(next);
-            setTempCoords(next);
-            setTempAddress(results[0].formatted_address);
-          } else {
-            updateLocation(initialCoords.lat, initialCoords.lng, initialCoords);
-          }
-        });
-      } else {
-        tryGeolocation();
+    const reverseGeocode = async (lat: number, lng: number) => {
+      try {
+        const response = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${encodeURIComponent(MAPBOX_ACCESS_TOKEN)}`);
+        const data = await response.json();
+        if (!cancelled) setTempAddress(data.features?.[0]?.place_name || `Coordinate (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+      } catch {
+        if (!cancelled) setTempAddress(`Coordinate (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
       }
-
-      map.addListener("click", (event: any) => {
-        const lat = event.latLng.lat();
-        const lng = event.latLng.lng();
-        marker.setPosition(event.latLng);
-        updateLocation(lat, lng, event.latLng);
-      });
-
-      marker.addListener("dragend", () => {
-        const position = marker.getPosition();
-        if (!position) return;
-        updateLocation(position.lat(), position.lng(), position);
-      });
     };
 
-    if ((window as Window & { google?: any }).google) {
-      initMap();
-      return;
-    }
-
-    const scriptId = "google-maps-js-api-script";
-    let script = document.getElementById(scriptId) as HTMLScriptElement | null;
-
-    if (!script) {
-      script = document.createElement("script");
-      script.id = scriptId;
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&loading=async`;
-      script.async = true;
-      script.defer = true;
-      document.head.appendChild(script);
-    }
-
-    const handleScriptLoad = () => {
-      initMap();
+    const forwardGeocode = async (address: string, fallback: { lat: number; lng: number }, marker: any) => {
+      if (address.length <= 3) return;
+      try {
+        const response = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${encodeURIComponent(MAPBOX_ACCESS_TOKEN)}&limit=1`);
+        const data = await response.json();
+        const [lng, lat] = data.features?.[0]?.center || [fallback.lng, fallback.lat];
+        const next = { lat: Number(lat), lng: Number(lng) };
+        map?.flyTo({ center: [next.lng, next.lat], zoom: 14 });
+        marker.setLngLat([next.lng, next.lat]);
+        setTempCoords(next);
+        setTempAddress(data.features?.[0]?.place_name || address);
+      } catch {
+        reverseGeocode(fallback.lat, fallback.lng);
+      }
     };
 
-    script.addEventListener("load", handleScriptLoad);
-    return () => {
-      script?.removeEventListener("load", handleScriptLoad);
-    };
-  }, [form.venue, showMapModal, tempAddress]);
+    (async () => {
+      const mapboxgl = (await import("mapbox-gl")).default;
+      if (cancelled) return;
+      mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
+      const initialCoords = tempCoords;
+      const mapElement = document.getElementById("event-mapbox-map-element");
+      if (!mapElement) return;
+      map = new mapboxgl.Map({ container: mapElement, style: "mapbox://styles/mapbox/streets-v12", center: [initialCoords.lng, initialCoords.lat], zoom: 14 });
+      const marker = new mapboxgl.Marker({ draggable: true, color: "#1e2a5e" }).setLngLat([initialCoords.lng, initialCoords.lat]).addTo(map);
+      const updateLocation = (lngLat: { lat: number; lng: number }) => { setTempCoords({ lat: lngLat.lat, lng: lngLat.lng }); void reverseGeocode(lngLat.lat, lngLat.lng); };
+      map.on("click", (event: any) => { marker.setLngLat(event.lngLat); updateLocation(event.lngLat); });
+      marker.on("dragend", () => updateLocation(marker.getLngLat()));
+      map.once("load", () => { void forwardGeocode(form.venue.trim() || tempAddress.trim(), initialCoords, marker); });
+      if (navigator.geolocation && !form.venue.trim() && !tempAddress.trim()) {
+        navigator.geolocation.getCurrentPosition((position) => { const next = { lat: position.coords.latitude, lng: position.coords.longitude }; map.flyTo({ center: [next.lng, next.lat], zoom: 14 }); marker.setLngLat([next.lng, next.lat]); updateLocation(next); }, () => undefined, { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 });
+      }
+    })();
+
+    return () => { cancelled = true; map?.remove(); mapInitializedRef.current = false; };
+  }, [form.venue, showMapModal]);
 
   const stats = useMemo(() => {
     return {
@@ -598,8 +508,8 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   };
 
   const openMapPicker = () => {
-    if (!GOOGLE_MAPS_API_KEY) {
-      setStatusMessage("Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to the service-provider app.");
+    if (!MAPBOX_ACCESS_TOKEN) {
+      setStatusMessage("Add NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN to the service-provider app.");
       return;
     }
     setTempAddress(form.venue.trim());
@@ -1290,7 +1200,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
 
             <div className="space-y-5 px-6 py-6">
               <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50">
-                <div id="event-google-map-element" className="h-[420px] w-full" />
+                <div id="event-mapbox-map-element" className="h-[420px] w-full" />
               </div>
               <div className="rounded-[20px] border border-slate-100 bg-slate-50 px-5 py-4">
                 <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Selected Address</p>
