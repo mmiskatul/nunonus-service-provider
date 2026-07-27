@@ -204,11 +204,14 @@ export default function AnalyticsPage() {
                 <div className="mt-5 border-t border-slate-100 pt-5">
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">By service type</p>
                   {Object.keys(serviceCounts).length > 0 ? (
-                    <div className="mt-3 flex flex-wrap gap-3">
+                    <div className="mt-3 overflow-hidden rounded-xl border border-slate-100">
+                      <div className="grid grid-cols-[1fr_auto] border-b border-slate-100 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        <span>Service type</span><span>Bookings</span>
+                      </div>
                       {Object.entries(serviceCounts).map(([service, count]) => (
-                        <div key={service} className="rounded-xl border border-slate-100 px-4 py-3">
+                        <div key={service} className="grid grid-cols-[1fr_auto] items-center border-b border-slate-100 px-4 py-3 last:border-b-0">
                           <span className="text-sm font-bold capitalize text-slate-700">{service}</span>
-                          <span className="ml-3 text-sm font-black text-[#1e2a5e]">{count}</span>
+                          <span className="text-sm font-black text-[#1e2a5e]">{count}</span>
                         </div>
                       ))}
                     </div>
