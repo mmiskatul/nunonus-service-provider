@@ -83,7 +83,9 @@ export const analyticsOverviewQuery = (dateFrom?: string, dateTo?: string) =>
   queryOptions({
     queryKey: vendorQueryKeys.analytics(dateFrom, dateTo),
     queryFn: ({ signal }) => vendorGetAnalyticsOverview({ date_from: dateFrom, date_to: dateTo }, signal),
-    staleTime: 60_000,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: "always",
   });
 
 export const customerQuery = (id: string) =>
