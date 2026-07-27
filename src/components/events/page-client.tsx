@@ -436,7 +436,30 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     };
 
     (async () => {
-      const mapboxgl = (await import("mapbox-gl")).default;
+      const loadMapbox = () => new Promise<any>((resolve, reject) => {
+        const existing = (window as any).mapboxgl;
+        if (existing) return resolve(existing);
+        const styleId = "mapbox-gl-styles";
+        if (!document.getElementById(styleId)) {
+          const style = document.createElement("link");
+          style.id = styleId;
+          style.rel = "stylesheet";
+          style.href = "https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.css";
+          document.head.appendChild(style);
+        }
+        const scriptId = "mapbox-gl-script";
+        let script = document.getElementById(scriptId) as HTMLScriptElement | null;
+        if (!script) {
+          script = document.createElement("script");
+          script.id = scriptId;
+          script.src = "https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js";
+          script.async = true;
+          document.head.appendChild(script);
+        }
+        script.addEventListener("load", () => resolve((window as any).mapboxgl), { once: true });
+        script.addEventListener("error", () => reject(new Error("Mapbox could not be loaded.")), { once: true });
+      });
+      const mapboxgl = await loadMapbox();
       if (cancelled) return;
       mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
       const initialCoords = tempCoords;
