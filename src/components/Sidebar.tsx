@@ -20,6 +20,9 @@ import {
   type VendorCategory,
 } from "@/lib/vendor-access";
 import { clearVendorTokens } from "@/lib/vendor-api";
+import { useAppDispatch } from "@/store/hooks";
+import { closePortalOverlays } from "@/store/slices/portal-ui-slice";
+import { resetProviderState } from "@/store/slices/provider-slice";
 
 export function Sidebar({
   categories,
@@ -33,6 +36,7 @@ export function Sidebar({
   const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const dispatch = useAppDispatch();
   const navItems = getSidebarItemsForCategories(categories);
   const directGroups = [
     { label: "Overview", hrefs: ["/dashboard", "/analytics"] },
@@ -118,6 +122,8 @@ export function Sidebar({
     } finally {
       clearVendorTokens();
       queryClient.clear();
+      dispatch(resetProviderState());
+      dispatch(closePortalOverlays());
       router.replace("/auth/login");
     }
   };

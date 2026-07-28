@@ -9,8 +9,12 @@ import { Bell, Menu } from "lucide-react";
 import { NotificationsModal } from "./NotificationsModal";
 import Link from "next/link";
 import { notificationsQuery, vendorProfileQuery } from "@/lib/vendor-queries";
-import { useDashboardShell } from "@/components/DashboardShellContext";
 import { dashboardHeaderForPath } from "@/lib/dashboard-title";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  openMobileNavigation,
+  setNotificationsOpen,
+} from "@/store/slices/portal-ui-slice";
 
 interface HeaderProps {
   title?: string;
@@ -32,8 +36,7 @@ function providerInitials(profile: Record<string, unknown> | undefined) {
 }
 
 export function Header({ title, description, global = false }: HeaderProps) {
-  const dashboardShell = useDashboardShell();
-  if (dashboardShell.hasGlobalHeader && !global) return null;
+  if (!global) return null;
   return <HeaderContent title={title} description={description} />;
 }
 
@@ -41,10 +44,12 @@ function HeaderContent({
   title,
   description,
 }: Pick<HeaderProps, "title" | "description">) {
-  const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
   const notificationRef = React.useRef<HTMLDivElement>(null);
   const pathname = usePathname();
-  const { openNavigation } = useDashboardShell();
+  const dispatch = useAppDispatch();
+  const isNotificationsOpen = useAppSelector(
+    (state) => state.portalUi.notificationsOpen,
+  );
   const profileQuery = useQuery(vendorProfileQuery());
   const notifications = useQuery(notificationsQuery(20, 0));
   const profile = profileQuery.data as Record<string, unknown> | undefined;
@@ -73,7 +78,7 @@ function HeaderContent({
         notificationRef.current &&
         !notificationRef.current.contains(event.target as Node)
       ) {
-        setIsNotificationsOpen(false);
+        dispatch(setNotificationsOpen(false));
       }
     }
 
@@ -83,14 +88,14 @@ function HeaderContent({
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isNotificationsOpen]);
+  }, [dispatch, isNotificationsOpen]);
 
   return (
     <header className="sticky top-0 z-30 flex min-h-20 items-center justify-between border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur sm:px-6 md:min-h-24 md:px-8 lg:px-10">
       <div className="flex min-w-0 items-center gap-3">
         <button
           type="button"
-          onClick={openNavigation}
+          onClick={() => dispatch(openMobileNavigation())}
           aria-label="Open navigation"
           className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 md:hidden"
         >
@@ -115,7 +120,9 @@ function HeaderContent({
             aria-label={unreadCount ? `Notifications, ${unreadCount} unread` : "Notifications"}
             aria-expanded={isNotificationsOpen}
             className="cursor-pointer group p-2 hover:bg-slate-50 rounded-xl transition-all"
-            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            onClick={() =>
+              dispatch(setNotificationsOpen(!isNotificationsOpen))
+            }
           >
             <Bell className="h-6 w-6 text-slate-400 group-hover:text-sky-500 transition-colors" />
             {unreadCount > 0 ? (
@@ -127,7 +134,7 @@ function HeaderContent({
 
           <NotificationsModal
             isOpen={isNotificationsOpen}
-            onClose={() => setIsNotificationsOpen(false)}
+            onClose={() => dispatch(setNotificationsOpen(false))}
           />
         </div>
 

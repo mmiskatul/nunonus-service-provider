@@ -1,11 +1,14 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Provider } from "react-redux";
 import { useState } from "react";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import { WebVitalsReporter } from "@/components/providers/WebVitalsReporter";
+import { makePortalStore } from "@/store/portal-store";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
+  const [store] = useState(makePortalStore);
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -25,5 +28,14 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       }),
   );
 
-  return <QueryClientProvider client={queryClient}><ToastProvider><WebVitalsReporter />{children}</ToastProvider></QueryClientProvider>;
+  return (
+    <Provider store={store}>
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <WebVitalsReporter />
+          {children}
+        </ToastProvider>
+      </QueryClientProvider>
+    </Provider>
+  );
 }

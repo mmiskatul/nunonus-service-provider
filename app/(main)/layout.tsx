@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
-import { DashboardShellProvider } from "@/components/DashboardShellContext";
 import { vendorProfileQuery, vendorQueryKeys } from "@/lib/vendor-queries";
 import {
   extractVendorCategories,
@@ -13,6 +12,12 @@ import {
   isRouteAllowedForCategories,
   VENDOR_CATEGORIES_UPDATED_EVENT,
 } from "@/lib/vendor-access";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  closeMobileNavigation,
+  closePortalOverlays,
+} from "@/store/slices/portal-ui-slice";
+import { setProviderCategories } from "@/store/slices/provider-slice";
 
 export default function MainLayout({
   children
@@ -22,34 +27,30 @@ export default function MainLayout({
   const router = useRouter();
   const queryClient = useQueryClient();
   const pathname = usePathname();
-  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
-  const [categoryOverride, setCategoryOverride] = useState<ReturnType<typeof extractVendorCategories> | null>(null);
-  const hydrated = useSyncExternalStore(
-    () => () => undefined,
-    () => true,
-    () => false,
+  const dispatch = useAppDispatch();
+  const mobileNavigationOpen = useAppSelector(
+    (state) => state.portalUi.mobileNavigationOpen,
   );
+  const categories = useAppSelector((state) => state.provider.categories);
   const profileQuery = useQuery(vendorProfileQuery());
-  const categories = categoryOverride ?? (hydrated && profileQuery.data
-    ? extractVendorCategories(profileQuery.data.categories ?? profileQuery.data.category)
-    : extractVendorCategories("Restaurant"));
 
   useEffect(() => {
     if (!profileQuery.data) return;
     const nextCategories = extractVendorCategories(
       profileQuery.data.categories ?? profileQuery.data.category,
     );
+    dispatch(setProviderCategories(nextCategories));
     if (!isRouteAllowedForCategories(pathname, nextCategories)) {
       router.replace(getFallbackRouteForCategories(nextCategories));
     }
-  }, [pathname, profileQuery.data, router]);
+  }, [dispatch, pathname, profileQuery.data, router]);
 
   useEffect(() => {
     const handleCategoriesUpdated = (event: Event) => {
       const nextCategories = extractVendorCategories(
         (event as CustomEvent<unknown>).detail,
       );
-      setCategoryOverride(nextCategories);
+      dispatch(setProviderCategories(nextCategories));
       void queryClient.refetchQueries({ queryKey: vendorQueryKeys.profile });
       if (!isRouteAllowedForCategories(pathname, nextCategories)) {
         router.replace(getFallbackRouteForCategories(nextCategories));
@@ -63,29 +64,23 @@ export default function MainLayout({
         handleCategoriesUpdated,
       );
     };
-  }, [pathname, queryClient, router]);
+  }, [dispatch, pathname, queryClient, router]);
 
-  const shellActions = useMemo(
-    () => ({
-      openNavigation: () => setMobileNavigationOpen(true),
-      hasGlobalHeader: true,
-    }),
-    [],
-  );
+  useEffect(() => {
+    dispatch(closePortalOverlays());
+  }, [dispatch, pathname]);
 
   return (
-    <DashboardShellProvider value={shellActions}>
-      <div className="flex h-dvh overflow-hidden bg-[#f8fafc]">
-        <Sidebar
-          categories={categories}
-          mobileOpen={mobileNavigationOpen}
-          onMobileClose={() => setMobileNavigationOpen(false)}
-        />
-        <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
-          <Header global />
-          <div className="min-h-full w-full">{children}</div>
-        </main>
-      </div>
-    </DashboardShellProvider>
+    <div className="flex h-dvh overflow-hidden bg-[#f8fafc]">
+      <Sidebar
+        categories={categories}
+        mobileOpen={mobileNavigationOpen}
+        onMobileClose={() => dispatch(closeMobileNavigation())}
+      />
+      <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+        <Header global />
+        <div className="min-h-full w-full">{children}</div>
+      </main>
+    </div>
   );
 }
