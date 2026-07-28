@@ -33,6 +33,15 @@ interface LoyaltySettings {
   total_points_issued?: number;
   active_members?: number;
   repeat_booking_rate?: number;
+  recent_activity?: LoyaltyActivity[];
+}
+
+interface LoyaltyActivity {
+  type?: "booking" | "review" | string;
+  customer_name?: string;
+  reference?: string;
+  points?: number;
+  created_at?: string;
 }
 
 const DEFAULT_LOYALTY_SETTINGS: LoyaltySettings = {
@@ -78,6 +87,10 @@ export default function LoyaltyPage() {
   });
 
   const handleSave = async () => {
+    if ((settings.currency_unit ?? 1) <= 0) {
+      toast("Currency unit must be greater than zero.", "error");
+      return;
+    }
     await saveMutation.mutateAsync({
         enable_loyalty_program: settings.enable_loyalty_program ?? false,
         points_rule_type: settings.points_rule_type ?? "points_per_currency",
@@ -93,21 +106,21 @@ export default function LoyaltyPage() {
   const statsItems = [
     {
       label: "TOTAL POINTS ISSUED",
-      value: settings.total_points_issued != null ? Number(settings.total_points_issued).toLocaleString() : "—",
+      value: Number(settings.total_points_issued ?? 0).toLocaleString(),
       trend: "",
       icon: CircleDot,
       color: "text-[#1e2a5e]",
     },
     {
       label: "ACTIVE MEMBERS",
-      value: settings.active_members != null ? Number(settings.active_members).toLocaleString() : "—",
+      value: Number(settings.active_members ?? 0).toLocaleString(),
       trend: "",
       icon: Users,
       color: "text-[#1e2a5e]",
     },
     {
       label: "REPEAT BOOKING RATE",
-      value: settings.repeat_booking_rate != null ? `${settings.repeat_booking_rate}%` : "—",
+      value: `${Number(settings.repeat_booking_rate ?? 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}%`,
       trend: "",
       icon: History,
       color: "text-[#1e2a5e]",
@@ -153,7 +166,7 @@ export default function LoyaltyPage() {
               className="flex items-center gap-2 bg-[#1e2a5e] hover:bg-[#1a2552] text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-xl shadow-slate-900/10 transition-all disabled:opacity-60"
             >
               <Save className="h-4 w-4" />
-              {saveMutation.isPending ? "Saving…" : saveMutation.isSuccess ? "Saved!" : "Save Changes"}
+              {saveMutation.isPending ? "Saving..." : saveMutation.isSuccess ? "Saved!" : "Save Changes"}
             </button>
           </div>
 
@@ -179,6 +192,9 @@ export default function LoyaltyPage() {
               </div>
             </div>
             <button
+              type="button"
+              aria-label="Enable or disable loyalty program"
+              aria-pressed={Boolean(settings.enable_loyalty_program)}
               onClick={() => setSettings((s) => ({ ...s, enable_loyalty_program: !s.enable_loyalty_program }))}
               className={cn(
                 "relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none",
@@ -377,6 +393,37 @@ export default function LoyaltyPage() {
                   </div>
                 </div>
               ))}
+            </div>
+            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 px-6 py-5 sm:px-8">
+                <h3 className="text-lg font-bold text-slate-800">Recent points activity</h3>
+                <p className="mt-1 text-sm text-slate-400">Points issued from completed bookings and verified reviews.</p>
+              </div>
+              {(settings.recent_activity ?? []).length ? (
+                <div className="divide-y divide-slate-100">
+                  {(settings.recent_activity ?? []).map((activity, index) => (
+                    <div key={`${activity.reference ?? activity.type}-${index}`} className="flex flex-col gap-3 px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+                      <div>
+                        <p className="text-sm font-bold text-slate-800">{activity.customer_name || "Customer"}</p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          {activity.type === "review" ? "Review bonus" : "Completed booking"}
+                          {activity.reference ? ` · ${activity.reference}` : ""}
+                        </p>
+                      </div>
+                      <div className="sm:text-right">
+                        <p className="text-sm font-black text-emerald-600">+{Number(activity.points ?? 0).toLocaleString()} points</p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          {activity.created_at ? new Date(activity.created_at).toLocaleString() : ""}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="px-8 py-10 text-center text-sm text-slate-400">
+                  No points have been issued yet. Activity appears after a booking is completed or a verified review is submitted.
+                </p>
+              )}
             </div>
           </section>
         </div>

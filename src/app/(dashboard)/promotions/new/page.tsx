@@ -54,9 +54,25 @@ export default function AddPromotionPage() {
       setError("Promotion name, start date, and end date are required.");
       return;
     }
+    if (formData.endDate < formData.startDate) {
+      setError("End date must be on or after the start date.");
+      return;
+    }
+    if (requirePromoCode && !formData.promoCode.trim()) {
+      setError("Enter the promo code customers must use.");
+      return;
+    }
     const discountValue = Number(formData.discountValue);
     if (!Number.isFinite(discountValue) || discountValue < 0) {
       setError("Enter a valid discount value.");
+      return;
+    }
+    if (selectedOffer === "percentage" && discountValue > 100) {
+      setError("Percentage discount cannot exceed 100%.");
+      return;
+    }
+    if (formData.minimumSpend.trim() && (!Number.isFinite(Number(formData.minimumSpend)) || Number(formData.minimumSpend) < 0)) {
+      setError("Enter a valid minimum spend.");
       return;
     }
     setIsSaving(true);

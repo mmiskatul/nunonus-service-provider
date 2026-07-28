@@ -13,6 +13,7 @@ export interface Promotion {
   usageCount: number;
   usageMax: number;
   isActive: boolean;
+  isCurrentlyAvailable: boolean;
 }
 
 interface PromotionsTableProps {
@@ -188,11 +189,11 @@ export function PromotionsTable({ promotions, onToggleStatus }: PromotionsTableP
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center justify-between text-[10px] font-bold">
                         <span className="text-slate-700">
-                          {promo.usageCount} Used
+                          {promo.usageCount} {promo.usageCount === 1 ? "redemption" : "redemptions"}
                         </span>
-                        <span className="text-slate-400">{usagePercent}%</span>
+                        {promo.usageMax > 0 ? <span className="text-slate-400">{usagePercent}%</span> : null}
                       </div>
-                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                      {promo.usageMax > 0 ? <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                         <div
                           className={cn(
                             "h-full rounded-full transition-all duration-500",
@@ -200,27 +201,32 @@ export function PromotionsTable({ promotions, onToggleStatus }: PromotionsTableP
                           )}
                           style={{ width: `${usagePercent}%` }}
                         />
-                      </div>
+                      </div> : null}
                     </div>
                   </td>
                   <td className="px-8 py-6 text-right">
-                    <button
-                      onClick={() => onToggleStatus(promo)}
-                      aria-label={`Toggle ${promo.name}`}
-                      className={cn(
-                        "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none",
-                        promo.isActive
-                          ? "bg-sky-500 shadow-lg shadow-sky-500/20"
-                          : "bg-slate-200",
-                      )}
-                    >
-                      <span
+                    <div className="inline-flex flex-col items-end gap-2">
+                      <span className={cn("text-[9px] font-black uppercase tracking-wider", promo.isCurrentlyAvailable ? "text-emerald-600" : "text-slate-400")}>
+                        {promo.isCurrentlyAvailable ? "Available" : promo.isActive ? "Out of schedule" : "Inactive"}
+                      </span>
+                      <button
+                        onClick={() => onToggleStatus(promo)}
+                        aria-label={`Toggle ${promo.name}`}
+                        className={cn(
+                          "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none",
+                          promo.isActive
+                            ? "bg-sky-500 shadow-lg shadow-sky-500/20"
+                            : "bg-slate-200",
+                        )}
+                      >
+                        <span
                         className={cn(
                           "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
                           promo.isActive ? "translate-x-6" : "translate-x-1",
                         )}
-                      />
-                    </button>
+                        />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

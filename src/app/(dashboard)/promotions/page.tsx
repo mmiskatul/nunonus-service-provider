@@ -162,8 +162,9 @@ export default function PromotionsPage() {
     value: String(promotion.value ?? ""),
     schedule: String(promotion.schedule ?? ""),
     usageCount: toNumber(promotion.usage_count ?? promotion.usageCount),
-    usageMax: toNumber(promotion.usage_max ?? promotion.usageMax) || 100,
+    usageMax: toNumber(promotion.usage_max ?? promotion.usageMax),
     isActive: Boolean(promotion.is_active ?? promotion.isActive ?? promotion.active),
+    isCurrentlyAvailable: Boolean(promotion.is_currently_available ?? promotion.isCurrentlyAvailable),
   }));
   const rawSummary = raw?.summary ?? {};
   const summary: PromotionSummary = raw ? {
