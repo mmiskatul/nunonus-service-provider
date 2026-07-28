@@ -196,8 +196,7 @@ export default function EventBookingsPage() {
     <div className="min-h-full bg-[#f8fafc]">
       <Header title="Event Bookings" />
       <main className="w-full space-y-7 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
-          <div><p className="text-xs font-black uppercase tracking-[0.18em] text-sky-600">Booking management</p><h1 className="mt-2 text-3xl font-black tracking-tight text-slate-800">Event bookings</h1><p className="mt-2 text-sm text-slate-500">View and manage booking requests for every event.</p></div>
+        <div className="flex justify-end">
           <div className="flex items-center gap-3">
             <label htmlFor="event-filter" className="sr-only">Select event</label>
             <div className="relative min-w-[240px]">

@@ -246,17 +246,7 @@ export default function PromotionsPage() {
 
       <main className="flex-1 space-y-8 px-4 py-6 sm:px-6 lg:px-8">
         <div className="w-full space-y-8">
-          {/* Page Title & Add Button */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-800">
-                Marketing Overview
-              </h1>
-              <p className="text-sm text-slate-400 mt-1">
-                Manage your internal offers and discover platform growth
-                opportunities.
-              </p>
-            </div>
+          <div className="flex justify-end">
             <Link
               href="/promotions/new"
               className="px-6 py-3 bg-[#1e2a5e] hover:bg-[#1a2552] text-white rounded-xl text-sm font-bold flex items-center gap-2 shadow-xl shadow-slate-900/10 transition-all"

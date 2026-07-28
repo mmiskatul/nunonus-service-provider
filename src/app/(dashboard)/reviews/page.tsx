@@ -92,13 +92,6 @@ export default function ReviewsPage() {
 
       <main className="flex-1 space-y-8 px-4 py-6 sm:px-6 lg:px-8">
         <div className="w-full space-y-8">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-800">Review Management</h1>
-            <p className="text-sm text-slate-500 mt-2">
-              Track and respond to your customer feedback across platforms.
-            </p>
-          </div>
-
           {/* Search & Tabs */}
           <div className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row">
             <div className="flex-1 relative">

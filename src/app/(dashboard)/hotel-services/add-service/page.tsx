@@ -125,7 +125,7 @@ export default function AddServicePage() {
         ) : null}
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
+          <div>
             <button
               type="button"
               onClick={() => hasUnsavedChanges ? setDiscardConfirmOpen(true) : router.push("/hotel-services")}
@@ -133,14 +133,6 @@ export default function AddServicePage() {
             >
               <ArrowLeft className="h-6 w-6" />
             </button>
-            <div>
-              <h1 className="text-3xl font-black text-slate-800 tracking-tight">
-                Add Room Service
-              </h1>
-              <p className="text-slate-400 font-bold mt-1 text-sm">
-                Create a new service amenity for your hotel guests.
-              </p>
-            </div>
           </div>
           <div className="flex items-center gap-4">
             <button

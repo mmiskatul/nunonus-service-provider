@@ -192,7 +192,7 @@ export default function EditRoomPage() {
         {statusMessage ? <p className="text-sm font-bold text-[#1e2a5e]">{statusMessage}</p> : null}
 
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
+          <div>
             <button
               type="button"
               onClick={() => hasUnsavedChanges ? setDiscardConfirmOpen(true) : router.push("/hotel-services")}
@@ -200,12 +200,6 @@ export default function EditRoomPage() {
             >
               <ArrowLeft className="h-6 w-6" />
             </button>
-            <div>
-              <h1 className="text-3xl font-black tracking-tight text-slate-800">Edit Room</h1>
-              <p className="mt-1 text-sm font-bold text-slate-400">
-                Update room inventory, pricing, amenities, and images.
-              </p>
-            </div>
           </div>
           <button
             onClick={() => void handleSave()}

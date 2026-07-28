@@ -184,7 +184,7 @@ export default function AddRoomPage() {
         ) : null}
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 sm:gap-6">
+          <div>
             <button
               type="button"
               onClick={() => hasUnsavedChanges ? setDiscardConfirmOpen(true) : router.push("/hotel-services")}
@@ -192,14 +192,6 @@ export default function AddRoomPage() {
             >
               <ArrowLeft className="h-6 w-6" />
             </button>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
-                Add New Room
-              </h1>
-              <p className="text-slate-400 font-bold mt-1 text-sm">
-                Configure a new room type for your property inventory.
-              </p>
-            </div>
           </div>
           <div className="flex items-center gap-4">
             <button

@@ -43,10 +43,6 @@ export default function OperationsPage() {
     <div className="min-h-full bg-[#f8fafc]">
       <Header title="Operations" />
       <main className="w-full space-y-8 px-4 py-6 sm:px-6 lg:px-8">
-        <div>
-          <h1 className="text-3xl font-black text-slate-800">Operations</h1>
-          <p className="mt-2 text-sm text-slate-500">Manage the day-to-day work for your enabled business categories.</p>
-        </div>
         <section aria-label="Operations navigation" className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {operations.map((operation) => {
             const Icon = operation.icon;

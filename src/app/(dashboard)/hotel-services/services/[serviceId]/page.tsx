@@ -144,14 +144,10 @@ export default function EditServicePage() {
         {statusMessage ? <p className="text-sm font-bold text-[#1e2a5e]">{statusMessage}</p> : null}
 
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
+          <div>
             <button type="button" onClick={() => hasUnsavedChanges ? setDiscardConfirmOpen(true) : router.push("/hotel-services")} className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-100 bg-white text-slate-400 shadow-sm transition-all hover:text-[#1e2a5e]">
               <ArrowLeft className="h-6 w-6" />
             </button>
-            <div>
-              <h1 className="text-3xl font-black tracking-tight text-slate-800">Edit Service</h1>
-              <p className="mt-1 text-sm font-bold text-slate-400">Update guest-facing service details and imagery.</p>
-            </div>
           </div>
           <button
             onClick={() => void handleSave()}

@@ -8,6 +8,7 @@ import { DatePicker } from "./DatePicker";
 interface BookingsHeaderProps {
   title?: string;
   description?: string;
+  showHeading?: boolean;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   statusFilter: string;
@@ -19,6 +20,7 @@ interface BookingsHeaderProps {
 export function BookingsHeader({
   title = "Bookings",
   description = "Manage and monitor all your reservations in real time.",
+  showHeading = false,
   searchQuery,
   onSearchChange,
   statusFilter,
@@ -57,16 +59,16 @@ export function BookingsHeader({
   return (
     <div className="rounded-2xl bg-white p-6 md:p-8 shadow-sm border border-slate-100 mb-8 transition-all">
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-8">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-bold text-slate-800 mb-2">
-            {title}
-          </h2>
-          <p className="text-sm text-slate-400 max-w-sm">
-            {description}
-          </p>
-        </div>
+        {showHeading ? (
+          <div>
+            <h2 className="mb-2 text-2xl font-bold text-slate-800 md:text-3xl">
+              {title}
+            </h2>
+            <p className="max-w-sm text-sm text-slate-400">{description}</p>
+          </div>
+        ) : null}
 
-        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-4">
+        <div className="ml-auto flex flex-col flex-wrap items-stretch gap-4 sm:flex-row sm:items-center">
           {/* Search */}
           <div className="relative group w-full sm:w-64">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-sky-500 transition-colors" />

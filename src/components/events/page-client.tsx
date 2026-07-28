@@ -804,13 +804,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
 
       <main className="flex-1 px-4 py-6 pb-24 sm:px-6 lg:px-8">
         <div className="w-full space-y-8">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-800">Event Management</h1>
-              <p className="mt-1 text-sm text-slate-400">
-                Create, edit, publish, archive, and delete vendor events with fixed dates and times.
-              </p>
-            </div>
+          <div className="flex justify-end">
             <div className="flex gap-3">
               <button
                 type="button"

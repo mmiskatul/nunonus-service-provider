@@ -10,10 +10,11 @@ import { NotificationsModal } from "./NotificationsModal";
 import Link from "next/link";
 import { notificationsQuery, vendorProfileQuery } from "@/lib/vendor-queries";
 import { useDashboardShell } from "@/components/DashboardShellContext";
-import { dashboardTitleForPath } from "@/lib/dashboard-title";
+import { dashboardHeaderForPath } from "@/lib/dashboard-title";
 
 interface HeaderProps {
   title?: string;
+  description?: string;
   global?: boolean;
 }
 
@@ -30,13 +31,16 @@ function providerInitials(profile: Record<string, unknown> | undefined) {
   return `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase();
 }
 
-export function Header({ title, global = false }: HeaderProps) {
+export function Header({ title, description, global = false }: HeaderProps) {
   const dashboardShell = useDashboardShell();
   if (dashboardShell.hasGlobalHeader && !global) return null;
-  return <HeaderContent title={title} />;
+  return <HeaderContent title={title} description={description} />;
 }
 
-function HeaderContent({ title }: Pick<HeaderProps, "title">) {
+function HeaderContent({
+  title,
+  description,
+}: Pick<HeaderProps, "title" | "description">) {
   const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
   const notificationRef = React.useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -58,7 +62,9 @@ function HeaderContent({ title }: Pick<HeaderProps, "title">) {
           ).length,
       )
     : Number(profile?.unread_notifications ?? 0);
-  const resolvedTitle = title ?? dashboardTitleForPath(pathname);
+  const routeHeader = dashboardHeaderForPath(pathname);
+  const resolvedTitle = title ?? routeHeader.title;
+  const resolvedDescription = description ?? routeHeader.description;
   const initials = providerInitials(profile);
 
   React.useEffect(() => {
@@ -80,7 +86,7 @@ function HeaderContent({ title }: Pick<HeaderProps, "title">) {
   }, [isNotificationsOpen]);
 
   return (
-    <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-100 bg-white/95 px-4 backdrop-blur sm:px-6 md:h-24 md:px-8 lg:px-10">
+    <header className="sticky top-0 z-30 flex min-h-20 items-center justify-between border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur sm:px-6 md:min-h-24 md:px-8 lg:px-10">
       <div className="flex min-w-0 items-center gap-3">
         <button
           type="button"
@@ -90,7 +96,16 @@ function HeaderContent({ title }: Pick<HeaderProps, "title">) {
         >
           <Menu className="h-6 w-6" />
         </button>
-        <h2 className="truncate text-xl font-bold text-slate-800 sm:text-2xl md:text-3xl">{resolvedTitle}</h2>
+        <div className="min-w-0">
+          <h1 className="truncate text-xl font-bold text-slate-800 sm:text-2xl md:text-3xl">
+            {resolvedTitle}
+          </h1>
+          {resolvedDescription ? (
+            <p className="mt-0.5 hidden truncate text-xs font-medium text-slate-400 sm:block md:text-sm">
+              {resolvedDescription}
+            </p>
+          ) : null}
+        </div>
       </div>
 
       <div className="flex items-center space-x-6">

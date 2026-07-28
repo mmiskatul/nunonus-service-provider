@@ -147,10 +147,6 @@ export default function AddPromotionPage() {
 
       <main className="flex-1 p-6 md:p-10">
         <div className="max-w-[800px] mx-auto space-y-8">
-          <h1 className="text-3xl font-bold text-slate-800">
-            Add New Promotion
-          </h1>
-
           {/* Basic Information */}
           <div className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100">
             <div className="flex items-center gap-3 mb-8">

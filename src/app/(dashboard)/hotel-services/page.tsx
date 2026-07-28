@@ -214,15 +214,7 @@ export default function HotelServicesPage() {
           <p className="text-sm font-bold text-[#1e2a5e]">{statusMessage}</p>
         ) : null}
 
-        <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
-          <div>
-            <h1 className="text-4xl font-black tracking-tight text-slate-800">
-              Hotel Properties & Services
-            </h1>
-            <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              Manage room inventory and guest-facing hotel services
-            </p>
-          </div>
+        <div className="flex justify-end">
           <Link
             href={activeTab === "rooms" ? "/hotel-services/add" : "/hotel-services/add-service"}
             className="group flex items-center justify-center gap-3 rounded-[24px] bg-[#1e2a5e] px-8 py-5 text-sm font-black text-white shadow-xl shadow-[#1e2a5e]/20 transition-all hover:bg-[#1a234d]"

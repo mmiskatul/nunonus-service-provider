@@ -32,8 +32,7 @@ export default function CustomersPage() {
     <div className="min-h-full bg-[#f8fafc]">
       <Header title="Customers" />
       <main className="w-full space-y-7 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
-          <div><p className="text-xs font-black uppercase tracking-[0.18em] text-sky-600">Operations</p><h1 className="mt-2 text-3xl font-black tracking-tight text-slate-800">Customers</h1><p className="mt-2 text-sm text-slate-500">Search and manage guests who have interacted with your business.</p></div>
+        <div className="flex justify-end">
           <div className="grid grid-cols-2 gap-3 sm:flex">
             <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total customers</p><p className="mt-1 flex items-center gap-2 text-xl font-black text-slate-800"><Users className="h-4 w-4 text-sky-500" />{total}</p></div>
             <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm"><p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Showing</p><p className="mt-1 flex items-center gap-2 text-xl font-black text-slate-800"><CalendarDays className="h-4 w-4 text-emerald-500" />{firstItem}-{lastItem}</p></div>
