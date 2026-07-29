@@ -47,10 +47,20 @@ export const vendorProfileQuery = () =>
   });
 
 export const dashboardOverviewQuery = () =>
-  queryOptions({ queryKey: vendorQueryKeys.dashboardOverview, queryFn: ({ signal }) => vendorGetDashboardOverview(signal), refetchInterval: 60_000 });
+  queryOptions({
+    queryKey: vendorQueryKeys.dashboardOverview,
+    queryFn: ({ signal }) => vendorGetDashboardOverview(signal),
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: "always",
+  });
 
 export const bookingTrendsQuery = () =>
-  queryOptions({ queryKey: vendorQueryKeys.bookingTrends, queryFn: ({ signal }) => vendorGetBookingTrends(signal) });
+  queryOptions({
+    queryKey: vendorQueryKeys.bookingTrends,
+    queryFn: ({ signal }) => vendorGetBookingTrends(signal),
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: "always",
+  });
 
 export const calendarPreviewQuery = (month: string) =>
   queryOptions({

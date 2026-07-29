@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
 import { useToast } from "@/components/ui/ToastProvider";
-import { Bell, CalendarPlus2, Save, Shield, User, X, Hotel, Utensils, Sparkles, Plus } from "lucide-react";
+import { Bell, CalendarPlus2, Save, Shield, User, X, Hotel, ImagePlus, Utensils, Sparkles, Plus } from "lucide-react";
 import {
   vendorCreateEvent,
   vendorAddServiceAmenity,
@@ -19,10 +20,19 @@ import {
 } from "@/lib/vendor-api";
 import { extractVendorCategories, type VendorCategory } from "@/lib/vendor-access";
 import { vendorQueryKeys } from "@/lib/vendor-queries";
+import {
+  loadGoogleMaps,
+  type GoogleGeocoderResult,
+  type GoogleMapInstance,
+  type GoogleMapMouseEvent,
+  type GoogleMarkerInstance,
+  type ReadyGoogleMaps,
+} from "@/lib/google-maps";
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 type SettingsTab = "profile" | "notifications" | "security";
+type ServiceType = "restaurant" | "hotel" | "spa";
 
 type ServiceOffer = {
   title: string;
@@ -201,11 +211,12 @@ export function SettingsPageClient({
     location_label: String(initialProfile.location_label ?? ""),
     website: String(initialProfile.website ?? ""),
   });
-  const [serviceTab, setServiceTab] = useState<"restaurant" | "hotel" | "spa">("restaurant");
+  const [serviceTab, setServiceTab] = useState<ServiceType>("restaurant");
+  const [serviceImageUploading, setServiceImageUploading] = useState<ServiceType | null>(null);
   const [serviceSettings, setServiceSettings] = useState({
-    restaurant: { name: initialProfile.restaurant_settings?.name ?? "", address: initialProfile.restaurant_settings?.address ?? "", city: initialProfile.restaurant_settings?.city ?? "", phone: initialProfile.restaurant_settings?.phone ?? "", email: initialProfile.restaurant_settings?.email ?? "", latitude: initialProfile.restaurant_settings?.latitude ?? "", longitude: initialProfile.restaurant_settings?.longitude ?? "", about: initialProfile.restaurant_settings?.about ?? "", opening_time: initialProfile.restaurant_settings?.opening_time ?? "", closing_time: initialProfile.restaurant_settings?.closing_time ?? "", available_booking_times: initialProfile.restaurant_settings?.available_booking_times ?? [], seating_preferences: initialProfile.restaurant_settings?.seating_preferences ?? ["Indoor", "Outdoor", "No preference"], policy: initialProfile.restaurant_settings?.policy ?? "", amenities: initialProfile.restaurant_settings?.amenities ?? [], special_offers: initialProfile.restaurant_settings?.special_offers ?? [], published: initialProfile.restaurant_settings?.published !== false },
-    hotel: { name: initialProfile.hotel_settings?.name ?? "", address: initialProfile.hotel_settings?.address ?? "", city: initialProfile.hotel_settings?.city ?? "", phone: initialProfile.hotel_settings?.phone ?? "", email: initialProfile.hotel_settings?.email ?? "", latitude: initialProfile.hotel_settings?.latitude ?? "", longitude: initialProfile.hotel_settings?.longitude ?? "", about: initialProfile.hotel_settings?.about ?? "", opening_time: initialProfile.hotel_settings?.opening_time ?? "", closing_time: initialProfile.hotel_settings?.closing_time ?? "", policy: initialProfile.hotel_settings?.policy ?? "", amenities: initialProfile.hotel_settings?.amenities ?? [], special_offers: initialProfile.hotel_settings?.special_offers ?? [], published: initialProfile.hotel_settings?.published !== false },
-    spa: { name: initialProfile.spa_settings?.name ?? "", address: initialProfile.spa_settings?.address ?? "", city: initialProfile.spa_settings?.city ?? "", phone: initialProfile.spa_settings?.phone ?? "", email: initialProfile.spa_settings?.email ?? "", latitude: initialProfile.spa_settings?.latitude ?? "", longitude: initialProfile.spa_settings?.longitude ?? "", about: initialProfile.spa_settings?.about ?? "", opening_time: initialProfile.spa_settings?.opening_time ?? "", closing_time: initialProfile.spa_settings?.closing_time ?? "", policy: initialProfile.spa_settings?.policy ?? "", amenities: initialProfile.spa_settings?.amenities ?? [], special_offers: initialProfile.spa_settings?.special_offers ?? [], published: initialProfile.spa_settings?.published !== false },
+    restaurant: { name: initialProfile.restaurant_settings?.name ?? "", profile_image_url: initialProfile.restaurant_settings?.profile_image_url ?? "", address: initialProfile.restaurant_settings?.address ?? "", city: initialProfile.restaurant_settings?.city ?? "", phone: initialProfile.restaurant_settings?.phone ?? "", email: initialProfile.restaurant_settings?.email ?? "", latitude: initialProfile.restaurant_settings?.latitude ?? "", longitude: initialProfile.restaurant_settings?.longitude ?? "", about: initialProfile.restaurant_settings?.about ?? "", opening_time: initialProfile.restaurant_settings?.opening_time ?? "", closing_time: initialProfile.restaurant_settings?.closing_time ?? "", available_booking_times: initialProfile.restaurant_settings?.available_booking_times ?? [], seating_preferences: initialProfile.restaurant_settings?.seating_preferences ?? ["Indoor", "Outdoor", "No preference"], policy: initialProfile.restaurant_settings?.policy ?? "", amenities: initialProfile.restaurant_settings?.amenities ?? [], special_offers: initialProfile.restaurant_settings?.special_offers ?? [], published: initialProfile.restaurant_settings?.published !== false },
+    hotel: { name: initialProfile.hotel_settings?.name ?? "", profile_image_url: initialProfile.hotel_settings?.profile_image_url ?? "", address: initialProfile.hotel_settings?.address ?? "", city: initialProfile.hotel_settings?.city ?? "", phone: initialProfile.hotel_settings?.phone ?? "", email: initialProfile.hotel_settings?.email ?? "", latitude: initialProfile.hotel_settings?.latitude ?? "", longitude: initialProfile.hotel_settings?.longitude ?? "", about: initialProfile.hotel_settings?.about ?? "", opening_time: initialProfile.hotel_settings?.opening_time ?? "", closing_time: initialProfile.hotel_settings?.closing_time ?? "", policy: initialProfile.hotel_settings?.policy ?? "", amenities: initialProfile.hotel_settings?.amenities ?? [], special_offers: initialProfile.hotel_settings?.special_offers ?? [], published: initialProfile.hotel_settings?.published !== false },
+    spa: { name: initialProfile.spa_settings?.name ?? "", profile_image_url: initialProfile.spa_settings?.profile_image_url ?? "", address: initialProfile.spa_settings?.address ?? "", city: initialProfile.spa_settings?.city ?? "", phone: initialProfile.spa_settings?.phone ?? "", email: initialProfile.spa_settings?.email ?? "", latitude: initialProfile.spa_settings?.latitude ?? "", longitude: initialProfile.spa_settings?.longitude ?? "", about: initialProfile.spa_settings?.about ?? "", opening_time: initialProfile.spa_settings?.opening_time ?? "", closing_time: initialProfile.spa_settings?.closing_time ?? "", policy: initialProfile.spa_settings?.policy ?? "", amenities: initialProfile.spa_settings?.amenities ?? [], special_offers: initialProfile.spa_settings?.special_offers ?? [], published: initialProfile.spa_settings?.published !== false },
   });
   const [passwordForm, setPasswordForm] = useState({
     old_password: "",
@@ -222,9 +233,11 @@ export function SettingsPageClient({
   const [eventForm, setEventForm] = useState<EventFormState>(getDefaultEventForm(DEFAULT_CATEGORIES));
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const locationMapRef = useRef<HTMLDivElement>(null);
-  const locationMapInstance = useRef<any>(null);
-  const locationMarkerInstance = useRef<any>(null);
+  const locationMapInstance = useRef<GoogleMapInstance | null>(null);
+  const locationMarkerInstance = useRef<GoogleMarkerInstance | null>(null);
   const [locationMapOpen, setLocationMapOpen] = useState(false);
+  const [locationMapError, setLocationMapError] = useState("");
+  const serviceSettingsRef = useRef(serviceSettings);
   const configuredCategories = categories.length ? categories : extractVendorCategories(initialProfile.categories ?? initialProfile.category);
   const availableServiceTabs = (['restaurant', 'hotel', 'spa'] as const).filter((service) => {
     const categoryText = configuredCategories.join(" ").toLowerCase();
@@ -246,34 +259,70 @@ export function SettingsPageClient({
   };
 
   useEffect(() => {
+    serviceSettingsRef.current = serviceSettings;
+  }, [serviceSettings]);
+
+  useEffect(() => {
     if (!locationMapOpen || !locationMapRef.current || !GOOGLE_MAPS_API_KEY) return;
-    const initialize = () => {
-      const google = (window as any).google;
-      if (!google || !locationMapRef.current) return;
-      const current = serviceSettings[activeServiceTab];
+    setLocationMapError("");
+    let cancelled = false;
+    let googleMaps: ReadyGoogleMaps | undefined;
+    const initialize = (readyMaps: ReadyGoogleMaps) => {
+      if (cancelled || !locationMapRef.current) return;
+      googleMaps = readyMaps;
+      const current = serviceSettingsRef.current[activeServiceTab];
       const center = { lat: Number(current.latitude) || 23.8103, lng: Number(current.longitude) || 90.4125 };
-      const map = new google.maps.Map(locationMapRef.current, { center, zoom: 14, mapTypeControl: false });
-      const marker = new google.maps.Marker({ position: center, map, draggable: true });
-      const update = (lat: number, lng: number, ref: any) => {
-        const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({ location: ref }, (results: any, status: string) => {
-          const address = status === "OK" && results?.[0] ? results[0].formatted_address : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      const map = new readyMaps.Map(locationMapRef.current, { center, zoom: 14, mapTypeControl: false });
+      const marker = new readyMaps.Marker({ position: center, map, draggable: true });
+      const geocoder = new readyMaps.Geocoder();
+      const update = (lat: number, lng: number) => {
+        geocoder.geocode({ location: { lat, lng } }, (results: GoogleGeocoderResult[] | null, status: string) => {
+          if (cancelled) return;
+          const address = status === "OK" && results?.[0]?.formatted_address
+            ? results[0].formatted_address
+            : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
           setServiceSettings((state) => ({ ...state, [activeServiceTab]: { ...state[activeServiceTab], latitude: String(lat), longitude: String(lng), address } }));
           setProfileForm((current) => ({ ...current, location_label: address }));
         });
       };
-      map.addListener("click", (event: any) => { marker.setPosition(event.latLng); update(event.latLng.lat(), event.latLng.lng(), event.latLng); });
-      marker.addListener("dragend", () => { const position = marker.getPosition(); if (position) update(position.lat(), position.lng(), position); });
+      map.addListener("click", (event: GoogleMapMouseEvent) => {
+        if (!event.latLng) return;
+        marker.setPosition(event.latLng);
+        update(event.latLng.lat(), event.latLng.lng());
+      });
+      marker.addListener("dragend", () => {
+        const position = marker.getPosition();
+        if (position) update(position.lat(), position.lng());
+      });
       locationMapInstance.current = map;
       locationMarkerInstance.current = marker;
     };
-    if ((window as any).google?.maps) { initialize(); return; }
-    const scriptId = "provider-google-maps-script";
-    let script = document.getElementById(scriptId) as HTMLScriptElement | null;
-    if (!script) { script = document.createElement("script"); script.id = scriptId; script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&loading=async`; script.async = true; script.defer = true; document.head.appendChild(script); }
-    script.addEventListener("load", initialize);
-    return () => script?.removeEventListener("load", initialize);
-  }, [locationMapOpen, activeServiceTab]);
+    void loadGoogleMaps(GOOGLE_MAPS_API_KEY)
+      .then(initialize)
+      .catch((error) => {
+        if (!cancelled) {
+          const message = error instanceof Error
+            ? error.message
+            : "Google Maps could not be initialized.";
+          setLocationMapError(message);
+          toast(
+            message,
+            "error",
+          );
+        }
+      });
+    return () => {
+      cancelled = true;
+      if (googleMaps?.event && locationMapInstance.current) {
+        googleMaps.event.clearInstanceListeners(locationMapInstance.current);
+      }
+      if (googleMaps?.event && locationMarkerInstance.current) {
+        googleMaps.event.clearInstanceListeners(locationMarkerInstance.current);
+      }
+      locationMapInstance.current = null;
+      locationMarkerInstance.current = null;
+    };
+  }, [locationMapOpen, activeServiceTab, toast]);
 
   const ensureCategoriesLoaded = async () => {
     if (categoriesLoaded) {
@@ -292,6 +341,38 @@ export function SettingsPageClient({
       setCategories(DEFAULT_CATEGORIES);
     } finally {
       setCategoriesLoaded(true);
+    }
+  };
+
+  const handleServiceProfileImageUpload = async (file: File | null) => {
+    if (!file) {
+      return;
+    }
+    const serviceType = activeServiceTab;
+    setServiceImageUploading(serviceType);
+    try {
+      const url = await uploadVendorFile(file);
+      if (!url) {
+        throw new Error("The image upload did not return a URL.");
+      }
+      setServiceSettings((current) => ({
+        ...current,
+        [serviceType]: {
+          ...current[serviceType],
+          profile_image_url: url,
+        },
+      }));
+      toast(
+        `${serviceType.charAt(0).toUpperCase()}${serviceType.slice(1)} profile image uploaded. Save changes to publish it.`,
+        "success",
+      );
+    } catch (error) {
+      toast(
+        error instanceof Error ? error.message : "Failed to upload profile image.",
+        "error",
+      );
+    } finally {
+      setServiceImageUploading(null);
     }
   };
 
@@ -509,11 +590,73 @@ export function SettingsPageClient({
                     </div>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
+                    <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 md:col-span-2 sm:flex-row sm:items-center">
+                      <div className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-3xl border-4 border-slate-100 bg-slate-50">
+                        {serviceSettings[activeServiceTab].profile_image_url ? (
+                          <Image
+                            src={serviceSettings[activeServiceTab].profile_image_url}
+                            alt={`${activeServiceTab} profile`}
+                            fill
+                            sizes="96px"
+                            unoptimized
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <ImagePlus className="h-8 w-8 text-slate-300" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-sm font-black capitalize text-slate-800">
+                          {activeServiceTab} profile image
+                        </h4>
+                        <p className="mt-1 text-xs leading-5 text-slate-500">
+                          Upload a square identity image for this service. It is shown separately from cover and gallery photos in the Nuno app.
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[#1e2a5e] px-4 py-2.5 text-xs font-black text-white transition hover:bg-[#263675]">
+                            <ImagePlus className="h-4 w-4" />
+                            {serviceImageUploading === activeServiceTab
+                              ? "Uploading…"
+                              : serviceSettings[activeServiceTab].profile_image_url
+                                ? "Replace image"
+                                : "Upload image"}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              disabled={serviceImageUploading !== null}
+                              onChange={(event) => {
+                                const file = event.target.files?.[0] ?? null;
+                                event.target.value = "";
+                                void handleServiceProfileImageUpload(file);
+                              }}
+                            />
+                          </label>
+                          {serviceSettings[activeServiceTab].profile_image_url ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setServiceSettings((current) => ({
+                                  ...current,
+                                  [activeServiceTab]: {
+                                    ...current[activeServiceTab],
+                                    profile_image_url: "",
+                                  },
+                                }))
+                              }
+                              className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-2.5 text-xs font-black text-rose-600 transition hover:bg-rose-100"
+                            >
+                              Remove
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
                     <label className="inline-flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800 md:col-span-2"><input type="checkbox" checked={serviceSettings[activeServiceTab].published} onChange={(e) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], published: e.target.checked } }))} className="h-4 w-4 accent-emerald-600" />Publish this {activeServiceTab} to customers</label>
                     {(["name", "city", "phone", "email"] as const).map((field) => (
                       <label key={field} className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">{field.replace("_", " ")}</span><input value={serviceSettings[activeServiceTab][field]} onChange={(e) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], [field]: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder={`Enter ${field.replace("_", " ")}`} /></label>
                     ))}
-                    <div className="md:col-span-2"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Location</span><div className="flex flex-wrap items-center gap-3"><input readOnly value={serviceSettings[activeServiceTab].address} placeholder="Choose this service location from the map" className="min-w-[240px] flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600" /><button type="button" onClick={() => setLocationMapOpen(true)} className="rounded-xl bg-[#1e2a5e] px-4 py-3 text-sm font-bold text-white">Choose on map</button></div></div>
+                    <div className="md:col-span-2"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Location</span><div className="flex flex-wrap items-center gap-3"><input readOnly value={serviceSettings[activeServiceTab].address} placeholder="Choose this service location from the map" className="min-w-[240px] flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600" /><button type="button" onClick={() => { setLocationMapError(""); setLocationMapOpen(true); }} className="rounded-xl bg-[#1e2a5e] px-4 py-3 text-sm font-bold text-white">Choose on map</button></div></div>
                     <label className="block md:col-span-2"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">About this {activeServiceTab}</span><textarea rows={3} value={serviceSettings[activeServiceTab].about} onChange={(e) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], about: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder={`Describe your ${activeServiceTab} offering`} /></label>
                     <div className="md:col-span-2">
                       <OptionChipEditor
@@ -691,7 +834,7 @@ export function SettingsPageClient({
                 </div>
                 <button
                   onClick={handleSaveProfile}
-                  disabled={saving}
+                  disabled={saving || serviceImageUploading !== null}
                   className="flex items-center gap-2 bg-sky-500 hover:bg-sky-600 text-white font-bold px-6 py-3 rounded-xl text-sm transition disabled:opacity-60"
                 >
                   <Save className="h-4 w-4" />
@@ -789,7 +932,7 @@ export function SettingsPageClient({
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 p-4">
           <div className="w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h3 className="text-lg font-black text-slate-800">Choose {activeServiceTab} location</h3><p className="text-xs text-slate-500">Click the map or drag the pin to the exact location.</p></div><button type="button" onClick={() => setLocationMapOpen(false)} className="rounded-xl px-3 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100">Done</button></div>
-            {!GOOGLE_MAPS_API_KEY ? <div className="p-6 text-sm text-rose-600">Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable the map picker.</div> : <div ref={locationMapRef} className="h-[420px] w-full bg-slate-100" />}
+            {!GOOGLE_MAPS_API_KEY ? <div className="p-6 text-sm text-rose-600">Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable the map picker.</div> : locationMapError ? <div className="flex h-[420px] items-center justify-center p-6 text-center text-sm font-semibold text-rose-600">{locationMapError}</div> : <div ref={locationMapRef} className="h-[420px] w-full bg-slate-100" />}
           </div>
         </div>
       ) : null}

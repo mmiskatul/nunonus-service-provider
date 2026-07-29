@@ -16,13 +16,21 @@ import {
 } from "@/lib/vendor-api";
 import { cn } from "@/lib/utils";
 import { extractVendorCategories, type VendorCategory } from "@/lib/vendor-access";
-import { CalendarDays, CheckCircle2, CircleX, Clock3, Eye, FilePenLine, MapPin, Pencil, Plus, Search, Trash2, Upload, Users, X } from "lucide-react";
+import { Archive, CalendarDays, CheckCircle2, CircleX, Clock3, Eye, FilePenLine, MapPin, Pencil, Plus, Search, Trash2, Upload, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { vendorQueryKeys } from "@/lib/vendor-queries";
 import { useUnsavedChanges } from "@/lib/use-unsaved-changes";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import {
+  loadGoogleMaps,
+  type GoogleGeocoderResult,
+  type GoogleLatLng,
+  type GoogleMapInstance,
+  type GoogleMapMouseEvent,
+  type GoogleMarkerInstance,
+} from "@/lib/google-maps";
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 const DEFAULT_TIMEZONE = "Asia/Dhaka";
@@ -319,6 +327,9 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [appliedStatusFilter, setAppliedStatusFilter] = useState<string>("all");
+  const [showArchived, setShowArchived] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
   const [showBannerPreview, setShowBannerPreview] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
@@ -336,8 +347,11 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   const [currentLocationLabel, setCurrentLocationLabel] = useState("Current location");
   const [tempCoords, setTempCoords] = useState({ lat: 23.8103, lng: 90.4125 });
   const [tempAddress, setTempAddress] = useState("");
+  const [mapError, setMapError] = useState("");
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const mapInitializedRef = useRef(false);
+  const tempCoordsRef = useRef(tempCoords);
+  const tempAddressRef = useRef(tempAddress);
   const timezoneOptions = useMemo(
     () => buildTimezoneSelectOptions(form.timezone, detectedTimezone),
     [detectedTimezone, form.timezone],
@@ -362,11 +376,16 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   const formDirty = showForm && JSON.stringify(form) !== JSON.stringify(formBaseline);
   useUnsavedChanges(formDirty && !saving);
 
-  const loadEvents = async (filters?: { search?: string; status?: string }) => {
-    const response = await vendorListEvents({
-      search: filters?.search,
-      status: filters?.status && filters.status !== "all" ? filters.status : undefined,
-    });
+  useEffect(() => {
+    tempCoordsRef.current = tempCoords;
+  }, [tempCoords]);
+
+  useEffect(() => {
+    tempAddressRef.current = tempAddress;
+  }, [tempAddress]);
+
+  const loadEvents = async () => {
+    const response = await vendorListEvents();
     const nextItems = Array.isArray(response.items)
       ? response.items.map((item) => normalizeEvent(item as Record<string, unknown>))
       : [];
@@ -458,101 +477,129 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   useEffect(() => {
     if (!showMapModal || !GOOGLE_MAPS_API_KEY || mapInitializedRef.current) return;
     mapInitializedRef.current = true;
-    let map: any;
+    let map: GoogleMapInstance | undefined;
+    let marker: GoogleMarkerInstance | undefined;
     let cancelled = false;
 
-    (async () => {
-      const loadGoogleMaps = () => new Promise<any>((resolve, reject) => {
-        const existing = (window as any).google?.maps;
-        if (existing) return resolve(existing);
-        const scriptId = "provider-google-maps-script";
-        let script = document.getElementById(scriptId) as HTMLScriptElement | null;
-        if (!script) {
-          script = document.createElement("script");
-          script.id = scriptId;
-          script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}&loading=async`;
-          script.async = true;
-          script.defer = true;
-          document.head.appendChild(script);
-        }
-        script.addEventListener("load", () => resolve((window as any).google?.maps), { once: true });
-        script.addEventListener("error", () => reject(new Error("Google Maps could not be loaded.")), { once: true });
-      });
-      const googleMaps = await loadGoogleMaps();
-      if (cancelled) return;
-      const initialCoords = tempCoords;
-      const mapElement = document.getElementById("event-google-map-element");
-      if (!mapElement) return;
-      const geocoder = new googleMaps.Geocoder();
-      map = new googleMaps.Map(mapElement, {
-        center: initialCoords,
-        zoom: 14,
-        mapTypeControl: false,
-        streetViewControl: false,
-      });
-      const marker = new googleMaps.Marker({ position: initialCoords, map, draggable: true });
-      const reverseGeocode = (position: { lat: number; lng: number }) => {
-        geocoder.geocode({ location: position }, (results: any[], status: string) => {
-          if (cancelled) return;
-          setTempAddress(
-            status === "OK" && results?.[0]?.formatted_address
-              ? results[0].formatted_address
-              : `Coordinate (${position.lat.toFixed(4)}, ${position.lng.toFixed(4)})`,
+    void (async () => {
+      try {
+        const googleMaps = await loadGoogleMaps(GOOGLE_MAPS_API_KEY);
+        if (cancelled) return;
+        const initialCoords = tempCoordsRef.current;
+        const mapElement = document.getElementById("event-google-map-element");
+        if (!mapElement) return;
+        const geocoder = new googleMaps.Geocoder();
+        map = new googleMaps.Map(mapElement, {
+          center: initialCoords,
+          zoom: 14,
+          mapTypeControl: false,
+          streetViewControl: false,
+        });
+        marker = new googleMaps.Marker({ position: initialCoords, map, draggable: true });
+        const reverseGeocode = (position: { lat: number; lng: number }) => {
+          geocoder.geocode(
+            { location: position },
+            (results: GoogleGeocoderResult[] | null, status: string) => {
+              if (cancelled) return;
+              setTempAddress(
+                status === "OK" && results?.[0]?.formatted_address
+                  ? results[0].formatted_address
+                  : `Coordinate (${position.lat.toFixed(4)}, ${position.lng.toFixed(4)})`,
+              );
+            },
           );
-        });
-      };
-      const updateLocation = (latLng: any) => {
-        const next = { lat: Number(latLng.lat()), lng: Number(latLng.lng()) };
-        marker.setPosition(next);
-        setTempCoords(next);
-        reverseGeocode(next);
-      };
-      map.addListener("click", (event: any) => {
-        if (event.latLng) updateLocation(event.latLng);
-      });
-      marker.addListener("dragend", () => {
-        const position = marker.getPosition();
-        if (position) updateLocation(position);
-      });
-      const initialAddress = form.venue.trim() || tempAddress.trim();
-      if (initialAddress.length > 3) {
-        geocoder.geocode({ address: initialAddress }, (results: any[], status: string) => {
-          const location = results?.[0]?.geometry?.location;
-          if (cancelled || status !== "OK" || !location) return;
-          const next = { lat: Number(location.lat()), lng: Number(location.lng()) };
-          map.setCenter(next);
-          marker.setPosition(next);
-          setTempCoords(next);
-          setTempAddress(results[0].formatted_address || initialAddress);
-        });
-      }
-      if (navigator.geolocation && !form.venue.trim() && !tempAddress.trim()) {
-        navigator.geolocation.getCurrentPosition((position) => {
-          const next = { lat: position.coords.latitude, lng: position.coords.longitude };
-          map.setCenter(next);
-          marker.setPosition(next);
+        };
+        const updateLocation = (latLng: GoogleLatLng) => {
+          const next = { lat: Number(latLng.lat()), lng: Number(latLng.lng()) };
+          marker?.setPosition(next);
           setTempCoords(next);
           reverseGeocode(next);
-        }, () => undefined, { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 });
+        };
+        map.addListener("click", (event: GoogleMapMouseEvent) => {
+          if (event.latLng) updateLocation(event.latLng);
+        });
+        marker.addListener("dragend", () => {
+          const position = marker?.getPosition();
+          if (position) updateLocation(position);
+        });
+        const initialTempAddress = tempAddressRef.current.trim();
+        const initialAddress = form.venue.trim() || initialTempAddress;
+        if (initialAddress.length > 3) {
+          geocoder.geocode(
+            { address: initialAddress },
+            (results: GoogleGeocoderResult[] | null, status: string) => {
+              const location = results?.[0]?.geometry?.location;
+              if (cancelled || status !== "OK" || !location || !map || !marker) return;
+              const next = { lat: Number(location.lat()), lng: Number(location.lng()) };
+              map.setCenter(next);
+              marker.setPosition(next);
+              setTempCoords(next);
+              setTempAddress(results?.[0]?.formatted_address || initialAddress);
+            },
+          );
+        }
+        if (navigator.geolocation && !form.venue.trim() && !initialTempAddress) {
+          navigator.geolocation.getCurrentPosition((position) => {
+            if (!map || !marker) return;
+            const next = { lat: position.coords.latitude, lng: position.coords.longitude };
+            map.setCenter(next);
+            marker.setPosition(next);
+            setTempCoords(next);
+            reverseGeocode(next);
+          }, () => undefined, { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 });
+        }
+      } catch (error) {
+        if (cancelled) return;
+        mapInitializedRef.current = false;
+        setMapError(
+          error instanceof Error ? error.message : "Google Maps could not be initialized.",
+        );
       }
     })();
 
     return () => {
       cancelled = true;
-      const googleMaps = (window as any).google?.maps;
-      if (googleMaps && map) googleMaps.event.clearInstanceListeners(map);
+      const googleMaps = window.google?.maps;
+      if (googleMaps?.event && map) googleMaps.event.clearInstanceListeners(map);
+      if (googleMaps?.event && marker) googleMaps.event.clearInstanceListeners(marker);
       mapInitializedRef.current = false;
     };
   }, [form.venue, showMapModal]);
 
   const stats = useMemo(() => {
+    const currentEvents = events.filter((item) => item.status !== "archived");
     return {
-      total: events.length,
-      published: events.filter((item) => item.status === "published").length,
-      draft: events.filter((item) => item.status === "draft").length,
-      cancelled: events.filter((item) => item.status === "cancelled").length,
+      total: currentEvents.length,
+      published: currentEvents.filter((item) => item.status === "published").length,
+      draft: currentEvents.filter((item) => item.status === "draft").length,
+      cancelled: currentEvents.filter((item) => item.status === "cancelled").length,
+      archived: events.filter((item) => item.status === "archived").length,
     };
   }, [events]);
+
+  useEffect(() => {
+    if (!loading && stats.archived === 0 && showArchived) {
+      setShowArchived(false);
+    }
+  }, [loading, showArchived, stats.archived]);
+
+  const visibleEvents = useMemo(() => {
+    const normalizedSearch = appliedSearch.trim().toLowerCase();
+    return events.filter((event) => {
+      if (showArchived ? event.status !== "archived" : event.status === "archived") {
+        return false;
+      }
+      if (!showArchived && appliedStatusFilter !== "all" && event.status !== appliedStatusFilter) {
+        return false;
+      }
+      if (!normalizedSearch) {
+        return true;
+      }
+      return [event.title, event.venue, event.event_type].some((value) =>
+        value.toLowerCase().includes(normalizedSearch),
+      );
+    });
+  }, [appliedSearch, appliedStatusFilter, events, showArchived]);
 
   const resetForm = () => {
     const nextForm = {
@@ -606,6 +653,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
       setStatusMessage("Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to the service-provider app.");
       return;
     }
+    setMapError("");
     setTempAddress(form.venue.trim());
     setShowMapModal(true);
   };
@@ -705,7 +753,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
         await vendorCreateEvent(payload);
         setStatusMessage("Event created.");
       }
-      await loadEvents({ search, status: statusFilter });
+      await loadEvents();
       await queryClient.invalidateQueries({ queryKey: vendorQueryKeys.events() });
       resetForm();
     } catch (error) {
@@ -778,7 +826,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   const handleDelete = async (eventId: string) => {
     try {
       await vendorDeleteEvent(eventId);
-      await loadEvents({ search, status: statusFilter });
+      await loadEvents();
       await queryClient.invalidateQueries({ queryKey: vendorQueryKeys.events() });
       if (editingId === eventId) {
         resetForm();
@@ -794,7 +842,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   const handleStatusChange = async (eventId: string, nextStatus: VendorEventStatus) => {
     try {
       await vendorUpdateEventStatus(eventId, nextStatus);
-      await loadEvents({ search, status: statusFilter });
+      await loadEvents();
       await queryClient.invalidateQueries({ queryKey: vendorQueryKeys.events() });
       setStatusMessage(`Event marked as ${nextStatus}.`);
       return true;
@@ -806,7 +854,9 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
 
   const applyFilters = async () => {
     try {
-      await loadEvents({ search, status: statusFilter });
+      await loadEvents();
+      setAppliedSearch(search);
+      setAppliedStatusFilter(statusFilter);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "Failed to filter events.");
     }
@@ -845,9 +895,31 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
           <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-col gap-5 border-b border-slate-100 px-5 py-5 lg:flex-row lg:items-center lg:justify-between md:px-6">
                 <div>
-                  <h2 className="text-xl font-black text-slate-800">Event List</h2>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h2 className="text-xl font-black text-slate-800">
+                      {showArchived ? "Archived Events" : "Event List"}
+                    </h2>
+                    {stats.archived > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowArchived((current) => !current)}
+                        aria-pressed={showArchived}
+                        className={cn(
+                          "inline-flex h-9 items-center gap-2 rounded-xl border px-3.5 text-xs font-bold transition",
+                          showArchived
+                            ? "border-[#1e2a5e] bg-[#1e2a5e] text-white hover:bg-[#1a2552]"
+                            : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-slate-100",
+                        )}
+                      >
+                        <Archive className="h-3.5 w-3.5" />
+                        {showArchived ? "Back to event list" : `Show archived (${stats.archived})`}
+                      </button>
+                    ) : null}
+                  </div>
                   <p className="mt-1 text-sm text-slate-400">
-                    Allowed categories for this vendor: {categories.join(", ")}.
+                    {showArchived
+                      ? "Archived events are kept separate from your normal event list."
+                      : `Allowed categories for this vendor: ${categories.join(", ")}.${stats.archived > 0 ? " Archived events are hidden." : ""}`}
                   </p>
                 </div>
 
@@ -861,17 +933,22 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                       className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm outline-none transition focus:border-sky-500 focus:bg-white"
                     />
                   </label>
-                  <select
-                    value={statusFilter}
-                    onChange={(event) => setStatusFilter(event.target.value)}
-                    className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-600 outline-none transition focus:border-sky-500 focus:bg-white"
-                  >
-                    <option value="all">All statuses</option>
-                    <option value="draft">Draft</option>
-                    <option value="published">Published</option>
-                    <option value="archived">Archived</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
+                  {showArchived ? (
+                    <div className="flex h-11 items-center rounded-xl border border-slate-200 bg-slate-100 px-4 text-sm font-semibold text-slate-500">
+                      Archived only
+                    </div>
+                  ) : (
+                    <select
+                      value={statusFilter}
+                      onChange={(event) => setStatusFilter(event.target.value)}
+                      className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-600 outline-none transition focus:border-sky-500 focus:bg-white"
+                    >
+                      <option value="all">All statuses</option>
+                      <option value="draft">Draft</option>
+                      <option value="published">Published</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  )}
                   <button
                     onClick={() => void applyFilters()}
                     className="h-11 rounded-xl bg-[#1e2a5e] px-6 text-sm font-bold text-white transition hover:bg-[#1a2552]"
@@ -883,16 +960,20 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
 
               {loading ? (
                 <div className="m-5 h-48 animate-pulse rounded-2xl bg-slate-50" />
-              ) : events.length === 0 ? (
+              ) : visibleEvents.length === 0 ? (
                 <div className="m-5 rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center">
-                  <p className="text-lg font-bold text-slate-700">No events created yet.</p>
+                  <p className="text-lg font-bold text-slate-700">
+                    {showArchived ? "No archived events." : "No events match these filters."}
+                  </p>
                   <p className="mt-2 text-sm text-slate-400">
-                    Start by creating a time-based event with a fixed schedule and registration deadline.
+                    {showArchived
+                      ? "Events you archive will appear here and remain available for review."
+                      : "Try changing the search or status filter, or create a new event."}
                   </p>
                 </div>
               ) : (
                 <div className="space-y-4 p-5 md:p-6">
-                  {events.map((event) => (
+                  {visibleEvents.map((event) => (
                     <article key={event.id} className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm transition hover:border-sky-200 hover:shadow-md">
                       <div className="grid md:grid-cols-[200px_minmax(0,1fr)]">
                         <div className="relative min-h-40 overflow-hidden bg-gradient-to-br from-[#1e2a5e] to-sky-500 md:min-h-full">
@@ -971,19 +1052,27 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                                 onClick={() =>
                                   void handleStatusChange(
                                     event.id,
-                                    event.status === "published" ? "draft" : "published",
+                                    event.status === "published" || event.status === "archived"
+                                      ? "draft"
+                                      : "published",
                                   )
                                 }
                                 className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100"
                               >
-                                {event.status === "published" ? "Move to draft" : "Publish"}
+                                {event.status === "archived"
+                                  ? "Restore to draft"
+                                  : event.status === "published"
+                                    ? "Move to draft"
+                                    : "Publish"}
                               </button>
-                              <button
-                                onClick={() => setPendingEventAction({ event, action: "archive" })}
-                                className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100"
-                              >
-                                Archive
-                              </button>
+                              {event.status !== "archived" ? (
+                                <button
+                                  onClick={() => setPendingEventAction({ event, action: "archive" })}
+                                  className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100"
+                                >
+                                  Archive
+                                </button>
+                              ) : null}
                               <button
                                 onClick={() => setPendingEventAction({ event, action: "delete" })}
                                 className="inline-flex items-center gap-1.5 rounded-lg bg-rose-50 px-3 py-2 text-xs font-bold text-rose-600 transition hover:bg-rose-100"
@@ -1343,7 +1432,13 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
 
             <div className="space-y-5 px-6 py-6">
               <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50">
-                <div id="event-google-map-element" className="h-[420px] w-full" />
+                {mapError ? (
+                  <div className="flex h-[420px] items-center justify-center px-6 text-center text-sm font-semibold text-rose-600">
+                    {mapError}
+                  </div>
+                ) : (
+                  <div id="event-google-map-element" className="h-[420px] w-full" />
+                )}
               </div>
               <div className="rounded-[20px] border border-slate-100 bg-slate-50 px-5 py-4">
                 <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Selected Address</p>
@@ -1367,7 +1462,8 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
               <button
                 type="button"
                 onClick={handleConfirmMapLocation}
-                className="rounded-xl bg-[#1e2a5e] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#1a2552]"
+                disabled={Boolean(mapError)}
+                className="rounded-xl bg-[#1e2a5e] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#1a2552] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Confirm Location
               </button>

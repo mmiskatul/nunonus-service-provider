@@ -13,8 +13,9 @@ export interface TrendPoint {
 
 export function BookingTrendsChart({ trends = [] }: { trends?: TrendPoint[] }) {
   const data = trends.map((point) => ({
-    name: point.name ?? point.period ?? point.month ?? "",
-    value: point.value ?? point.count ?? point.bookings ?? 0,
+    period: point.period ?? point.name ?? point.month ?? "",
+    name: point.name ?? point.month ?? point.period ?? "",
+    value: Number(point.value ?? point.count ?? point.bookings ?? 0),
   }));
   const maxValue = Math.max(...data.map((point) => point.value), 1);
 
