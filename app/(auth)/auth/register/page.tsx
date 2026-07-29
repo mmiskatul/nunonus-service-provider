@@ -149,11 +149,6 @@ const defaultCategories: RegistrationCategoryOption[] = [
     title: "Event",
     desc: "Create events and manage event booking requests.",
   },
-  {
-    id: "Happy Hour",
-    title: "Happy Hour",
-    desc: "Publish recurring time-limited offers separately from events.",
-  },
 ];
 
 function accountRegistrationCategories(

@@ -122,7 +122,9 @@ export function extractVendorCategories(input: unknown): VendorCategory[] {
     .filter((value, index, array): value is VendorCategory => {
       return value !== null && array.indexOf(value) === index;
     });
-  return normalized.length > 0 ? normalized : ["Restaurant"];
+  const categories: VendorCategory[] = normalized.length > 0 ? normalized : ["Restaurant"];
+  if (!categories.includes("Happy Hour")) categories.push("Happy Hour");
+  return categories;
 }
 
 export function readCachedVendorCategories(): VendorCategory[] {
