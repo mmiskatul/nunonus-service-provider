@@ -7,8 +7,8 @@ import {
 
 describe("vendor route access", () => {
   it("normalizes and de-duplicates provider categories", () => {
-    expect(extractVendorCategories(["hotel", "Hotel", "Restaurant"])).toEqual(["Hotel", "Restaurant"]);
-    expect(extractVendorCategories(["Event Venue", "Spa"])).toEqual(["Spa"]);
+    expect(extractVendorCategories(["hotel", "Hotel", "Restaurant"])).toEqual(["Hotel", "Restaurant", "Happy Hour"]);
+    expect(extractVendorCategories(["Event Venue", "Spa"])).toEqual(["Spa", "Happy Hour"]);
   });
 
   it("keeps hotel vendors out of restaurant-only routes", () => {
