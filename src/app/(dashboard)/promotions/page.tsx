@@ -250,7 +250,7 @@ export default function PromotionsPage() {
           <div className="flex justify-end">
             <Link
               href="/promotions/new"
-              className="px-6 py-3 bg-[#1e2a5e] hover:bg-[#1a2552] text-white rounded-xl text-sm font-bold flex items-center gap-2 shadow-xl shadow-slate-900/10 transition-all"
+              className="flex items-center gap-2 rounded-xl bg-[#1e2a5e] px-6 py-3 text-sm font-bold text-white shadow-xl shadow-slate-900/10 transition-all hover:bg-[#1a2552]"
             >
               <Plus className="h-4 w-4" />
               Add Promotion
