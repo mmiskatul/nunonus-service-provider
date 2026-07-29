@@ -22,10 +22,12 @@ describe("vendor route access", () => {
     expect(isRouteAllowedForCategories("/restaurant-bookings", ["Spa"])).toBe(false);
   });
 
-  it("makes event management available to every provider category", () => {
-    expect(isRouteAllowedForCategories("/events", ["Restaurant"])).toBe(true);
-    expect(isRouteAllowedForCategories("/events/new", ["Hotel"])).toBe(true);
-    expect(isRouteAllowedForCategories("/events/event-id", ["Spa"])).toBe(true);
+  it("gates Event and Happy Hour routes through their onboarding modules", () => {
+    expect(isRouteAllowedForCategories("/events", ["Restaurant"])).toBe(false);
+    expect(isRouteAllowedForCategories("/events/new", ["Event"])).toBe(true);
+    expect(isRouteAllowedForCategories("/event-bookings", ["Event"])).toBe(true);
+    expect(isRouteAllowedForCategories("/happy-hours", ["Restaurant"])).toBe(false);
+    expect(isRouteAllowedForCategories("/happy-hours", ["Happy Hour"])).toBe(true);
   });
 
   it("selects a usable fallback for the vendor category", () => {

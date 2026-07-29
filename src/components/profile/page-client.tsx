@@ -28,6 +28,8 @@ const ONBOARDING_CATEGORIES = [
   "Restaurant",
   "Hotel",
   "Spa",
+  "Event",
+  "Happy Hour",
 ] as const;
 
 export type ProfileSettingsData = {

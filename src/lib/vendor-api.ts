@@ -141,6 +141,31 @@ export interface VendorEventPayload {
   status: VendorEventStatus;
 }
 
+export type VendorHappyHourStatus = VendorEventStatus;
+
+export interface VendorHappyHourPayload {
+  title: string;
+  venue_type: "restaurant" | "hotel" | "spa" | "other";
+  offer_text: string;
+  start_date: string;
+  end_date: string;
+  days_of_week: string[];
+  start_time: string;
+  end_time: string;
+  timezone: string;
+  venue: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  original_price?: number | null;
+  happy_hour_price?: number | null;
+  discount_percent?: number | null;
+  description: string;
+  terms_and_conditions: string;
+  banner_image_url?: string | null;
+  active_status: boolean;
+  status: VendorHappyHourStatus;
+}
+
 /** POST /vendor/auth/register/request-code */
 export async function vendorRequestRegisterCode(payload: {
   email_or_phone: string;
@@ -245,6 +270,61 @@ export async function vendorUpdateEventStatus(eventId: string, status: VendorEve
 
 export async function vendorDeleteEvent(eventId: string) {
   return vendorRequest<Record<string, unknown>>(`/vendor/events/${eventId}`, "DELETE");
+}
+
+export async function vendorListHappyHours(
+  params: { search?: string; status?: string } = {},
+  signal?: AbortSignal,
+) {
+  return vendorRequest<Record<string, unknown>>(
+    `/vendor/happy-hours${q(params)}`,
+    "GET",
+    undefined,
+    { signal },
+  );
+}
+
+export async function vendorCreateHappyHour(payload: VendorHappyHourPayload) {
+  return vendorRequest<Record<string, unknown>>(
+    `/vendor/happy-hours`,
+    "POST",
+    payload as unknown as Record<string, unknown>,
+  );
+}
+
+export async function vendorGetHappyHour(happyHourId: string) {
+  return vendorRequest<Record<string, unknown>>(
+    `/vendor/happy-hours/${happyHourId}`,
+  );
+}
+
+export async function vendorUpdateHappyHour(
+  happyHourId: string,
+  payload: VendorHappyHourPayload,
+) {
+  return vendorRequest<Record<string, unknown>>(
+    `/vendor/happy-hours/${happyHourId}`,
+    "PATCH",
+    payload as unknown as Record<string, unknown>,
+  );
+}
+
+export async function vendorUpdateHappyHourStatus(
+  happyHourId: string,
+  status: VendorHappyHourStatus,
+) {
+  return vendorRequest<Record<string, unknown>>(
+    `/vendor/happy-hours/${happyHourId}/status`,
+    "PATCH",
+    { status },
+  );
+}
+
+export async function vendorDeleteHappyHour(happyHourId: string) {
+  return vendorRequest<Record<string, unknown>>(
+    `/vendor/happy-hours/${happyHourId}`,
+    "DELETE",
+  );
 }
 
 // ─── Booking Management ────────────────────────────────────────────────────────

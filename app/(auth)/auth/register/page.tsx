@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { 
   FileText, 
   Upload, 
+  BadgePercent,
+  CalendarPlus2,
   Utensils, 
   Bed, 
   Coffee,
@@ -142,6 +144,16 @@ const defaultCategories: RegistrationCategoryOption[] = [
     title: "Spa",
     desc: "Automate treatment scheduling and therapist availability.",
   },
+  {
+    id: "Event",
+    title: "Event",
+    desc: "Create events and manage event booking requests.",
+  },
+  {
+    id: "Happy Hour",
+    title: "Happy Hour",
+    desc: "Publish recurring time-limited offers separately from events.",
+  },
 ];
 
 function accountRegistrationCategories(
@@ -173,6 +185,8 @@ const categoryIcons: Record<string, React.ComponentType<{ className?: string }>>
   Hotel: Bed,
   Cafe: Coffee,
   Spa: Sparkles,
+  Event: CalendarPlus2,
+  "Happy Hour": BadgePercent,
 };
 
 function getErrorMessage(error: unknown, fallback: string) {

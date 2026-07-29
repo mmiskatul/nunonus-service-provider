@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarPlus2, CalendarRange, Hotel, UtensilsCrossed, Waves } from "lucide-react";
+import { BadgePercent, CalendarPlus2, CalendarRange, Hotel, UtensilsCrossed, Waves } from "lucide-react";
 import { Header } from "@/components/Header";
 import { extractVendorCategories, type VendorCategory } from "@/lib/vendor-access";
 import { useQuery } from "@tanstack/react-query";
@@ -15,9 +15,7 @@ type Operation = {
   category?: VendorCategory;
 };
 
-const SHARED_OPERATIONS: Operation[] = [
-  { title: "Event management", description: "Create, publish, and manage your events.", href: "/events", icon: CalendarPlus2 },
-];
+const SHARED_OPERATIONS: Operation[] = [];
 
 const CATEGORY_OPERATIONS: Record<VendorCategory, Operation[]> = {
   Restaurant: [
@@ -31,6 +29,13 @@ const CATEGORY_OPERATIONS: Record<VendorCategory, Operation[]> = {
   Spa: [
     { title: "Spa bookings", description: "Manage appointments, confirmations, payments, and guest requests.", href: "/spa-bookings", icon: CalendarRange },
     { title: "Spa services", description: "Manage treatments, schedules, and service images.", href: "/spa-services", icon: Waves },
+  ],
+  Event: [
+    { title: "Event management", description: "Create, publish, and manage your events.", href: "/events", icon: CalendarPlus2 },
+    { title: "Event bookings", description: "Review ticket and event booking requests.", href: "/event-bookings", icon: CalendarRange },
+  ],
+  "Happy Hour": [
+    { title: "Happy Hour management", description: "Publish recurring offers with their own schedule and pricing.", href: "/happy-hours", icon: BadgePercent },
   ],
 };
 

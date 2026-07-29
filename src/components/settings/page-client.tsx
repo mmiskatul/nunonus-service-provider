@@ -93,10 +93,16 @@ export type SettingsNotificationData = {
 
 const DEFAULT_CATEGORIES: VendorCategory[] = ["Restaurant"];
 
+function eventCategories(categories: VendorCategory[]): VendorCategory[] {
+  const filtered = categories.filter((category) => category !== "Happy Hour");
+  return filtered.length ? filtered : ["Event"];
+}
+
 function getDefaultEventForm(categories: VendorCategory[]): EventFormState {
+  const availableCategories = eventCategories(categories);
   return {
     title: "",
-    category: categories[0] ?? "Restaurant",
+    category: availableCategories[0] ?? "Event",
     eventType: "",
     bookingMode: "simple",
     eventDate: "",
@@ -242,6 +248,7 @@ export function SettingsPageClient({
   const [locationMapError, setLocationMapError] = useState("");
   const serviceSettingsRef = useRef(serviceSettings);
   const configuredCategories = categories.length ? categories : extractVendorCategories(initialProfile.categories ?? initialProfile.category);
+  const eventCategoryOptions = eventCategories(configuredCategories);
   const availableServiceTabs = (['restaurant', 'hotel', 'spa'] as const).filter((service) => {
     const categoryText = configuredCategories.join(" ").toLowerCase();
     return categoryText.includes(service);
@@ -352,7 +359,9 @@ export function SettingsPageClient({
       setCategories(nextCategories);
       setEventForm((current) => ({
         ...current,
-        category: nextCategories.includes(current.category) ? current.category : nextCategories[0],
+        category: eventCategories(nextCategories).includes(current.category)
+          ? current.category
+          : eventCategories(nextCategories)[0],
       }));
     } catch {
       setCategories(DEFAULT_CATEGORIES);
@@ -465,13 +474,13 @@ export function SettingsPageClient({
   const closeCreateEventModal = () => {
     setShowCreateEventModal(false);
     setEventStatusMessage("");
-    setEventForm(getDefaultEventForm(categories));
+    setEventForm(getDefaultEventForm(eventCategoryOptions));
   };
 
   const openCreateEventModal = () => {
     setShowCreateEventModal(true);
     setEventStatusMessage("");
-    setEventForm(getDefaultEventForm(categories));
+    setEventForm(getDefaultEventForm(eventCategoryOptions));
     void ensureCategoriesLoaded();
   };
 
@@ -554,13 +563,15 @@ export function SettingsPageClient({
                     <h2 className="text-xl font-black text-slate-800 mb-1">Business Settings</h2>
                     <p className="text-sm text-slate-400">Manage public business details and service-specific customer information.</p>
                   </div>
-                  <button
-                    onClick={openCreateEventModal}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1e2a5e] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#1a2552]"
-                  >
-                    <CalendarPlus2 className="h-4 w-4" />
-                    Create Event
-                  </button>
+                  {configuredCategories.includes("Event") ? (
+                    <button
+                      onClick={openCreateEventModal}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1e2a5e] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#1a2552]"
+                    >
+                      <CalendarPlus2 className="h-4 w-4" />
+                      Create Event
+                    </button>
+                  ) : null}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[
@@ -588,7 +599,8 @@ export function SettingsPageClient({
                     className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-700 outline-none focus:border-sky-400 resize-none transition"
                   />
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                {availableServiceTabs.length ? (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
                   <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <h3 className="text-base font-black text-slate-800">Service-specific settings</h3>
@@ -849,6 +861,18 @@ export function SettingsPageClient({
                     <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Booking / cancellation policy</span><input value={serviceSettings[activeServiceTab].policy} onChange={(e) => setServiceSettings((current) => ({ ...current, [activeServiceTab]: { ...current[activeServiceTab], policy: e.target.value } }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400" placeholder="Free cancellation up to 24 hours" /></label>
                   </div>
                 </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center">
+                    <h3 className="text-sm font-black text-slate-800">
+                      No venue service selected
+                    </h3>
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                      Restaurant, Hotel, and Spa settings appear here only when
+                      one of those onboarding modules is enabled. Event and
+                      Happy Hour management remain in their own sections.
+                    </p>
+                  </div>
+                )}
                 <button
                   onClick={handleSaveProfile}
                   disabled={saving || serviceImageUploading !== null}
@@ -1048,7 +1072,7 @@ export function SettingsPageClient({
                     }
                     className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
                   >
-                    {categories.map((category) => (
+                    {eventCategoryOptions.map((category) => (
                       <option key={category} value={category}>
                         {category}
                       </option>

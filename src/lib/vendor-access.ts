@@ -2,6 +2,7 @@
 
 import {
   BarChart3,
+  BadgePercent,
   CalendarRange,
   CalendarPlus2,
   Hotel,
@@ -19,7 +20,12 @@ import {
 export const VENDOR_CATEGORY_CACHE_KEY = "vendor_categories";
 export const VENDOR_CATEGORIES_UPDATED_EVENT = "vendor-categories-updated";
 
-export type VendorCategory = "Restaurant" | "Hotel" | "Spa";
+export type VendorCategory =
+  | "Restaurant"
+  | "Hotel"
+  | "Spa"
+  | "Event"
+  | "Happy Hour";
 
 export type SidebarNavItem = {
   name: string;
@@ -31,14 +37,14 @@ const CATEGORY_VALUES: VendorCategory[] = [
   "Restaurant",
   "Hotel",
   "Spa",
+  "Event",
+  "Happy Hour",
 ];
 
 const ALWAYS_VISIBLE_NAV_ITEMS: SidebarNavItem[] = [
   { name: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
   { name: "Customers", icon: UserCircle2, href: "/customers" },
   { name: "Operations", icon: BriefcaseBusiness, href: "/operations" },
-  { name: "Event Management", icon: CalendarPlus2, href: "/events" },
-  { name: "Event Bookings", icon: CalendarRange, href: "/event-bookings" },
   { name: "Promotions", icon: Tag, href: "/promotions" },
   { name: "Analytics", icon: BarChart3, href: "/analytics" },
   { name: "Loyalty Program", icon: UserCircle2, href: "/loyalty" },
@@ -67,18 +73,29 @@ const CATEGORY_NAV_ITEMS: Record<VendorCategory, SidebarNavItem[]> = {
     { name: "Spa Bookings", icon: CalendarRange, href: "/spa-bookings" },
     { name: "Spa / Services", icon: Waves, href: "/spa-services" },
   ],
+  Event: [
+    { name: "Event Management", icon: CalendarPlus2, href: "/events" },
+    { name: "Event Bookings", icon: CalendarRange, href: "/event-bookings" },
+  ],
+  "Happy Hour": [
+    {
+      name: "Happy Hour Management",
+      icon: BadgePercent,
+      href: "/happy-hours",
+    },
+  ],
 };
 
 const CATEGORY_ROUTE_PREFIXES: Record<VendorCategory, string[]> = {
   Restaurant: ["/restaurant-bookings", "/services"],
   Hotel: ["/hotel-bookings", "/hotel-services"],
   Spa: ["/spa-bookings", "/spa-services"],
+  Event: ["/events", "/event-bookings"],
+  "Happy Hour": ["/happy-hours"],
 };
 
 const SHARED_ALLOWED_PREFIXES = [
   "/dashboard",
-  "/events",
-  "/event-bookings",
   "/promotions",
   "/analytics",
   "/loyalty",

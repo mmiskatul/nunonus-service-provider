@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
-import { CalendarPlus2, Hotel, Megaphone, UtensilsCrossed, Waves } from "lucide-react";
+import { BadgePercent, CalendarPlus2, Hotel, Megaphone, UtensilsCrossed, Waves } from "lucide-react";
 import { Header } from "@/components/Header";
 import { StatsCard } from "@/components/StatsCard";
 import type { TrendPoint } from "@/components/BookingTrendsChart";
@@ -57,14 +57,30 @@ export default function Dashboard() {
     : [];
   const currency = currencyCode(profile);
   const kpis = overview?.kpis;
-  const bookingsHref = categories.includes("Restaurant") ? "/restaurant-bookings" : categories.includes("Hotel") ? "/hotel-bookings" : categories.includes("Spa") ? "/spa-bookings" : "/events";
+  const bookingsHref = categories.includes("Restaurant")
+    ? "/restaurant-bookings"
+    : categories.includes("Hotel")
+      ? "/hotel-bookings"
+      : categories.includes("Spa")
+        ? "/spa-bookings"
+        : categories.includes("Event")
+          ? "/event-bookings"
+          : "/happy-hours";
+  const bookingsLinkLabel =
+    categories.includes("Happy Hour") &&
+    !categories.some((category) =>
+      ["Restaurant", "Hotel", "Spa", "Event"].includes(category),
+    )
+      ? "Manage Happy Hours"
+      : "View today’s bookings";
   const quickActions = [
     categories.includes("Restaurant") ? { label: "Manage menu", href: "/services", icon: UtensilsCrossed } : null,
     categories.includes("Hotel") ? { label: "Add hotel service", href: "/hotel-services/add-service", icon: Hotel } : null,
     categories.includes("Hotel") ? { label: "Update availability", href: "/hotel-services", icon: Hotel } : null,
     categories.includes("Spa") ? { label: "Manage spa services", href: "/spa-services", icon: Waves } : null,
     { label: "Create promotion", href: "/promotions/new", icon: Megaphone },
-    { label: "Create event", href: "/events/new", icon: CalendarPlus2 },
+    categories.includes("Event") ? { label: "Create event", href: "/events/new", icon: CalendarPlus2 } : null,
+    categories.includes("Happy Hour") ? { label: "Manage Happy Hours", href: "/happy-hours", icon: BadgePercent } : null,
   ].filter(Boolean) as Array<{ label: string; href: string; icon: typeof Hotel }>;
   const pendingBookings = (overview?.upcoming_bookings ?? []).filter((booking) => String(booking.status ?? "").toLowerCase() === "pending").length;
   const unpaidBookings = (overview?.upcoming_bookings ?? []).filter((booking) => ["unpaid", "failed"].includes(String(booking.payment_status ?? booking.payment ?? "").toLowerCase())).length;
@@ -82,7 +98,7 @@ export default function Dashboard() {
       <Header />
       <main className="w-full space-y-8 px-4 py-6 sm:px-6 lg:px-8">
         <section aria-labelledby="quick-actions-title" className="space-y-3">
-          <div className="flex items-center justify-between"><h2 id="quick-actions-title" className="text-sm font-bold uppercase tracking-wider text-slate-400">Quick actions</h2><Link href={bookingsHref} prefetch={false} className="text-sm font-bold text-sky-600">View today’s bookings</Link></div>
+          <div className="flex items-center justify-between"><h2 id="quick-actions-title" className="text-sm font-bold uppercase tracking-wider text-slate-400">Quick actions</h2><Link href={bookingsHref} prefetch={false} className="text-sm font-bold text-sky-600">{bookingsLinkLabel}</Link></div>
           <div className="flex gap-3 overflow-x-auto pb-1">{quickActions.map((action) => <Link key={action.href} href={action.href} prefetch={false} className="flex shrink-0 items-center gap-2 rounded-xl border border-slate-100 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:border-sky-200 hover:text-sky-600"><action.icon className="h-4 w-4" />{action.label}</Link>)}</div>
         </section>
 

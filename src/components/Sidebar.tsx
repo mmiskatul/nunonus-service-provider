@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  BadgePercent,
   CalendarPlus2,
   ChevronDown,
   ChevronRight,
@@ -53,10 +54,19 @@ export function Sidebar({
       key: "event",
       name: "Event",
       icon: CalendarPlus2,
-      enabled: true,
+      enabled: categories.includes("Event"),
       links: [
         { href: "/events", label: "Event Management" },
         { href: "/event-bookings", label: "Event Bookings" },
+      ],
+    },
+    {
+      key: "happy-hour",
+      name: "Happy Hour",
+      icon: BadgePercent,
+      enabled: categories.includes("Happy Hour"),
+      links: [
+        { href: "/happy-hours", label: "Happy Hour Management" },
       ],
     },
     {

@@ -28,6 +28,10 @@ const EXACT_HEADERS: Record<string, DashboardHeader> = {
     title: "Create Event",
     description: "Add event details, scheduling, venue, capacity, and pricing.",
   },
+  "/happy-hours": {
+    title: "Happy Hour Management",
+    description: "Create and manage recurring Happy Hour offers separately from events.",
+  },
   "/event-bookings": {
     title: "Event Bookings",
     description: "View and manage booking requests for every event.",

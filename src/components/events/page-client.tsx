@@ -87,9 +87,11 @@ type VendorEventRecord = {
   status: VendorEventStatus;
 };
 
+type EventCategory = Exclude<VendorCategory, "Happy Hour">;
+
 type FormState = {
   title: string;
-  category: VendorCategory;
+  category: EventCategory;
   eventType: string;
   bookingMode: VendorEventBookingMode;
   eventDate: string;
@@ -107,9 +109,16 @@ type FormState = {
   status: VendorEventStatus;
 };
 
-const DEFAULT_CATEGORIES: VendorCategory[] = ["Restaurant"];
+const DEFAULT_CATEGORIES: EventCategory[] = ["Restaurant"];
 
-function getDefaultForm(categories: VendorCategory[]): FormState {
+function eventCategories(categories: VendorCategory[]): EventCategory[] {
+  const filtered = categories.filter(
+    (category): category is EventCategory => category !== "Happy Hour",
+  );
+  return filtered.length > 0 ? filtered : ["Event"];
+}
+
+function getDefaultForm(categories: EventCategory[]): FormState {
   return {
     title: "",
     category: categories[0] ?? "Restaurant",
@@ -313,7 +322,7 @@ function buildSavedLocationLabel(category: string) {
 export function EventsPageClient({ startInCreateMode = false }: { startInCreateMode?: boolean }) {
   const queryClient = useQueryClient();
   const detectedTimezone = useMemo(() => detectBrowserTimezone(), []);
-  const [categories, setCategories] = useState<VendorCategory[]>(DEFAULT_CATEGORIES);
+  const [categories, setCategories] = useState<EventCategory[]>(DEFAULT_CATEGORIES);
   const [events, setEvents] = useState<VendorEventRecord[]>([]);
   const [form, setForm] = useState<FormState>(() => ({
     ...getDefaultForm(DEFAULT_CATEGORIES),
@@ -398,7 +407,9 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
 
   const refreshProfileLocation = async () => {
     const profile = await vendorGetProfileSettings();
-    const nextCategories = extractVendorCategories(profile.categories ?? profile.category);
+    const nextCategories = eventCategories(
+      extractVendorCategories(profile.categories ?? profile.category),
+    );
     const nextSavedLocation = deriveSavedRestaurantLocation(profile);
     setCategories(nextCategories);
     setSavedRestaurantLocation(nextSavedLocation);
@@ -424,7 +435,9 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
       try {
         const profile = await vendorGetProfileSettings();
         if (!active) return;
-        const nextCategories = extractVendorCategories(profile.categories ?? profile.category);
+        const nextCategories = eventCategories(
+          extractVendorCategories(profile.categories ?? profile.category),
+        );
         const nextSavedLocation = deriveSavedRestaurantLocation(profile);
         setCategories(nextCategories);
         setSavedRestaurantLocation(nextSavedLocation);
@@ -806,8 +819,8 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     setFormError("");
     const nextForm: FormState = {
       title: event.title,
-      category: categories.includes(event.category as VendorCategory)
-        ? (event.category as VendorCategory)
+      category: categories.includes(event.category as EventCategory)
+        ? (event.category as EventCategory)
         : categories[0],
       eventType: event.event_type,
       bookingMode: event.booking_mode,
@@ -1171,7 +1184,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                       <select
                         value={form.category}
                         onChange={(event) =>
-                          setForm((prev) => ({ ...prev, category: event.target.value as VendorCategory }))
+                          setForm((prev) => ({ ...prev, category: event.target.value as EventCategory }))
                         }
                         className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
                       >
