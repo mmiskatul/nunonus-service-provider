@@ -1,7 +1,7 @@
 "use client";
 
 import { Header } from "@/components/Header";
-import { vendorGetEvent, vendorListBookings, type VendorEventBookingMode, type VendorEventStatus } from "@/lib/vendor-api";
+import { vendorGetEvent, vendorListBookings, type VendorEventStatus } from "@/lib/vendor-api";
 import { cn } from "@/lib/utils";
 import { CalendarDays, Clock3, MapPin, Tag, Ticket, Users } from "lucide-react";
 import Link from "next/link";
@@ -10,9 +10,7 @@ import { useEffect, useState } from "react";
 type VendorEventRecord = {
   id: string;
   title: string;
-  category: string;
   event_type: string;
-  booking_mode: VendorEventBookingMode;
   event_date: string;
   end_date: string;
   start_time: string;
@@ -46,9 +44,7 @@ function normalizeEvent(row: Record<string, unknown>): VendorEventRecord {
   return {
     id: String(row.id ?? row._id ?? ""),
     title: String(row.title ?? ""),
-    category: String(row.category ?? ""),
     event_type: String(row.event_type ?? ""),
-    booking_mode: String(row.booking_mode ?? "simple").toLowerCase() as VendorEventBookingMode,
     event_date: String(row.event_date ?? ""),
     end_date: String(row.end_date ?? row.event_date ?? ""),
     start_time: String(row.start_time ?? ""),
@@ -152,14 +148,8 @@ export function EventDetailClient({ eventId }: { eventId: string }) {
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={statusClass(event.status)}>{event.status}</span>
-                      <span className="rounded-full bg-[#e8f0ff] px-3 py-1 text-xs font-bold text-[#1e2a5e]">
-                        Venue: {event.category}
-                      </span>
                       <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
                         {event.event_type}
-                      </span>
-                      <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
-                        {event.booking_mode === "detailed" ? "Detailed booking" : "Simple booking"}
                       </span>
                     </div>
                     <h1 className="text-4xl font-black tracking-tight text-slate-900">
@@ -195,11 +185,6 @@ export function EventDetailClient({ eventId }: { eventId: string }) {
                 <DetailCard icon={MapPin} label="Venue" value={event.venue} />
                 <DetailCard icon={Users} label="Capacity" value={`${event.capacity} seats`} />
                 <DetailCard icon={Ticket} label="Ticket Price" value={formatMoney(event.ticket_price)} />
-                <DetailCard
-                  icon={Tag}
-                  label="Booking Flow"
-                  value={event.booking_mode === "detailed" ? "Detailed booking page" : "Simple map booking"}
-                />
                 <DetailCard icon={Tag} label="Timezone" value={event.timezone || "Asia/Dhaka"} />
               </section>
 

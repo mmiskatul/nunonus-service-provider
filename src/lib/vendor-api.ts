@@ -119,13 +119,10 @@ function q(params: Record<string, unknown>): string {
 // ─── Auth ──────────────────────────────────────────────────────────────────────
 
 export type VendorEventStatus = "draft" | "published" | "archived" | "cancelled";
-export type VendorEventBookingMode = "simple" | "detailed";
 
 export interface VendorEventPayload {
   title: string;
-  category: string;
   event_type: EventDiscoveryCategory;
-  booking_mode: VendorEventBookingMode;
   event_date: string;
   end_date: string;
   start_time: string;
@@ -243,7 +240,6 @@ export async function vendorListEvents(
   params: {
     search?: string;
     status?: string;
-    category?: string;
   } = {},
   signal?: AbortSignal,
 ) {

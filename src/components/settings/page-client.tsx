@@ -14,7 +14,6 @@ import {
   vendorUpdatePassword,
   vendorUpdateProfileSettings,
   uploadVendorFile,
-  type VendorEventBookingMode,
   type VendorEventPayload,
   type VendorEventStatus,
 } from "@/lib/vendor-api";
@@ -49,9 +48,7 @@ type ServiceOffer = {
 
 type EventFormState = {
   title: string;
-  category: VendorCategory;
   eventType: EventDiscoveryCategory;
-  bookingMode: VendorEventBookingMode;
   eventDate: string;
   eventEndDate: string;
   startTime: string;
@@ -98,18 +95,10 @@ export type SettingsNotificationData = {
 
 const DEFAULT_CATEGORIES: VendorCategory[] = ["Restaurant"];
 
-function eventCategories(categories: VendorCategory[]): VendorCategory[] {
-  const filtered = categories.filter((category) => category !== "Happy Hour");
-  return filtered.length ? filtered : ["Event"];
-}
-
-function getDefaultEventForm(categories: VendorCategory[]): EventFormState {
-  const availableCategories = eventCategories(categories);
+function getDefaultEventForm(): EventFormState {
   return {
     title: "",
-    category: availableCategories[0] ?? "Event",
     eventType: "Music",
-    bookingMode: "simple",
     eventDate: "",
     eventEndDate: "",
     startTime: "",
@@ -193,9 +182,7 @@ function validateEventForm(form: EventFormState): string | null {
 function toEventPayload(form: EventFormState): VendorEventPayload {
   return {
     title: form.title.trim(),
-    category: form.category,
     event_type: form.eventType,
-    booking_mode: form.bookingMode,
     event_date: form.eventDate,
     end_date: form.eventEndDate,
     start_time: form.startTime,
@@ -254,7 +241,7 @@ export function SettingsPageClient({
     new_review: Boolean(initialNotifications.new_review ?? true),
     platform_updates: Boolean(initialNotifications.platform_updates ?? false),
   });
-  const [eventForm, setEventForm] = useState<EventFormState>(getDefaultEventForm(DEFAULT_CATEGORIES));
+  const [eventForm, setEventForm] = useState<EventFormState>(getDefaultEventForm());
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const locationMapRef = useRef<HTMLDivElement>(null);
   const locationMapInstance = useRef<GoogleMapInstance | null>(null);
@@ -263,7 +250,6 @@ export function SettingsPageClient({
   const [locationMapError, setLocationMapError] = useState("");
   const serviceSettingsRef = useRef(serviceSettings);
   const configuredCategories = categories.length ? categories : extractVendorCategories(initialProfile.categories ?? initialProfile.category);
-  const eventCategoryOptions = eventCategories(configuredCategories);
   const availableServiceTabs = (['restaurant', 'hotel', 'spa'] as const).filter((service) => {
     const categoryText = configuredCategories.join(" ").toLowerCase();
     return categoryText.includes(service);
@@ -372,12 +358,6 @@ export function SettingsPageClient({
       const profile = await vendorGetProfileSettings();
       const nextCategories = extractVendorCategories(profile.categories ?? profile.category);
       setCategories(nextCategories);
-      setEventForm((current) => ({
-        ...current,
-        category: eventCategories(nextCategories).includes(current.category)
-          ? current.category
-          : eventCategories(nextCategories)[0],
-      }));
     } catch {
       setCategories(DEFAULT_CATEGORIES);
     } finally {
@@ -489,13 +469,13 @@ export function SettingsPageClient({
   const closeCreateEventModal = () => {
     setShowCreateEventModal(false);
     setEventStatusMessage("");
-    setEventForm(getDefaultEventForm(eventCategoryOptions));
+    setEventForm(getDefaultEventForm());
   };
 
   const openCreateEventModal = () => {
     setShowCreateEventModal(true);
     setEventStatusMessage("");
-    setEventForm(getDefaultEventForm(eventCategoryOptions));
+    setEventForm(getDefaultEventForm());
     void ensureCategoriesLoaded();
   };
 
@@ -1055,7 +1035,6 @@ export function SettingsPageClient({
                       Event Details
                     </h4>
                     <div className="mt-4 space-y-3 text-sm text-slate-600">
-                      <SummaryRow label="Category" value={eventForm.category} />
                       <SummaryRow label="Timezone" value={eventForm.timezone || "Asia/Dhaka"} />
                       <SummaryRow label="Registration Deadline" value={eventForm.registrationDeadline || "Not set"} />
                       <SummaryRow label="Status" value={eventForm.status} />
@@ -1082,24 +1061,6 @@ export function SettingsPageClient({
                     placeholder="Summer Food Festival"
                   />
                 </Field>
-                <Field label="Venue Service">
-                  <select
-                    value={eventForm.category}
-                    onChange={(event) =>
-                      setEventForm((current) => ({
-                        ...current,
-                        category: event.target.value as VendorCategory,
-                      }))
-                    }
-                    className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
-                  >
-                    {eventCategoryOptions.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
                 <Field label="Event Category">
                   <select
                     value={eventForm.eventType}
@@ -1117,21 +1078,6 @@ export function SettingsPageClient({
                         {category}
                       </option>
                     ))}
-                  </select>
-                </Field>
-                <Field label="Booking Flow">
-                  <select
-                    value={eventForm.bookingMode}
-                    onChange={(event) =>
-                      setEventForm((current) => ({
-                        ...current,
-                        bookingMode: event.target.value as VendorEventBookingMode,
-                      }))
-                    }
-                    className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
-                  >
-                    <option value="simple">Simple map booking</option>
-                    <option value="detailed">Detailed booking page</option>
                   </select>
                 </Field>
                 <Field label="Location">

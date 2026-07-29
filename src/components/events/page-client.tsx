@@ -10,12 +10,10 @@ import {
   vendorUpdateEvent,
   vendorUpdateEventStatus,
   uploadVendorFile,
-  type VendorEventBookingMode,
   type VendorEventPayload,
   type VendorEventStatus,
 } from "@/lib/vendor-api";
 import { cn } from "@/lib/utils";
-import { extractVendorCategories, type VendorCategory } from "@/lib/vendor-access";
 import {
   EVENT_CATEGORY_OPTIONS,
   normalizeEventCategory,
@@ -73,9 +71,7 @@ type LocationOption = {
 type VendorEventRecord = {
   id: string;
   title: string;
-  category: string;
   event_type: EventDiscoveryCategory;
-  booking_mode: VendorEventBookingMode;
   event_date: string;
   end_date: string;
   start_time: string;
@@ -93,13 +89,9 @@ type VendorEventRecord = {
   status: VendorEventStatus;
 };
 
-type EventCategory = Exclude<VendorCategory, "Happy Hour">;
-
 type FormState = {
   title: string;
-  category: EventCategory;
   eventType: EventDiscoveryCategory;
-  bookingMode: VendorEventBookingMode;
   eventDate: string;
   eventEndDate: string;
   startTime: string;
@@ -116,21 +108,10 @@ type FormState = {
   status: VendorEventStatus;
 };
 
-const DEFAULT_CATEGORIES: EventCategory[] = ["Restaurant"];
-
-function eventCategories(categories: VendorCategory[]): EventCategory[] {
-  const filtered = categories.filter(
-    (category): category is EventCategory => category !== "Happy Hour",
-  );
-  return filtered.length > 0 ? filtered : ["Event"];
-}
-
-function getDefaultForm(categories: EventCategory[]): FormState {
+function getDefaultForm(): FormState {
   return {
     title: "",
-    category: categories[0] ?? "Restaurant",
     eventType: "Music",
-    bookingMode: "simple",
     eventDate: "",
     eventEndDate: "",
     startTime: "",
@@ -152,11 +133,9 @@ function normalizeEvent(row: Record<string, unknown>): VendorEventRecord {
   return {
     id: String(row.id ?? row._id ?? ""),
     title: String(row.title ?? ""),
-    category: String(row.category ?? ""),
     event_type: normalizeEventCategory(
       row.event_category ?? row.event_type,
     ),
-    booking_mode: String(row.booking_mode ?? "simple").toLowerCase() as VendorEventBookingMode,
     event_date: String(row.event_date ?? ""),
     end_date: String(row.end_date ?? row.event_date ?? ""),
     start_time: String(row.start_time ?? ""),
@@ -179,9 +158,7 @@ function normalizeEvent(row: Record<string, unknown>): VendorEventRecord {
 function toPayload(form: FormState): VendorEventPayload {
   return {
     title: form.title.trim(),
-    category: form.category,
     event_type: form.eventType,
-    booking_mode: form.bookingMode,
     event_date: form.eventDate,
     end_date: form.eventEndDate,
     start_time: form.startTime,
@@ -320,25 +297,20 @@ function deriveSavedRestaurantLocation(profile: Record<string, unknown>) {
   return "";
 }
 
-function buildSavedLocationLabel(category: string) {
-  const normalizedCategory = category.trim().toLowerCase();
-  if (!normalizedCategory) {
-    return "Your location";
-  }
-  return `Your ${normalizedCategory} location`;
+function buildSavedLocationLabel() {
+  return "Saved business location";
 }
 
 export function EventsPageClient({ startInCreateMode = false }: { startInCreateMode?: boolean }) {
   const queryClient = useQueryClient();
   const detectedTimezone = useMemo(() => detectBrowserTimezone(), []);
-  const [categories, setCategories] = useState<EventCategory[]>(DEFAULT_CATEGORIES);
   const [events, setEvents] = useState<VendorEventRecord[]>([]);
   const [form, setForm] = useState<FormState>(() => ({
-    ...getDefaultForm(DEFAULT_CATEGORIES),
+    ...getDefaultForm(),
     timezone: detectedTimezone,
   }));
   const [formBaseline, setFormBaseline] = useState<FormState>(() => ({
-    ...getDefaultForm(DEFAULT_CATEGORIES),
+    ...getDefaultForm(),
     timezone: detectedTimezone,
   }));
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -383,7 +355,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     if (savedRestaurantLocation) {
       options.push({
         value: savedRestaurantLocation,
-        label: buildSavedLocationLabel(form.category),
+        label: buildSavedLocationLabel(),
       });
     }
     if (currentLocationLabel.trim()) {
@@ -394,7 +366,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
       });
     }
     return options;
-  }, [currentLocationLabel, form.category, savedRestaurantLocation]);
+  }, [currentLocationLabel, savedRestaurantLocation]);
   const formDirty = showForm && JSON.stringify(form) !== JSON.stringify(formBaseline);
   useUnsavedChanges(formDirty && !saving);
 
@@ -416,25 +388,19 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
 
   const refreshProfileLocation = async () => {
     const profile = await vendorGetProfileSettings();
-    const nextCategories = eventCategories(
-      extractVendorCategories(profile.categories ?? profile.category),
-    );
     const nextSavedLocation = deriveSavedRestaurantLocation(profile);
-    setCategories(nextCategories);
     setSavedRestaurantLocation(nextSavedLocation);
     setForm((current) => ({
       ...current,
-      category: nextCategories.includes(current.category) ? current.category : nextCategories[0],
       timezone: current.timezone || detectedTimezone,
       venue: current.venue || nextSavedLocation,
     }));
     setFormBaseline((current) => ({
       ...current,
-      category: nextCategories.includes(current.category) ? current.category : nextCategories[0],
       timezone: current.timezone || detectedTimezone,
       venue: current.venue || nextSavedLocation,
     }));
-    return { nextCategories, nextSavedLocation };
+    return nextSavedLocation;
   };
 
   useEffect(() => {
@@ -444,21 +410,15 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
       try {
         const profile = await vendorGetProfileSettings();
         if (!active) return;
-        const nextCategories = eventCategories(
-          extractVendorCategories(profile.categories ?? profile.category),
-        );
         const nextSavedLocation = deriveSavedRestaurantLocation(profile);
-        setCategories(nextCategories);
         setSavedRestaurantLocation(nextSavedLocation);
         setForm((current) => ({
           ...current,
-          category: nextCategories.includes(current.category) ? current.category : nextCategories[0],
           timezone: current.timezone || detectedTimezone,
           venue: current.venue || nextSavedLocation,
         }));
         setFormBaseline((current) => ({
           ...current,
-          category: nextCategories.includes(current.category) ? current.category : nextCategories[0],
           timezone: current.timezone || detectedTimezone,
           venue: current.venue || nextSavedLocation,
         }));
@@ -636,7 +596,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
 
   const resetForm = () => {
     const nextForm = {
-      ...getDefaultForm(categories),
+      ...getDefaultForm(),
       timezone: detectedTimezone,
       venue: savedRestaurantLocation,
       latitude: null,
@@ -660,16 +620,13 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
 
   const openCreateForm = async () => {
     let nextSavedLocation = savedRestaurantLocation;
-    let nextCategories = categories;
     try {
-      const refreshed = await refreshProfileLocation();
-      nextSavedLocation = refreshed.nextSavedLocation;
-      nextCategories = refreshed.nextCategories;
+      nextSavedLocation = await refreshProfileLocation();
     } catch {
       // Keep the form usable even if the profile refresh fails.
     }
     const nextForm = {
-      ...getDefaultForm(nextCategories),
+      ...getDefaultForm(),
       timezone: detectedTimezone,
       venue: nextSavedLocation,
       latitude: null,
@@ -828,11 +785,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     setFormError("");
     const nextForm: FormState = {
       title: event.title,
-      category: categories.includes(event.category as EventCategory)
-        ? (event.category as EventCategory)
-        : categories[0],
       eventType: event.event_type,
-      bookingMode: event.booking_mode,
       eventDate: event.event_date,
       eventEndDate: event.end_date || event.event_date,
       startTime: event.start_time,
@@ -974,7 +927,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                   <p className="mt-1 text-sm text-slate-400">
                     {showArchived
                       ? "Archived events are kept separate from your normal event list."
-                      : `Available venue services: ${categories.join(", ")}.${stats.archived > 0 ? " Archived events are hidden." : ""}`}
+                      : `Create and manage events.${stats.archived > 0 ? " Archived events are hidden." : ""}`}
                   </p>
                 </div>
 
@@ -1057,14 +1010,8 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                                 {event.title}
                               </Link>
                               <div className="mt-2 flex flex-wrap items-center gap-2">
-                                <span className="rounded-full bg-[#e8f0ff] px-3 py-1 text-[11px] font-bold text-[#1e2a5e]">
-                                  Venue: {event.category}
-                                </span>
                                 <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-600">
                                   {event.event_type}
-                                </span>
-                                <span className="rounded-full bg-violet-50 px-3 py-1 text-[11px] font-bold text-violet-600">
-                                  {event.booking_mode === "detailed" ? "Detailed booking" : "Simple booking"}
                                 </span>
                               </div>
                             </div>
@@ -1197,21 +1144,6 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                     />
                   </Field>
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    <Field label="Venue Service">
-                      <select
-                        value={form.category}
-                        onChange={(event) =>
-                          setForm((prev) => ({ ...prev, category: event.target.value as EventCategory }))
-                        }
-                        className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
-                      >
-                        {categories.map((category) => (
-                          <option key={category} value={category}>
-                            {category}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
                     <Field label="Event Category">
                       <select
                         value={form.eventType}
@@ -1229,21 +1161,6 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                             {category}
                           </option>
                         ))}
-                      </select>
-                    </Field>
-                    <Field label="Booking Flow">
-                      <select
-                        value={form.bookingMode}
-                        onChange={(event) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            bookingMode: event.target.value as VendorEventBookingMode,
-                          }))
-                        }
-                        className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
-                      >
-                        <option value="simple">Simple map booking</option>
-                        <option value="detailed">Detailed booking page</option>
                       </select>
                     </Field>
                     <Field label="Status">
@@ -1671,14 +1588,8 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                   <div className="rounded-[24px] border border-slate-100 bg-slate-50 p-5">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={statusClass(detailEvent.status)}>{detailEvent.status}</span>
-                      <span className="rounded-full bg-[#e8f0ff] px-3 py-1 text-xs font-bold text-[#1e2a5e]">
-                        {detailEvent.category}
-                      </span>
                       <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
                         {detailEvent.event_type}
-                      </span>
-                      <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
-                        {detailEvent.booking_mode === "detailed" ? "Detailed booking" : "Simple booking"}
                       </span>
                     </div>
                     <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -1686,10 +1597,6 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                       <DetailLine label="End Date" value={detailEvent.end_date} />
                       <DetailLine label="Time" value={`${detailEvent.start_time} - ${detailEvent.end_time}`} />
                       <DetailLine label="Timezone" value={detailEvent.timezone || "Asia/Dhaka"} />
-                      <DetailLine
-                        label="Booking Flow"
-                        value={detailEvent.booking_mode === "detailed" ? "Detailed booking page" : "Simple map booking"}
-                      />
                       <DetailLine label="Location" value={detailEvent.venue || "Not set"} />
                       <DetailLine label="Capacity" value={String(detailEvent.capacity)} />
                       <DetailLine label="Ticket Price" value={formatMoney(detailEvent.ticket_price)} />
