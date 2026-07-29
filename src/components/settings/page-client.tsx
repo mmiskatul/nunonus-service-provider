@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/Header";
 import { useToast } from "@/components/ui/ToastProvider";
-import { Bell, CalendarPlus2, Save, Shield, User, X, Hotel, ImagePlus, Utensils, Sparkles, Plus } from "lucide-react";
+import { Bell, CalendarPlus2, BadgePercent, Save, Shield, User, X, Hotel, ImagePlus, Utensils, Sparkles, Plus } from "lucide-react";
 import {
   vendorCreateEvent,
   vendorAddServiceAmenity,
@@ -38,7 +38,7 @@ const GOOGLE_MAPS_MAP_ID =
   process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID";
 
 type SettingsTab = "profile" | "notifications" | "security";
-type ServiceType = "restaurant" | "hotel" | "spa";
+type ServiceType = "restaurant" | "hotel" | "spa" | "event" | "happy_hour";
 
 type ServiceOffer = {
   title: string;
@@ -84,6 +84,8 @@ export type SettingsProfileData = {
   restaurant_settings?: Record<string, any>;
   hotel_settings?: Record<string, any>;
   spa_settings?: Record<string, any>;
+  event_settings?: Record<string, any>;
+  happy_hour_settings?: Record<string, any>;
 };
 
 export type SettingsNotificationData = {
@@ -127,7 +129,9 @@ const SERVICE_AMENITY_OPTIONS = {
   restaurant: ["Free WiFi", "Parking", "Air Conditioning", "Outdoor Seating", "Wheelchair Accessible", "Private Dining", "Family Friendly"],
   hotel: ["Free WiFi", "Parking", "Air Conditioning", "Swimming Pool", "Gym", "Smart TV", "Balcony", "Coffee Maker"],
   spa: ["Free WiFi", "Parking", "Air Conditioning", "Sauna", "Steam Room", "Changing Room", "Showers", "Relaxation Lounge"],
-} satisfies Record<"restaurant" | "hotel" | "spa", string[]>;
+  event: ["Parking", "Accessible", "Family Friendly", "Food Available", "Live Music", "Security"],
+  happy_hour: ["Parking", "Outdoor Seating", "Live Music", "Food Available", "Reservations", "Accessible"],
+} satisfies Record<ServiceType, string[]>;
 const SEATING_PREFERENCE_OPTIONS = ["Indoor", "Outdoor", "Window", "Booth", "Bar", "Private Dining", "No preference"];
 
 function splitServiceTime(value: string) {
@@ -228,6 +232,8 @@ export function SettingsPageClient({
     restaurant: { name: initialProfile.restaurant_settings?.name ?? "", profile_image_url: initialProfile.restaurant_settings?.profile_image_url ?? "", address: initialProfile.restaurant_settings?.address ?? "", city: initialProfile.restaurant_settings?.city ?? "", phone: initialProfile.restaurant_settings?.phone ?? "", email: initialProfile.restaurant_settings?.email ?? "", latitude: initialProfile.restaurant_settings?.latitude ?? "", longitude: initialProfile.restaurant_settings?.longitude ?? "", about: initialProfile.restaurant_settings?.about ?? "", opening_time: initialProfile.restaurant_settings?.opening_time ?? "", closing_time: initialProfile.restaurant_settings?.closing_time ?? "", available_booking_times: initialProfile.restaurant_settings?.available_booking_times ?? [], seating_preferences: initialProfile.restaurant_settings?.seating_preferences ?? ["Indoor", "Outdoor", "No preference"], policy: initialProfile.restaurant_settings?.policy ?? "", amenities: initialProfile.restaurant_settings?.amenities ?? [], special_offers: initialProfile.restaurant_settings?.special_offers ?? [], published: initialProfile.restaurant_settings?.published !== false },
     hotel: { name: initialProfile.hotel_settings?.name ?? "", profile_image_url: initialProfile.hotel_settings?.profile_image_url ?? "", address: initialProfile.hotel_settings?.address ?? "", city: initialProfile.hotel_settings?.city ?? "", phone: initialProfile.hotel_settings?.phone ?? "", email: initialProfile.hotel_settings?.email ?? "", latitude: initialProfile.hotel_settings?.latitude ?? "", longitude: initialProfile.hotel_settings?.longitude ?? "", about: initialProfile.hotel_settings?.about ?? "", opening_time: initialProfile.hotel_settings?.opening_time ?? "", closing_time: initialProfile.hotel_settings?.closing_time ?? "", policy: initialProfile.hotel_settings?.policy ?? "", amenities: initialProfile.hotel_settings?.amenities ?? [], special_offers: initialProfile.hotel_settings?.special_offers ?? [], published: initialProfile.hotel_settings?.published !== false },
     spa: { name: initialProfile.spa_settings?.name ?? "", profile_image_url: initialProfile.spa_settings?.profile_image_url ?? "", address: initialProfile.spa_settings?.address ?? "", city: initialProfile.spa_settings?.city ?? "", phone: initialProfile.spa_settings?.phone ?? "", email: initialProfile.spa_settings?.email ?? "", latitude: initialProfile.spa_settings?.latitude ?? "", longitude: initialProfile.spa_settings?.longitude ?? "", about: initialProfile.spa_settings?.about ?? "", opening_time: initialProfile.spa_settings?.opening_time ?? "", closing_time: initialProfile.spa_settings?.closing_time ?? "", policy: initialProfile.spa_settings?.policy ?? "", amenities: initialProfile.spa_settings?.amenities ?? [], special_offers: initialProfile.spa_settings?.special_offers ?? [], published: initialProfile.spa_settings?.published !== false },
+    event: { name: initialProfile.event_settings?.name ?? "", profile_image_url: initialProfile.event_settings?.profile_image_url ?? "", address: initialProfile.event_settings?.address ?? "", city: initialProfile.event_settings?.city ?? "", phone: initialProfile.event_settings?.phone ?? "", email: initialProfile.event_settings?.email ?? "", latitude: initialProfile.event_settings?.latitude ?? "", longitude: initialProfile.event_settings?.longitude ?? "", about: initialProfile.event_settings?.about ?? "", opening_time: initialProfile.event_settings?.opening_time ?? "", closing_time: initialProfile.event_settings?.closing_time ?? "", policy: initialProfile.event_settings?.policy ?? "", amenities: initialProfile.event_settings?.amenities ?? [], special_offers: initialProfile.event_settings?.special_offers ?? [], published: initialProfile.event_settings?.published !== false },
+    happy_hour: { name: initialProfile.happy_hour_settings?.name ?? "", profile_image_url: initialProfile.happy_hour_settings?.profile_image_url ?? "", address: initialProfile.happy_hour_settings?.address ?? "", city: initialProfile.happy_hour_settings?.city ?? "", phone: initialProfile.happy_hour_settings?.phone ?? "", email: initialProfile.happy_hour_settings?.email ?? "", latitude: initialProfile.happy_hour_settings?.latitude ?? "", longitude: initialProfile.happy_hour_settings?.longitude ?? "", about: initialProfile.happy_hour_settings?.about ?? "", opening_time: initialProfile.happy_hour_settings?.opening_time ?? "", closing_time: initialProfile.happy_hour_settings?.closing_time ?? "", policy: initialProfile.happy_hour_settings?.policy ?? "", amenities: initialProfile.happy_hour_settings?.amenities ?? [], special_offers: initialProfile.happy_hour_settings?.special_offers ?? [], published: initialProfile.happy_hour_settings?.published !== false },
   });
   const [passwordForm, setPasswordForm] = useState({
     old_password: "",
@@ -250,9 +256,9 @@ export function SettingsPageClient({
   const [locationMapError, setLocationMapError] = useState("");
   const serviceSettingsRef = useRef(serviceSettings);
   const configuredCategories = categories.length ? categories : extractVendorCategories(initialProfile.categories ?? initialProfile.category);
-  const availableServiceTabs = (['restaurant', 'hotel', 'spa'] as const).filter((service) => {
+  const availableServiceTabs = (['restaurant', 'hotel', 'spa', 'event', 'happy_hour'] as const).filter((service) => {
     const categoryText = configuredCategories.join(" ").toLowerCase();
-    return categoryText.includes(service);
+    return categoryText.includes(service === "happy_hour" ? "happy hour" : service);
   });
   const visibleServiceTabs = availableServiceTabs.length ? availableServiceTabs : ["restaurant" as const];
   const activeServiceTab = visibleServiceTabs.includes(serviceTab) ? serviceTab : visibleServiceTabs[0];
@@ -410,6 +416,8 @@ export function SettingsPageClient({
           restaurant_settings: serviceSettings.restaurant,
           hotel_settings: serviceSettings.hotel,
           spa_settings: serviceSettings.spa,
+          event_settings: serviceSettings.event,
+          happy_hour_settings: serviceSettings.happy_hour,
         },
       );
       queryClient.setQueryData(vendorQueryKeys.profile, updatedProfile);
@@ -606,6 +614,8 @@ export function SettingsPageClient({
                         ["restaurant", "Restaurant", Utensils],
                         ["hotel", "Hotel", Hotel],
                         ["spa", "Spa", Sparkles],
+                        ["event", "Event", CalendarPlus2],
+                        ["happy_hour", "Happy Hour", BadgePercent],
                       ] as const).filter(([id]) => visibleServiceTabs.includes(id)).map(([id, label, Icon]) => (
                         <button key={id} type="button" onClick={() => setServiceTab(id)} className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold ${activeServiceTab === id ? "bg-[#1e2a5e] text-white" : "text-slate-500 hover:bg-slate-100"}`}>
                           <Icon className="h-3.5 w-3.5" /> {label}

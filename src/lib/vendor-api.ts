@@ -786,7 +786,7 @@ export async function vendorUpdateProfileSettings(
 
 /** GET /vendor/settings/services/:service_type */
 export async function vendorGetServiceSettings(
-  serviceType: "restaurant" | "hotel" | "spa",
+  serviceType: "restaurant" | "hotel" | "spa" | "event" | "happy_hour",
   signal?: AbortSignal,
 ) {
   return vendorRequest<{
@@ -797,7 +797,7 @@ export async function vendorGetServiceSettings(
 
 /** PATCH /vendor/settings/services/:service_type */
 export async function vendorUpdateServiceSettings(
-  serviceType: "restaurant" | "hotel" | "spa",
+  serviceType: "restaurant" | "hotel" | "spa" | "event" | "happy_hour",
   payload: Record<string, unknown>,
 ) {
   const result = await vendorRequest<{
@@ -811,11 +811,11 @@ export async function vendorUpdateServiceSettings(
 
 /** POST /vendor/settings/services/:service_type/amenities */
 export async function vendorAddServiceAmenity(
-  serviceType: "restaurant" | "hotel" | "spa",
+  serviceType: "restaurant" | "hotel" | "spa" | "event" | "happy_hour",
   name: string,
 ) {
   const result = await vendorRequest<{
-    service_type: "restaurant" | "hotel" | "spa";
+    service_type: "restaurant" | "hotel" | "spa" | "event" | "happy_hour";
     amenity: string;
     created: boolean;
     amenities: string[];
