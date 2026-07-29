@@ -25,14 +25,17 @@ import { useUnsavedChanges } from "@/lib/use-unsaved-changes";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   loadGoogleMaps,
+  toGoogleLatLngLiteral,
+  type GoogleAdvancedMarkerInstance,
   type GoogleGeocoderResult,
-  type GoogleLatLng,
   type GoogleMapInstance,
   type GoogleMapMouseEvent,
-  type GoogleMarkerInstance,
+  type GoogleMarkerPosition,
 } from "@/lib/google-maps";
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+const GOOGLE_MAPS_MAP_ID =
+  process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID";
 const DEFAULT_TIMEZONE = "Asia/Dhaka";
 const TIMEZONE_OPTIONS = [
   "Asia/Dhaka",
@@ -323,6 +326,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(startInCreateMode);
   const [statusMessage, setStatusMessage] = useState("");
+  const [formError, setFormError] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
@@ -478,7 +482,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     if (!showMapModal || !GOOGLE_MAPS_API_KEY || mapInitializedRef.current) return;
     mapInitializedRef.current = true;
     let map: GoogleMapInstance | undefined;
-    let marker: GoogleMarkerInstance | undefined;
+    let marker: GoogleAdvancedMarkerInstance | undefined;
     let cancelled = false;
 
     void (async () => {
@@ -492,10 +496,15 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
         map = new googleMaps.Map(mapElement, {
           center: initialCoords,
           zoom: 14,
+          mapId: GOOGLE_MAPS_MAP_ID,
           mapTypeControl: false,
           streetViewControl: false,
         });
-        marker = new googleMaps.Marker({ position: initialCoords, map, draggable: true });
+        marker = new googleMaps.AdvancedMarkerElement({
+          position: initialCoords,
+          map,
+          gmpDraggable: true,
+        });
         const reverseGeocode = (position: { lat: number; lng: number }) => {
           geocoder.geocode(
             { location: position },
@@ -509,9 +518,10 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
             },
           );
         };
-        const updateLocation = (latLng: GoogleLatLng) => {
-          const next = { lat: Number(latLng.lat()), lng: Number(latLng.lng()) };
-          marker?.setPosition(next);
+        const updateLocation = (position: GoogleMarkerPosition) => {
+          const next = toGoogleLatLngLiteral(position);
+          if (!next) return;
+          if (marker) marker.position = next;
           setTempCoords(next);
           reverseGeocode(next);
         };
@@ -519,7 +529,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
           if (event.latLng) updateLocation(event.latLng);
         });
         marker.addListener("dragend", () => {
-          const position = marker?.getPosition();
+          const position = marker?.position;
           if (position) updateLocation(position);
         });
         const initialTempAddress = tempAddressRef.current.trim();
@@ -532,7 +542,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
               if (cancelled || status !== "OK" || !location || !map || !marker) return;
               const next = { lat: Number(location.lat()), lng: Number(location.lng()) };
               map.setCenter(next);
-              marker.setPosition(next);
+              marker.position = next;
               setTempCoords(next);
               setTempAddress(results?.[0]?.formatted_address || initialAddress);
             },
@@ -543,7 +553,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
             if (!map || !marker) return;
             const next = { lat: position.coords.latitude, lng: position.coords.longitude };
             map.setCenter(next);
-            marker.setPosition(next);
+            marker.position = next;
             setTempCoords(next);
             reverseGeocode(next);
           }, () => undefined, { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 });
@@ -562,6 +572,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
       const googleMaps = window.google?.maps;
       if (googleMaps?.event && map) googleMaps.event.clearInstanceListeners(map);
       if (googleMaps?.event && marker) googleMaps.event.clearInstanceListeners(marker);
+      if (marker) marker.map = null;
       mapInitializedRef.current = false;
     };
   }, [form.venue, showMapModal]);
@@ -622,6 +633,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     setDetailError("");
     setDetailEvent(null);
     setTempAddress("");
+    setFormError("");
   };
 
   const openCreateForm = async () => {
@@ -646,11 +658,12 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     setEditingId(null);
     setShowForm(true);
     setTempAddress("");
+    setFormError("");
   };
 
   const openMapPicker = () => {
     if (!GOOGLE_MAPS_API_KEY) {
-      setStatusMessage("Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to the service-provider app.");
+      setFormError("Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to the service-provider app.");
       return;
     }
     setMapError("");
@@ -726,10 +739,11 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   const handleOpenSaveConfirm = () => {
     const validationError = validateForm(form);
     if (validationError) {
-      setStatusMessage(validationError);
+      setFormError(validationError);
       return;
     }
 
+    setFormError("");
     setStatusMessage("");
     setShowSaveConfirm(true);
   };
@@ -737,27 +751,44 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
   const handleSubmit = async () => {
     const validationError = validateForm(form);
     if (validationError) {
-      setStatusMessage(validationError);
+      setFormError(validationError);
       setShowSaveConfirm(false);
       return;
     }
 
     setSaving(true);
+    setFormError("");
     setStatusMessage("");
     try {
       const payload = toPayload(form);
-      if (editingId) {
-        await vendorUpdateEvent(editingId, payload);
-        setStatusMessage("Event updated.");
-      } else {
-        await vendorCreateEvent(payload);
-        setStatusMessage("Event created.");
+      const wasEditing = Boolean(editingId);
+      const savedResponse = editingId
+        ? await vendorUpdateEvent(editingId, payload)
+        : await vendorCreateEvent(payload);
+      const savedEvent = normalizeEvent(savedResponse);
+      if (savedEvent.id) {
+        setEvents((current) => {
+          const existingIndex = current.findIndex((item) => item.id === savedEvent.id);
+          if (existingIndex < 0) return [savedEvent, ...current];
+          return current.map((item, index) =>
+            index === existingIndex ? savedEvent : item,
+          );
+        });
       }
-      await loadEvents();
-      await queryClient.invalidateQueries({ queryKey: vendorQueryKeys.events() });
+
+      const successMessage = wasEditing ? "Event updated." : "Event created.";
+      setStatusMessage(successMessage);
       resetForm();
+      void queryClient.invalidateQueries({ queryKey: vendorQueryKeys.events() });
+      try {
+        await loadEvents();
+      } catch {
+        setStatusMessage(
+          `${successMessage} The latest list could not be refreshed automatically.`,
+        );
+      }
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : "Failed to save event.");
+      setFormError(error instanceof Error ? error.message : "Failed to save event.");
     } finally {
       setShowSaveConfirm(false);
       setSaving(false);
@@ -772,6 +803,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
     setEditingId(event.id);
     setShowForm(true);
     setStatusMessage("");
+    setFormError("");
     const nextForm: FormState = {
       title: event.title,
       category: categories.includes(event.category as VendorCategory)
@@ -1118,6 +1150,14 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
 
             <div className="flex-1 overflow-y-auto px-5 py-5 md:px-6 md:py-5">
               <div className="space-y-4">
+                  {formError ? (
+                    <div
+                      role="alert"
+                      className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700"
+                    >
+                      {formError}
+                    </div>
+                  ) : null}
                   <Field label="Event Title">
                     <input
                       value={form.title}
@@ -1388,20 +1428,33 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-5 py-4 md:px-6">
-              <button
-                onClick={requestCloseForm}
-                className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+            <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 md:flex-row md:items-center md:justify-between md:px-6">
+              <p
+                aria-live="polite"
+                className={cn(
+                  "min-h-5 text-sm font-bold",
+                  formError ? "text-rose-600" : "text-slate-400",
+                )}
               >
-                Cancel
-              </button>
-              <button
-                onClick={handleOpenSaveConfirm}
-                disabled={saving}
-                className="rounded-xl bg-[#1e2a5e] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#1a2552] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {saving ? "Saving..." : editingId ? "Update Event" : "Save Event"}
-              </button>
+                {formError || "Review the details, then save your event."}
+              </p>
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={requestCloseForm}
+                  className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenSaveConfirm}
+                  disabled={saving}
+                  className="rounded-xl bg-[#1e2a5e] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#1a2552] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving ? "Saving..." : editingId ? "Update Event" : "Save Event"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

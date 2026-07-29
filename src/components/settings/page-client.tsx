@@ -22,14 +22,17 @@ import { extractVendorCategories, type VendorCategory } from "@/lib/vendor-acces
 import { vendorQueryKeys } from "@/lib/vendor-queries";
 import {
   loadGoogleMaps,
+  toGoogleLatLngLiteral,
+  type GoogleAdvancedMarkerInstance,
   type GoogleGeocoderResult,
   type GoogleMapInstance,
   type GoogleMapMouseEvent,
-  type GoogleMarkerInstance,
   type ReadyGoogleMaps,
 } from "@/lib/google-maps";
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+const GOOGLE_MAPS_MAP_ID =
+  process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID";
 
 type SettingsTab = "profile" | "notifications" | "security";
 type ServiceType = "restaurant" | "hotel" | "spa";
@@ -234,7 +237,7 @@ export function SettingsPageClient({
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const locationMapRef = useRef<HTMLDivElement>(null);
   const locationMapInstance = useRef<GoogleMapInstance | null>(null);
-  const locationMarkerInstance = useRef<GoogleMarkerInstance | null>(null);
+  const locationMarkerInstance = useRef<GoogleAdvancedMarkerInstance | null>(null);
   const [locationMapOpen, setLocationMapOpen] = useState(false);
   const [locationMapError, setLocationMapError] = useState("");
   const serviceSettingsRef = useRef(serviceSettings);
@@ -272,8 +275,17 @@ export function SettingsPageClient({
       googleMaps = readyMaps;
       const current = serviceSettingsRef.current[activeServiceTab];
       const center = { lat: Number(current.latitude) || 23.8103, lng: Number(current.longitude) || 90.4125 };
-      const map = new readyMaps.Map(locationMapRef.current, { center, zoom: 14, mapTypeControl: false });
-      const marker = new readyMaps.Marker({ position: center, map, draggable: true });
+      const map = new readyMaps.Map(locationMapRef.current, {
+        center,
+        zoom: 14,
+        mapId: GOOGLE_MAPS_MAP_ID,
+        mapTypeControl: false,
+      });
+      const marker = new readyMaps.AdvancedMarkerElement({
+        position: center,
+        map,
+        gmpDraggable: true,
+      });
       const geocoder = new readyMaps.Geocoder();
       const update = (lat: number, lng: number) => {
         geocoder.geocode({ location: { lat, lng } }, (results: GoogleGeocoderResult[] | null, status: string) => {
@@ -287,12 +299,14 @@ export function SettingsPageClient({
       };
       map.addListener("click", (event: GoogleMapMouseEvent) => {
         if (!event.latLng) return;
-        marker.setPosition(event.latLng);
-        update(event.latLng.lat(), event.latLng.lng());
+        const position = toGoogleLatLngLiteral(event.latLng);
+        if (!position) return;
+        marker.position = position;
+        update(position.lat, position.lng);
       });
       marker.addListener("dragend", () => {
-        const position = marker.getPosition();
-        if (position) update(position.lat(), position.lng());
+        const position = toGoogleLatLngLiteral(marker.position);
+        if (position) update(position.lat, position.lng);
       });
       locationMapInstance.current = map;
       locationMarkerInstance.current = marker;
@@ -318,6 +332,9 @@ export function SettingsPageClient({
       }
       if (googleMaps?.event && locationMarkerInstance.current) {
         googleMaps.event.clearInstanceListeners(locationMarkerInstance.current);
+      }
+      if (locationMarkerInstance.current) {
+        locationMarkerInstance.current.map = null;
       }
       locationMapInstance.current = null;
       locationMarkerInstance.current = null;

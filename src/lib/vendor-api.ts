@@ -7,6 +7,7 @@ import {
   cacheVendorCategories,
   clearCachedVendorCategories,
 } from "@/lib/vendor-access";
+import { formatApiError } from "@/lib/api-error";
 
 const DEFAULT_BACKEND_BASE_URL = "https://nunos-backend.vercel.app";
 
@@ -67,10 +68,7 @@ export async function vendorRequest<T>(
     options.signal?.removeEventListener("abort", abortFromCaller);
   }
 
-  const result = (await response.json().catch(() => ({}))) as T & {
-    detail?: string;
-    message?: string;
-  };
+  const result = (await response.json().catch(() => ({}))) as T;
 
   if (!response.ok) {
     if (response.status === 401) {
@@ -80,11 +78,7 @@ export async function vendorRequest<T>(
         window.location.href = `/auth/login?next=${encodeURIComponent(next)}`;
       }
     }
-    const error = new Error(
-      (result as { detail?: string }).detail ||
-        (result as { message?: string }).message ||
-        `Request failed (${response.status})`,
-    );
+    const error = new Error(formatApiError(result, response.status));
     (error as Error & { status?: number }).status = response.status;
     throw error;
   }
@@ -99,17 +93,10 @@ export async function vendorPublicRequest<T>(path: string): Promise<T> {
     cache: "no-store",
   });
 
-  const result = (await response.json().catch(() => ({}))) as T & {
-    detail?: string;
-    message?: string;
-  };
+  const result = (await response.json().catch(() => ({}))) as T;
 
   if (!response.ok) {
-    throw new Error(
-      (result as { detail?: string }).detail ||
-        (result as { message?: string }).message ||
-        `Request failed (${response.status})`,
-    );
+    throw new Error(formatApiError(result, response.status));
   }
 
   return result;

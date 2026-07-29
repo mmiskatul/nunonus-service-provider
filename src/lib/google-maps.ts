@@ -27,10 +27,16 @@ export type GoogleMapInstance = {
   setCenter: (position: GoogleLatLngLiteral) => void;
 };
 
-export type GoogleMarkerInstance = {
+export type GoogleMarkerPosition =
+  | GoogleLatLngLiteral
+  | GoogleLatLng
+  | null
+  | undefined;
+
+export type GoogleAdvancedMarkerInstance = {
   addListener: (eventName: string, handler: () => void) => unknown;
-  getPosition: () => GoogleLatLng | null;
-  setPosition: (position: GoogleLatLngLiteral | GoogleLatLng) => void;
+  map?: GoogleMapInstance | null;
+  position?: GoogleMarkerPosition;
 };
 
 type GoogleGeocoderInstance = {
@@ -45,7 +51,11 @@ type GoogleMapsRuntime = {
     element: HTMLElement,
     options: Record<string, unknown>,
   ) => GoogleMapInstance;
-  Marker?: new (options: Record<string, unknown>) => GoogleMarkerInstance;
+  marker?: {
+    AdvancedMarkerElement?: new (
+      options: Record<string, unknown>,
+    ) => GoogleAdvancedMarkerInstance;
+  };
   Geocoder?: new () => GoogleGeocoderInstance;
   event?: {
     clearInstanceListeners: (instance: object) => void;
@@ -55,7 +65,9 @@ type GoogleMapsRuntime = {
 
 export type ReadyGoogleMaps = {
   Map: NonNullable<GoogleMapsRuntime["Map"]>;
-  Marker: NonNullable<GoogleMapsRuntime["Marker"]>;
+  AdvancedMarkerElement: NonNullable<
+    NonNullable<GoogleMapsRuntime["marker"]>["AdvancedMarkerElement"]
+  >;
   Geocoder: NonNullable<GoogleMapsRuntime["Geocoder"]>;
   event?: GoogleMapsRuntime["event"];
 };
@@ -95,14 +107,17 @@ async function resolveReadyMaps(): Promise<ReadyGoogleMaps | null> {
   }
 
   const MapConstructor = constructorFrom(maps.Map, mapsLibrary.Map);
-  const MarkerConstructor = constructorFrom(maps.Marker, markerLibrary.Marker);
+  const AdvancedMarkerConstructor = constructorFrom(
+    maps.marker?.AdvancedMarkerElement,
+    markerLibrary.AdvancedMarkerElement,
+  );
   const GeocoderConstructor = constructorFrom(
     maps.Geocoder,
     geocodingLibrary.Geocoder,
   );
   if (
     typeof MapConstructor !== "function"
-    || typeof MarkerConstructor !== "function"
+    || typeof AdvancedMarkerConstructor !== "function"
     || typeof GeocoderConstructor !== "function"
   ) {
     return null;
@@ -110,10 +125,25 @@ async function resolveReadyMaps(): Promise<ReadyGoogleMaps | null> {
 
   return {
     Map: MapConstructor as ReadyGoogleMaps["Map"],
-    Marker: MarkerConstructor as ReadyGoogleMaps["Marker"],
+    AdvancedMarkerElement:
+      AdvancedMarkerConstructor as ReadyGoogleMaps["AdvancedMarkerElement"],
     Geocoder: GeocoderConstructor as ReadyGoogleMaps["Geocoder"],
     event: maps.event,
   };
+}
+
+export function toGoogleLatLngLiteral(
+  position: GoogleMarkerPosition,
+): GoogleLatLngLiteral | null {
+  if (!position) return null;
+
+  const latitude =
+    typeof position.lat === "function" ? position.lat() : position.lat;
+  const longitude =
+    typeof position.lng === "function" ? position.lng() : position.lng;
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+
+  return { lat: Number(latitude), lng: Number(longitude) };
 }
 
 export function loadGoogleMaps(apiKey: string): Promise<ReadyGoogleMaps> {

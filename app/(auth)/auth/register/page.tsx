@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
@@ -16,6 +16,17 @@ import {
 } from "lucide-react";
 import { vendorGetPublicLegalDoc } from "@/lib/vendor-api";
 import AuthFeedbackModal from "@/components/auth/auth-feedback-modal";
+import {
+  loadGoogleMaps,
+  toGoogleLatLngLiteral,
+  type GoogleAdvancedMarkerInstance,
+  type GoogleGeocoderResult,
+  type GoogleMapInstance,
+  type GoogleMapMouseEvent,
+} from "@/lib/google-maps";
+
+const GOOGLE_MAPS_MAP_ID =
+  process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID";
 
 type RegisterFormData = {
   businessName: string;
@@ -391,40 +402,47 @@ export default function RegisterPage() {
   const [tempAddress, setTempAddress] = useState("Manhattan, New York");
   const [confirmedCoords, setConfirmedCoords] = useState({ lat: 40.7128, lng: -74.0060 });
   const [hasPinnedLocation, setHasPinnedLocation] = useState(false);
+  const mapSeedRef = useRef({
+    address: formData.address,
+    coords: tempCoords,
+  });
+  mapSeedRef.current = {
+    address: formData.address,
+    coords: tempCoords,
+  };
 
   // Geocode typed address to update background preview map in real-time
   useEffect(() => {
     if (!googleMapsApiKey || formData.address.trim().length <= 3 || hasPinnedLocation) return;
 
+    let cancelled = false;
     const delayDebounce = setTimeout(() => {
-      const google = (window as any).google;
-      if (!google) {
-        // Force-load script if not present
-        const scriptId = "google-maps-js-api-script";
-        if (!document.getElementById(scriptId)) {
-          const script = document.createElement("script");
-          script.id = scriptId;
-          script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places`;
-          script.async = true;
-          script.defer = true;
-          document.head.appendChild(script);
-        }
-        return;
-      }
-
-      const geocoder = new google.maps.Geocoder();
-      geocoder.geocode({ address: formData.address }, (results: any, status: any) => {
-        if (status === "OK" && results[0]) {
-          const loc = results[0].geometry.location;
-          const coords = { lat: loc.lat(), lng: loc.lng() };
-          setConfirmedCoords(coords);
-          setTempCoords(coords);
-          setTempAddress(results[0].formatted_address);
-        }
-      });
+      void loadGoogleMaps(googleMapsApiKey)
+        .then((googleMaps) => {
+          if (cancelled) return;
+          const geocoder = new googleMaps.Geocoder();
+          geocoder.geocode(
+            { address: formData.address },
+            (results: GoogleGeocoderResult[] | null, status: string) => {
+              const location = results?.[0]?.geometry?.location;
+              if (cancelled || status !== "OK" || !location) return;
+              const coords = {
+                lat: Number(location.lat()),
+                lng: Number(location.lng()),
+              };
+              setConfirmedCoords(coords);
+              setTempCoords(coords);
+              setTempAddress(results?.[0]?.formatted_address || formData.address);
+            },
+          );
+        })
+        .catch(() => undefined);
     }, 1200);
 
-    return () => clearTimeout(delayDebounce);
+    return () => {
+      cancelled = true;
+      clearTimeout(delayDebounce);
+    };
   }, [formData.address, googleMapsApiKey, hasPinnedLocation]);
 
   useEffect(() => {
@@ -547,26 +565,52 @@ export default function RegisterPage() {
   useEffect(() => {
     if (!showMapModal || !googleMapsApiKey) return;
 
-    const initMap = () => {
-      const google = (window as any).google;
-      if (!google) return;
-
+    let cancelled = false;
+    let map: GoogleMapInstance | undefined;
+    let marker: GoogleAdvancedMarkerInstance | undefined;
+    void loadGoogleMaps(googleMapsApiKey)
+      .then((googleMaps) => {
+      if (cancelled) return;
       const mapDiv = document.getElementById("google-map-element");
       if (!mapDiv) return;
 
-      let initialCenter = { lat: tempCoords.lat, lng: tempCoords.lng };
-      const map = new google.maps.Map(mapDiv, {
+      const mapSeed = mapSeedRef.current;
+      const initialCenter = mapSeed.coords;
+      map = new googleMaps.Map(mapDiv, {
         center: initialCenter,
         zoom: 14,
+        mapId: GOOGLE_MAPS_MAP_ID,
         disableDefaultUI: false,
         zoomControl: true,
       });
 
-      const marker = new google.maps.Marker({
+      marker = new googleMaps.AdvancedMarkerElement({
         position: initialCenter,
-        map: map,
-        draggable: true,
+        map,
+        gmpDraggable: true,
       });
+      const geocoder = new googleMaps.Geocoder();
+      const reverseGeocode = (position: MapCoords, fallbackLabel: string) => {
+        geocoder.geocode(
+          { location: position },
+          (results: GoogleGeocoderResult[] | null, status: string) => {
+            if (cancelled) return;
+            setTempAddress(
+              status === "OK" && results?.[0]?.formatted_address
+                ? results[0].formatted_address
+                : fallbackLabel,
+            );
+          },
+        );
+      };
+      const updateLocation = (position: MapCoords) => {
+        if (marker) marker.position = position;
+        setTempCoords(position);
+        reverseGeocode(
+          position,
+          `Coordinate (${position.lat.toFixed(4)}, ${position.lng.toFixed(4)})`,
+        );
+      };
 
       const tryGeolocation = () => {
         if (navigator.geolocation) {
@@ -576,18 +620,13 @@ export default function RegisterPage() {
                 lat: position.coords.latitude,
                 lng: position.coords.longitude,
               };
-              map.setCenter(pos);
-              marker.setPosition(pos);
+              map?.setCenter(pos);
+              if (marker) marker.position = pos;
               setTempCoords(pos);
-
-              const geocoder = new google.maps.Geocoder();
-              geocoder.geocode({ location: pos }, (results: any, status: any) => {
-                if (status === "OK" && results[0]) {
-                  setTempAddress(results[0].formatted_address);
-                } else {
-                  setTempAddress(`Current Location (${pos.lat.toFixed(4)}, ${pos.lng.toFixed(4)})`);
-                }
-              });
+              reverseGeocode(
+                pos,
+                `Current Location (${pos.lat.toFixed(4)}, ${pos.lng.toFixed(4)})`,
+              );
             },
             () => {
               // Geolocation failed or denied
@@ -597,15 +636,18 @@ export default function RegisterPage() {
       };
 
       // Check if user has entered a business address first
-      if (formData.address.trim().length > 3) {
-        const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({ address: formData.address }, (results: any, status: any) => {
-          if (status === "OK" && results[0]) {
-            const loc = results[0].geometry.location;
-            map.setCenter(loc);
-            marker.setPosition(loc);
-            setTempCoords({ lat: loc.lat(), lng: loc.lng() });
-            setTempAddress(results[0].formatted_address);
+      if (mapSeed.address.trim().length > 3) {
+        geocoder.geocode({ address: mapSeed.address }, (results: GoogleGeocoderResult[] | null, status: string) => {
+          const location = results?.[0]?.geometry?.location;
+          if (status === "OK" && location) {
+            const position = {
+              lat: Number(location.lat()),
+              lng: Number(location.lng()),
+            };
+            map?.setCenter(position);
+            if (marker) marker.position = position;
+            setTempCoords(position);
+            setTempAddress(results?.[0]?.formatted_address || mapSeed.address);
           } else {
             tryGeolocation();
           }
@@ -615,66 +657,25 @@ export default function RegisterPage() {
       }
 
       // Handle map clicks
-      map.addListener("click", (e: any) => {
-        const lat = e.latLng.lat();
-        const lng = e.latLng.lng();
-        marker.setPosition(e.latLng);
-        setTempCoords({ lat, lng });
-
-        const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({ location: e.latLng }, (results: any, status: any) => {
-          if (status === "OK" && results[0]) {
-            setTempAddress(results[0].formatted_address);
-          } else {
-            setTempAddress(`Coordinate (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
-          }
-        });
+      map.addListener("click", (event: GoogleMapMouseEvent) => {
+        const position = toGoogleLatLngLiteral(event.latLng);
+        if (position) updateLocation(position);
       });
 
       // Handle marker drags
       marker.addListener("dragend", () => {
-        const pos = marker.getPosition();
-        if (!pos) return;
-        const lat = pos.lat();
-        const lng = pos.lng();
-        setTempCoords({ lat, lng });
-
-        const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({ location: pos }, (results: any, status: any) => {
-          if (status === "OK" && results[0]) {
-            setTempAddress(results[0].formatted_address);
-          } else {
-            setTempAddress(`Coordinate (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
-          }
-        });
+        const position = toGoogleLatLngLiteral(marker?.position);
+        if (position) updateLocation(position);
       });
-    };
-
-    if ((window as any).google) {
-      initMap();
-      return;
-    }
-
-    const scriptId = "google-maps-js-api-script";
-    let script = document.getElementById(scriptId) as HTMLScriptElement;
-
-    if (!script) {
-      script = document.createElement("script");
-      script.id = scriptId;
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places`;
-      script.async = true;
-      script.defer = true;
-      document.head.appendChild(script);
-    }
-
-    const handleScriptLoad = () => {
-      initMap();
-    };
-
-    script.addEventListener("load", handleScriptLoad);
+      })
+      .catch(() => undefined);
 
     return () => {
-      script.removeEventListener("load", handleScriptLoad);
+      cancelled = true;
+      const googleMaps = window.google?.maps;
+      if (googleMaps?.event && map) googleMaps.event.clearInstanceListeners(map);
+      if (googleMaps?.event && marker) googleMaps.event.clearInstanceListeners(marker);
+      if (marker) marker.map = null;
     };
   }, [showMapModal, googleMapsApiKey]);
 
