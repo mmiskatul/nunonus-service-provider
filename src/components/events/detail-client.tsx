@@ -153,7 +153,7 @@ export function EventDetailClient({ eventId }: { eventId: string }) {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={statusClass(event.status)}>{event.status}</span>
                       <span className="rounded-full bg-[#e8f0ff] px-3 py-1 text-xs font-bold text-[#1e2a5e]">
-                        {event.category}
+                        Venue: {event.category}
                       </span>
                       <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
                         {event.event_type}

@@ -8,6 +8,7 @@ import {
   clearCachedVendorCategories,
 } from "@/lib/vendor-access";
 import { formatApiError } from "@/lib/api-error";
+import type { EventDiscoveryCategory } from "@/lib/event-categories";
 
 const DEFAULT_BACKEND_BASE_URL = "https://nunos-backend.vercel.app";
 
@@ -123,7 +124,7 @@ export type VendorEventBookingMode = "simple" | "detailed";
 export interface VendorEventPayload {
   title: string;
   category: string;
-  event_type: string;
+  event_type: EventDiscoveryCategory;
   booking_mode: VendorEventBookingMode;
   event_date: string;
   end_date: string;

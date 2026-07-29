@@ -19,6 +19,10 @@ import {
   type VendorEventStatus,
 } from "@/lib/vendor-api";
 import { extractVendorCategories, type VendorCategory } from "@/lib/vendor-access";
+import {
+  EVENT_CATEGORY_OPTIONS,
+  type EventDiscoveryCategory,
+} from "@/lib/event-categories";
 import { vendorQueryKeys } from "@/lib/vendor-queries";
 import {
   loadGoogleMaps,
@@ -46,7 +50,7 @@ type ServiceOffer = {
 type EventFormState = {
   title: string;
   category: VendorCategory;
-  eventType: string;
+  eventType: EventDiscoveryCategory;
   bookingMode: VendorEventBookingMode;
   eventDate: string;
   eventEndDate: string;
@@ -104,7 +108,7 @@ function getDefaultEventForm(categories: VendorCategory[]): EventFormState {
   return {
     title: "",
     category: availableCategories[0] ?? "Event",
-    eventType: "",
+    eventType: "Music",
     bookingMode: "simple",
     eventDate: "",
     eventEndDate: "",
@@ -166,7 +170,9 @@ function normalizeServiceOffers(value: unknown): ServiceOffer[] {
 
 function validateEventForm(form: EventFormState): string | null {
   if (!form.title.trim()) return "Event title is required.";
-  if (!form.eventType.trim()) return "Event type is required.";
+  if (!EVENT_CATEGORY_OPTIONS.includes(form.eventType)) {
+    return "Select a valid event category.";
+  }
   if (!form.eventDate) return "Event start date is required.";
   if (!form.eventEndDate) return "Event end date is required.";
   if (form.eventEndDate < form.eventDate) {
@@ -188,7 +194,7 @@ function toEventPayload(form: EventFormState): VendorEventPayload {
   return {
     title: form.title.trim(),
     category: form.category,
-    event_type: form.eventType.trim(),
+    event_type: form.eventType,
     booking_mode: form.bookingMode,
     event_date: form.eventDate,
     end_date: form.eventEndDate,
@@ -1076,7 +1082,7 @@ export function SettingsPageClient({
                     placeholder="Summer Food Festival"
                   />
                 </Field>
-                <Field label="Category">
+                <Field label="Venue Service">
                   <select
                     value={eventForm.category}
                     onChange={(event) =>
@@ -1094,13 +1100,24 @@ export function SettingsPageClient({
                     ))}
                   </select>
                 </Field>
-                <Field label="Event Type">
-                  <input
+                <Field label="Event Category">
+                  <select
                     value={eventForm.eventType}
-                    onChange={(event) => setEventForm((current) => ({ ...current, eventType: event.target.value }))}
+                    onChange={(event) =>
+                      setEventForm((current) => ({
+                        ...current,
+                        eventType: event.target
+                          .value as EventDiscoveryCategory,
+                      }))
+                    }
                     className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
-                    placeholder="Dinner, Concert, Workshop"
-                  />
+                  >
+                    {EVENT_CATEGORY_OPTIONS.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
                 </Field>
                 <Field label="Booking Flow">
                   <select

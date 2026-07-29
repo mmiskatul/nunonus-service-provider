@@ -16,6 +16,11 @@ import {
 } from "@/lib/vendor-api";
 import { cn } from "@/lib/utils";
 import { extractVendorCategories, type VendorCategory } from "@/lib/vendor-access";
+import {
+  EVENT_CATEGORY_OPTIONS,
+  normalizeEventCategory,
+  type EventDiscoveryCategory,
+} from "@/lib/event-categories";
 import { Archive, CalendarDays, CheckCircle2, CircleX, Clock3, Eye, FilePenLine, MapPin, Pencil, Plus, Search, Trash2, Upload, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
@@ -69,7 +74,7 @@ type VendorEventRecord = {
   id: string;
   title: string;
   category: string;
-  event_type: string;
+  event_type: EventDiscoveryCategory;
   booking_mode: VendorEventBookingMode;
   event_date: string;
   end_date: string;
@@ -93,7 +98,7 @@ type EventCategory = Exclude<VendorCategory, "Happy Hour">;
 type FormState = {
   title: string;
   category: EventCategory;
-  eventType: string;
+  eventType: EventDiscoveryCategory;
   bookingMode: VendorEventBookingMode;
   eventDate: string;
   eventEndDate: string;
@@ -124,7 +129,7 @@ function getDefaultForm(categories: EventCategory[]): FormState {
   return {
     title: "",
     category: categories[0] ?? "Restaurant",
-    eventType: "",
+    eventType: "Music",
     bookingMode: "simple",
     eventDate: "",
     eventEndDate: "",
@@ -148,7 +153,9 @@ function normalizeEvent(row: Record<string, unknown>): VendorEventRecord {
     id: String(row.id ?? row._id ?? ""),
     title: String(row.title ?? ""),
     category: String(row.category ?? ""),
-    event_type: String(row.event_type ?? ""),
+    event_type: normalizeEventCategory(
+      row.event_category ?? row.event_type,
+    ),
     booking_mode: String(row.booking_mode ?? "simple").toLowerCase() as VendorEventBookingMode,
     event_date: String(row.event_date ?? ""),
     end_date: String(row.end_date ?? row.event_date ?? ""),
@@ -173,7 +180,7 @@ function toPayload(form: FormState): VendorEventPayload {
   return {
     title: form.title.trim(),
     category: form.category,
-    event_type: form.eventType.trim(),
+    event_type: form.eventType,
     booking_mode: form.bookingMode,
     event_date: form.eventDate,
     end_date: form.eventEndDate,
@@ -195,7 +202,9 @@ function toPayload(form: FormState): VendorEventPayload {
 
 function validateForm(form: FormState): string | null {
   if (!form.title.trim()) return "Event title is required.";
-  if (!form.eventType.trim()) return "Event type is required.";
+  if (!EVENT_CATEGORY_OPTIONS.includes(form.eventType)) {
+    return "Select a valid event category.";
+  }
   if (!form.eventDate) return "Event start date is required.";
   if (!form.eventEndDate) return "Event end date is required.";
   if (form.eventEndDate < form.eventDate) {
@@ -965,7 +974,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                   <p className="mt-1 text-sm text-slate-400">
                     {showArchived
                       ? "Archived events are kept separate from your normal event list."
-                      : `Allowed categories for this vendor: ${categories.join(", ")}.${stats.archived > 0 ? " Archived events are hidden." : ""}`}
+                      : `Available venue services: ${categories.join(", ")}.${stats.archived > 0 ? " Archived events are hidden." : ""}`}
                   </p>
                 </div>
 
@@ -975,7 +984,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                     <input
                       value={search}
                       onChange={(event) => setSearch(event.target.value)}
-                      placeholder="Search events, venues, or event types"
+                      placeholder="Search events, venues, or event categories"
                       className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm outline-none transition focus:border-sky-500 focus:bg-white"
                     />
                   </label>
@@ -1049,7 +1058,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                               </Link>
                               <div className="mt-2 flex flex-wrap items-center gap-2">
                                 <span className="rounded-full bg-[#e8f0ff] px-3 py-1 text-[11px] font-bold text-[#1e2a5e]">
-                                  {event.category}
+                                  Venue: {event.category}
                                 </span>
                                 <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-600">
                                   {event.event_type}
@@ -1188,7 +1197,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                     />
                   </Field>
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    <Field label="Category">
+                    <Field label="Venue Service">
                       <select
                         value={form.category}
                         onChange={(event) =>
@@ -1203,13 +1212,24 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                         ))}
                       </select>
                     </Field>
-                    <Field label="Event Type">
-                      <input
+                    <Field label="Event Category">
+                      <select
                         value={form.eventType}
-                        onChange={(event) => setForm((prev) => ({ ...prev, eventType: event.target.value }))}
+                        onChange={(event) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            eventType: event.target
+                              .value as EventDiscoveryCategory,
+                          }))
+                        }
                         className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
-                        placeholder="Corporate Gala"
-                      />
+                      >
+                        {EVENT_CATEGORY_OPTIONS.map((category) => (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        ))}
+                      </select>
                     </Field>
                     <Field label="Booking Flow">
                       <select
