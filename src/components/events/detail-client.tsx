@@ -14,6 +14,7 @@ type VendorEventRecord = {
   event_type: string;
   booking_mode: VendorEventBookingMode;
   event_date: string;
+  end_date: string;
   start_time: string;
   end_time: string;
   timezone?: string;
@@ -49,6 +50,7 @@ function normalizeEvent(row: Record<string, unknown>): VendorEventRecord {
     event_type: String(row.event_type ?? ""),
     booking_mode: String(row.booking_mode ?? "simple").toLowerCase() as VendorEventBookingMode,
     event_date: String(row.event_date ?? ""),
+    end_date: String(row.end_date ?? row.event_date ?? ""),
     start_time: String(row.start_time ?? ""),
     end_time: String(row.end_time ?? ""),
     timezone: String(row.timezone ?? "Asia/Dhaka"),
@@ -187,7 +189,8 @@ export function EventDetailClient({ eventId }: { eventId: string }) {
               </section>
 
               <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                <DetailCard icon={CalendarDays} label="Event Date" value={event.event_date} />
+                <DetailCard icon={CalendarDays} label="Start Date" value={event.event_date} />
+                <DetailCard icon={CalendarDays} label="End Date" value={event.end_date} />
                 <DetailCard icon={Clock3} label="Time" value={`${event.start_time} - ${event.end_time}`} />
                 <DetailCard icon={MapPin} label="Venue" value={event.venue} />
                 <DetailCard icon={Users} label="Capacity" value={`${event.capacity} seats`} />

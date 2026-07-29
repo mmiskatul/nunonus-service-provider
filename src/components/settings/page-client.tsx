@@ -49,6 +49,7 @@ type EventFormState = {
   eventType: string;
   bookingMode: VendorEventBookingMode;
   eventDate: string;
+  eventEndDate: string;
   startTime: string;
   endTime: string;
   timezone: string;
@@ -106,6 +107,7 @@ function getDefaultEventForm(categories: VendorCategory[]): EventFormState {
     eventType: "",
     bookingMode: "simple",
     eventDate: "",
+    eventEndDate: "",
     startTime: "",
     endTime: "",
     timezone: "Asia/Dhaka",
@@ -165,10 +167,16 @@ function normalizeServiceOffers(value: unknown): ServiceOffer[] {
 function validateEventForm(form: EventFormState): string | null {
   if (!form.title.trim()) return "Event title is required.";
   if (!form.eventType.trim()) return "Event type is required.";
-  if (!form.eventDate) return "Event date is required.";
+  if (!form.eventDate) return "Event start date is required.";
+  if (!form.eventEndDate) return "Event end date is required.";
+  if (form.eventEndDate < form.eventDate) {
+    return "Event end date cannot be earlier than the start date.";
+  }
   if (!form.startTime) return "Start time is required.";
   if (!form.endTime) return "End time is required.";
-  if (form.endTime <= form.startTime) return "End time must be later than start time.";
+  if (form.eventEndDate === form.eventDate && form.endTime <= form.startTime) {
+    return "End time must be later than start time for a one-day event.";
+  }
   if (!form.venue.trim()) return "Location is required.";
   if (!form.capacity.trim() || Number(form.capacity) <= 0) return "Capacity must be greater than zero.";
   if (!form.ticketPrice.trim() || Number(form.ticketPrice) < 0) return "Ticket price must be zero or more.";
@@ -183,6 +191,7 @@ function toEventPayload(form: EventFormState): VendorEventPayload {
     event_type: form.eventType.trim(),
     booking_mode: form.bookingMode,
     event_date: form.eventDate,
+    end_date: form.eventEndDate,
     start_time: form.startTime,
     end_time: form.endTime,
     timezone: form.timezone.trim() || "Asia/Dhaka",
@@ -1020,7 +1029,13 @@ export function SettingsPageClient({
                       {eventForm.venue || "your selected location"}
                     </p>
                     <div className="mt-5 space-y-2 text-sm text-white/80">
-                      <p>Date: {eventForm.eventDate || "Not selected"}</p>
+                      <p>
+                        Date: {eventForm.eventDate || "Not selected"}
+                        {eventForm.eventEndDate &&
+                        eventForm.eventEndDate !== eventForm.eventDate
+                          ? ` to ${eventForm.eventEndDate}`
+                          : ""}
+                      </p>
                       <p>
                         Time: {eventForm.startTime || "--:--"} to {eventForm.endTime || "--:--"}
                       </p>
@@ -1110,11 +1125,35 @@ export function SettingsPageClient({
                     placeholder="Main Hall"
                   />
                 </Field>
-                <Field label="Event Date">
+                <Field label="Start Date">
                   <input
                     type="date"
                     value={eventForm.eventDate}
-                    onChange={(event) => setEventForm((current) => ({ ...current, eventDate: event.target.value }))}
+                    onChange={(event) =>
+                      setEventForm((current) => ({
+                        ...current,
+                        eventDate: event.target.value,
+                        eventEndDate:
+                          !current.eventEndDate ||
+                          current.eventEndDate < event.target.value
+                            ? event.target.value
+                            : current.eventEndDate,
+                      }))
+                    }
+                    className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
+                  />
+                </Field>
+                <Field label="End Date">
+                  <input
+                    type="date"
+                    min={eventForm.eventDate || undefined}
+                    value={eventForm.eventEndDate}
+                    onChange={(event) =>
+                      setEventForm((current) => ({
+                        ...current,
+                        eventEndDate: event.target.value,
+                      }))
+                    }
                     className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
                   />
                 </Field>
@@ -1165,7 +1204,7 @@ export function SettingsPageClient({
                 </Field>
                 <Field label="Registration Deadline">
                   <input
-                    type="datetime-local"
+                    type="date"
                     value={eventForm.registrationDeadline}
                     onChange={(event) =>
                       setEventForm((current) => ({

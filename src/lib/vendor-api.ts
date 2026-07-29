@@ -126,6 +126,7 @@ export interface VendorEventPayload {
   event_type: string;
   booking_mode: VendorEventBookingMode;
   event_date: string;
+  end_date: string;
   start_time: string;
   end_time: string;
   timezone: string;

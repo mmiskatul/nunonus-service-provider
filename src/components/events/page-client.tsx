@@ -72,6 +72,7 @@ type VendorEventRecord = {
   event_type: string;
   booking_mode: VendorEventBookingMode;
   event_date: string;
+  end_date: string;
   start_time: string;
   end_time: string;
   timezone?: string;
@@ -95,6 +96,7 @@ type FormState = {
   eventType: string;
   bookingMode: VendorEventBookingMode;
   eventDate: string;
+  eventEndDate: string;
   startTime: string;
   endTime: string;
   timezone: string;
@@ -125,6 +127,7 @@ function getDefaultForm(categories: EventCategory[]): FormState {
     eventType: "",
     bookingMode: "simple",
     eventDate: "",
+    eventEndDate: "",
     startTime: "",
     endTime: "",
     timezone: DEFAULT_TIMEZONE,
@@ -148,6 +151,7 @@ function normalizeEvent(row: Record<string, unknown>): VendorEventRecord {
     event_type: String(row.event_type ?? ""),
     booking_mode: String(row.booking_mode ?? "simple").toLowerCase() as VendorEventBookingMode,
     event_date: String(row.event_date ?? ""),
+    end_date: String(row.end_date ?? row.event_date ?? ""),
     start_time: String(row.start_time ?? ""),
     end_time: String(row.end_time ?? ""),
     timezone: String(row.timezone ?? DEFAULT_TIMEZONE),
@@ -172,6 +176,7 @@ function toPayload(form: FormState): VendorEventPayload {
     event_type: form.eventType.trim(),
     booking_mode: form.bookingMode,
     event_date: form.eventDate,
+    end_date: form.eventEndDate,
     start_time: form.startTime,
     end_time: form.endTime,
     timezone: form.timezone.trim() || DEFAULT_TIMEZONE,
@@ -191,16 +196,19 @@ function toPayload(form: FormState): VendorEventPayload {
 function validateForm(form: FormState): string | null {
   if (!form.title.trim()) return "Event title is required.";
   if (!form.eventType.trim()) return "Event type is required.";
-  if (!form.eventDate) return "Event date is required.";
+  if (!form.eventDate) return "Event start date is required.";
+  if (!form.eventEndDate) return "Event end date is required.";
+  if (form.eventEndDate < form.eventDate) {
+    return "Event end date cannot be earlier than the start date.";
+  }
   if (!form.startTime) return "Start time is required.";
   if (!form.endTime) return "End time is required.";
-  if (form.endTime <= form.startTime) return "End time must be later than start time.";
+  if (form.eventEndDate === form.eventDate && form.endTime <= form.startTime) {
+    return "End time must be later than start time for a one-day event.";
+  }
   if (!form.venue.trim()) return "Location is required.";
   if (!form.capacity.trim() || Number(form.capacity) <= 0) return "Capacity must be greater than zero.";
   if (!form.ticketPrice.trim() || Number(form.ticketPrice) < 0) return "Ticket price must be zero or more.";
-  if (form.registrationDeadline && !form.registrationDeadline.includes("T")) {
-    return "Registration deadline must include both date and time.";
-  }
   if (!form.description.trim()) return "Description is required.";
   return null;
 }
@@ -225,15 +233,7 @@ function formatEventDate(value: string) {
 }
 
 function formatRegistrationDeadline(value: string) {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value.replace("T", " ");
-  return new Intl.DateTimeFormat("en-US", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(parsed);
+  return formatEventDate(value.slice(0, 10));
 }
 
 function detectBrowserTimezone() {
@@ -825,6 +825,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
       eventType: event.event_type,
       bookingMode: event.booking_mode,
       eventDate: event.event_date,
+      eventEndDate: event.end_date || event.event_date,
       startTime: event.start_time,
       endTime: event.end_time,
       timezone: event.timezone || detectedTimezone,
@@ -833,7 +834,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
       longitude: event.longitude ?? null,
       capacity: String(event.capacity),
       ticketPrice: String(event.ticket_price),
-      registrationDeadline: event.registration_deadline ?? "",
+      registrationDeadline: event.registration_deadline?.slice(0, 10) ?? "",
       description: event.description,
       bannerImageUrl: event.banner_image_url ?? "",
       status: event.status,
@@ -1080,7 +1081,14 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                           <p className="mt-4 line-clamp-2 text-sm leading-6 text-slate-500">{event.description}</p>
 
                           <div className="mt-4 grid gap-3 text-sm text-slate-600 sm:grid-cols-2 xl:grid-cols-4">
-                            <Meta icon={CalendarDays} label={formatEventDate(event.event_date)} />
+                            <Meta
+                              icon={CalendarDays}
+                              label={
+                                event.end_date !== event.event_date
+                                  ? `${formatEventDate(event.event_date)} - ${formatEventDate(event.end_date)}`
+                                  : formatEventDate(event.event_date)
+                              }
+                            />
                             <Meta icon={Clock3} label={`${event.start_time} - ${event.end_time}`} />
                             <Meta icon={MapPin} label={event.venue} />
                             <Meta icon={Users} label={`${event.capacity} seats · ${formatMoney(event.ticket_price)}`} />
@@ -1295,17 +1303,37 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                     </div>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    <Field label="Event Date">
+                    <Field label="Start Date">
                       <input
                         type="date"
                         value={form.eventDate}
-                        onChange={(event) => setForm((prev) => ({ ...prev, eventDate: event.target.value }))}
+                        onChange={(event) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            eventDate: event.target.value,
+                            eventEndDate:
+                              !prev.eventEndDate || prev.eventEndDate < event.target.value
+                                ? event.target.value
+                                : prev.eventEndDate,
+                          }))
+                        }
+                        className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
+                      />
+                    </Field>
+                    <Field label="End Date">
+                      <input
+                        type="date"
+                        min={form.eventDate || undefined}
+                        value={form.eventEndDate}
+                        onChange={(event) =>
+                          setForm((prev) => ({ ...prev, eventEndDate: event.target.value }))
+                        }
                         className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-sky-500"
                       />
                     </Field>
                     <Field label="Registration Deadline">
                       <input
-                        type="datetime-local"
+                        type="date"
                         value={form.registrationDeadline}
                         onChange={(event) =>
                           setForm((prev) => ({ ...prev, registrationDeadline: event.target.value }))
@@ -1634,7 +1662,8 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
                       </span>
                     </div>
                     <div className="mt-4 grid gap-3 md:grid-cols-2">
-                      <DetailLine label="Event Date" value={detailEvent.event_date} />
+                      <DetailLine label="Start Date" value={detailEvent.event_date} />
+                      <DetailLine label="End Date" value={detailEvent.end_date} />
                       <DetailLine label="Time" value={`${detailEvent.start_time} - ${detailEvent.end_time}`} />
                       <DetailLine label="Timezone" value={detailEvent.timezone || "Asia/Dhaka"} />
                       <DetailLine
