@@ -585,15 +585,6 @@ export function SettingsPageClient({
                     <h2 className="text-xl font-black text-slate-800 mb-1">Business Settings</h2>
                     <p className="text-sm text-slate-400">Manage public business details and service-specific customer information.</p>
                   </div>
-                  {configuredCategories.includes("Event") ? (
-                    <button
-                      onClick={openCreateEventModal}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1e2a5e] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#1a2552]"
-                    >
-                      <CalendarPlus2 className="h-4 w-4" />
-                      Create Event
-                    </button>
-                  ) : null}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[
