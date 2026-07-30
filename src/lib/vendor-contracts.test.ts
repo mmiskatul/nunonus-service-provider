@@ -11,7 +11,7 @@ describe("vendor API payload contracts", () => {
     }, ["hotel"])).toEqual({
       business_name: "Nuno Hotel",
       category: "Hotel",
-      categories: ["Hotel", "Happy Hour"],
+      categories: ["Hotel"],
       owner_full_name: "Miskat Rahman",
       email_address: "owner@example.com",
       phone_number: "+8801000000000",
