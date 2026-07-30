@@ -159,7 +159,8 @@ export function Sidebar({
       <div className="flex h-20 shrink-0 items-center justify-between border-b border-white/10 px-5 md:h-24 md:px-6">
         <Link href="/dashboard" onClick={onMobileClose} className="flex items-center gap-3 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-sky-300">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-400 text-lg font-black text-[#1e2a5e] shadow-lg shadow-sky-950/20">N</span>
-          <span><span className="block text-lg font-black tracking-tight">Nunonus</span><span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-300">Provider portal</span></span>
+          <img src="/activity-planner-logo.png" alt="Activity Planner" className="h-10 w-10 rounded-xl object-cover" />
+          <span><span className="block text-lg font-black tracking-tight">Activity Planner</span><span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-300">Provider portal</span></span>
         </Link>
         <button
           type="button"

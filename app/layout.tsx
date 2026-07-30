@@ -3,8 +3,9 @@ import "./globals.css";
 import { AppProviders } from "@/components/providers/AppProviders";
 
 export const metadata: Metadata = {
-  title: { default: "Nunonas Service Provider", template: "%s | Nunonas Service Provider" },
-  description: "Service provider portal for bookings, services, promotions, and account management."
+  title: { default: "Activity Planner", template: "%s | Activity Planner" },
+  description: "Activity Planner service provider portal.",
+  icons: { icon: "/activity-planner-logo.png", apple: "/activity-planner-logo.png" }
 };
 
 export default function RootLayout({
