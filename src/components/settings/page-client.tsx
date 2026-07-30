@@ -96,7 +96,9 @@ export type SettingsNotificationData = {
 };
 
 const DEFAULT_CATEGORIES: VendorCategory[] = ["Restaurant"];
-const SERVICE_TYPES = ["restaurant", "hotel", "spa", "event", "happy_hour"] as const;
+// Events and Happy Hours have dedicated management pages and are not
+// configurable from Service-specific settings.
+const SERVICE_TYPES = ["restaurant", "hotel", "spa"] as const;
 const SERVICE_CATEGORY_NAMES: Record<ServiceType, VendorCategory> = {
   restaurant: "Restaurant",
   hotel: "Hotel",
@@ -267,9 +269,11 @@ export function SettingsPageClient({
     ? categories
     : extractVendorCategories(initialProfile.categories ?? initialProfile.category);
   const visibleServiceTabs = SERVICE_TYPES.filter((service) =>
-    service === "happy_hour" || configuredCategories.includes(SERVICE_CATEGORY_NAMES[service]),
+    configuredCategories.includes(SERVICE_CATEGORY_NAMES[service]),
   );
-  const activeServiceTab = visibleServiceTabs.includes(serviceTab) ? serviceTab : visibleServiceTabs[0];
+  const activeServiceTab = (visibleServiceTabs.includes(serviceTab as (typeof visibleServiceTabs)[number])
+    ? serviceTab
+    : visibleServiceTabs[0]) as "restaurant" | "hotel" | "spa";
   const activeServiceOffers = normalizeServiceOffers(
     serviceSettings[activeServiceTab].special_offers,
   );
@@ -435,8 +439,6 @@ export function SettingsPageClient({
           restaurant_settings: serviceSettings.restaurant,
           hotel_settings: serviceSettings.hotel,
           spa_settings: serviceSettings.spa,
-          event_settings: serviceSettings.event,
-          happy_hour_settings: serviceSettings.happy_hour,
         },
       );
       queryClient.setQueryData(vendorQueryKeys.profile, updatedProfile);
@@ -624,8 +626,6 @@ export function SettingsPageClient({
                         ["restaurant", "Restaurant", Utensils],
                         ["hotel", "Hotel", Hotel],
                         ["spa", "Spa", Sparkles],
-                        ["event", "Event", CalendarPlus2],
-                        ["happy_hour", "Happy Hour", BadgePercent],
                       ] as const).filter(([id]) => visibleServiceTabs.includes(id)).map(([id, label, Icon]) => (
                         <button key={id} type="button" onClick={() => setServiceTab(id)} className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold ${activeServiceTab === id ? "bg-[#1e2a5e] text-white" : "text-slate-500 hover:bg-slate-100"}`}>
                           <Icon className="h-3.5 w-3.5" /> {label}
