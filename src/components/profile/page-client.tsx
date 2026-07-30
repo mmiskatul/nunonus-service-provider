@@ -64,7 +64,7 @@ function profileCategories(data: ProfileSettingsData) {
   const values = Array.isArray(data.categories)
     ? data.categories
     : [data.category];
-  return extractVendorCategories(values);
+  return extractVendorCategories(values).filter((category) => category !== "Happy Hour");
 }
 
 export function ProfilePageClient({

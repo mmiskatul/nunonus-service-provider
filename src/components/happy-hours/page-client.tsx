@@ -1,10 +1,10 @@
 "use client";
 
 import { Header } from "@/components/Header";
-import { GoogleLocationPickerModal } from "@/components/maps/GoogleLocationPickerModal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   uploadVendorFile,
+  vendorGetProfileSettings,
   vendorCreateHappyHour,
   vendorDeleteHappyHour,
   vendorListHappyHours,
@@ -13,6 +13,7 @@ import {
   type VendorHappyHourPayload,
   type VendorHappyHourStatus,
 } from "@/lib/vendor-api";
+import { extractVendorCategories } from "@/lib/vendor-access";
 import {
   Archive,
   BadgePercent,
@@ -62,8 +63,6 @@ type HappyHourForm = {
   endTime: string;
   timezone: string;
   venue: string;
-  latitude: string;
-  longitude: string;
   originalPrice: string;
   happyHourPrice: string;
   discountPercent: string;
@@ -72,6 +71,12 @@ type HappyHourForm = {
   bannerImageUrl: string;
   status: VendorHappyHourStatus;
 };
+
+const BUSINESS_VENUE_OPTIONS = [
+  { value: "restaurant", label: "Restaurant", category: "Restaurant" },
+  { value: "hotel", label: "Hotel", category: "Hotel" },
+  { value: "spa", label: "Spa", category: "Spa" },
+] as const;
 
 function dateInputValue(date: Date) {
   const year = date.getFullYear();
@@ -95,8 +100,6 @@ function defaultForm(): HappyHourForm {
     endTime: "19:00",
     timezone: DEFAULT_TIMEZONE,
     venue: "",
-    latitude: "",
-    longitude: "",
     originalPrice: "",
     happyHourPrice: "",
     discountPercent: "",
@@ -125,8 +128,6 @@ function toPayload(form: HappyHourForm): VendorHappyHourPayload {
     end_time: form.endTime,
     timezone: form.timezone.trim() || DEFAULT_TIMEZONE,
     venue: form.venue.trim(),
-    latitude: optionalNumber(form.latitude),
-    longitude: optionalNumber(form.longitude),
     original_price: optionalNumber(form.originalPrice),
     happy_hour_price: optionalNumber(form.happyHourPrice),
     discount_percent: optionalNumber(form.discountPercent),
@@ -153,8 +154,6 @@ function normalizeHappyHour(row: Record<string, unknown>): HappyHourRecord {
     end_time: String(row.end_time ?? ""),
     timezone: String(row.timezone ?? DEFAULT_TIMEZONE),
     venue: String(row.venue ?? ""),
-    latitude: row.latitude == null ? null : Number(row.latitude),
-    longitude: row.longitude == null ? null : Number(row.longitude),
     original_price:
       row.original_price == null ? null : Number(row.original_price),
     happy_hour_price:
@@ -185,8 +184,6 @@ function toForm(record: HappyHourRecord): HappyHourForm {
     endTime: record.end_time.slice(0, 5),
     timezone: record.timezone,
     venue: record.venue,
-    latitude: record.latitude == null ? "" : String(record.latitude),
-    longitude: record.longitude == null ? "" : String(record.longitude),
     originalPrice:
       record.original_price == null ? "" : String(record.original_price),
     happyHourPrice:
@@ -291,7 +288,39 @@ export function HappyHoursPageClient() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<HappyHourForm>(() => defaultForm());
   const [deleteTarget, setDeleteTarget] = useState<HappyHourRecord | null>(null);
-  const [locationPickerOpen, setLocationPickerOpen] = useState(false);
+  const [enabledVenueTypes, setEnabledVenueTypes] = useState<typeof BUSINESS_VENUE_OPTIONS[number][]>([]);
+  const [venueTypesLoaded, setVenueTypesLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void vendorGetProfileSettings()
+      .then((profile) => {
+        if (cancelled) return;
+        const categories = extractVendorCategories(profile.categories ?? profile.category);
+        const available = BUSINESS_VENUE_OPTIONS.filter((option) =>
+          categories.includes(option.category),
+        );
+        setEnabledVenueTypes(available.length ? available : [BUSINESS_VENUE_OPTIONS[0]]);
+      })
+      .catch(() => {
+        if (!cancelled) setEnabledVenueTypes([BUSINESS_VENUE_OPTIONS[0]]);
+      })
+      .finally(() => {
+        if (!cancelled) setVenueTypesLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!venueTypesLoaded || !enabledVenueTypes.length) return;
+    setForm((current) =>
+      enabledVenueTypes.some((option) => option.value === current.venueType)
+        ? current
+        : { ...current, venueType: enabledVenueTypes[0].value },
+    );
+  }, [enabledVenueTypes, venueTypesLoaded]);
 
   const loadHappyHours = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
@@ -779,10 +808,11 @@ export function HappyHoursPageClient() {
                   }
                   className={inputClass()}
                 >
-                  <option value="restaurant">Restaurant</option>
-                  <option value="hotel">Hotel</option>
-                  <option value="spa">Spa</option>
-                  <option value="other">Other venue</option>
+                  {enabledVenueTypes.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </label>
 
@@ -935,7 +965,7 @@ export function HappyHoursPageClient() {
                 <span className="mb-1.5 block text-xs font-black uppercase tracking-wider text-slate-500">
                   Venue / address
                 </span>
-                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                <div>
                   <input
                     value={form.venue}
                     onChange={(event) =>
@@ -947,51 +977,7 @@ export function HappyHoursPageClient() {
                     placeholder="Venue name, street, city"
                     className={inputClass()}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setLocationPickerOpen(true)}
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 text-sm font-black text-sky-700 hover:border-sky-300 hover:bg-sky-100"
-                  >
-                    <MapPin className="h-4 w-4" />
-                    Choose on map
-                  </button>
                 </div>
-              </label>
-
-              <label>
-                <span className="mb-1.5 block text-xs font-black uppercase tracking-wider text-slate-500">
-                  Latitude (optional)
-                </span>
-                <input
-                  type="number"
-                  step="any"
-                  value={form.latitude}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      latitude: event.target.value,
-                    }))
-                  }
-                  className={inputClass()}
-                />
-              </label>
-
-              <label>
-                <span className="mb-1.5 block text-xs font-black uppercase tracking-wider text-slate-500">
-                  Longitude (optional)
-                </span>
-                <input
-                  type="number"
-                  step="any"
-                  value={form.longitude}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      longitude: event.target.value,
-                    }))
-                  }
-                  className={inputClass()}
-                />
               </label>
 
               <label>
@@ -1173,23 +1159,6 @@ export function HappyHoursPageClient() {
           if (!actionId) setDeleteTarget(null);
         }}
         onConfirm={() => void handleDelete()}
-      />
-      <GoogleLocationPickerModal
-        open={locationPickerOpen}
-        title="Choose Happy Hour location"
-        initialAddress={form.venue}
-        initialLatitude={optionalNumber(form.latitude)}
-        initialLongitude={optionalNumber(form.longitude)}
-        onClose={() => setLocationPickerOpen(false)}
-        onConfirm={(location) => {
-          setForm((current) => ({
-            ...current,
-            venue: location.address,
-            latitude: String(location.latitude),
-            longitude: String(location.longitude),
-          }));
-          setLocationPickerOpen(false);
-        }}
       />
     </div>
   );

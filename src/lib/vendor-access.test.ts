@@ -7,8 +7,8 @@ import {
 
 describe("vendor route access", () => {
   it("normalizes and de-duplicates provider categories", () => {
-    expect(extractVendorCategories(["hotel", "Hotel", "Restaurant"])).toEqual(["Hotel", "Restaurant", "Happy Hour"]);
-    expect(extractVendorCategories(["Event Venue", "Spa"])).toEqual(["Spa", "Happy Hour"]);
+    expect(extractVendorCategories(["hotel", "Hotel", "Restaurant"])).toEqual(["Hotel", "Restaurant"]);
+    expect(extractVendorCategories(["Event Venue", "Spa"])).toEqual(["Spa"]);
   });
 
   it("keeps hotel vendors out of restaurant-only routes", () => {
@@ -26,7 +26,7 @@ describe("vendor route access", () => {
     expect(isRouteAllowedForCategories("/events", ["Restaurant"])).toBe(false);
     expect(isRouteAllowedForCategories("/events/new", ["Event"])).toBe(true);
     expect(isRouteAllowedForCategories("/event-bookings", ["Event"])).toBe(true);
-    expect(isRouteAllowedForCategories("/happy-hours", ["Restaurant"])).toBe(false);
+    expect(isRouteAllowedForCategories("/happy-hours", ["Restaurant"])).toBe(true);
     expect(isRouteAllowedForCategories("/happy-hours", ["Happy Hour"])).toBe(true);
   });
 

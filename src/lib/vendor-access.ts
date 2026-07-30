@@ -122,9 +122,7 @@ export function extractVendorCategories(input: unknown): VendorCategory[] {
     .filter((value, index, array): value is VendorCategory => {
       return value !== null && array.indexOf(value) === index;
     });
-  const categories: VendorCategory[] = normalized.length > 0 ? normalized : ["Restaurant"];
-  if (!categories.includes("Happy Hour")) categories.push("Happy Hour");
-  return categories;
+  return normalized.length > 0 ? normalized : ["Restaurant"];
 }
 
 export function readCachedVendorCategories(): VendorCategory[] {
@@ -169,7 +167,10 @@ export function clearCachedVendorCategories(): void {
 export function getSidebarItemsForCategories(
   categories: VendorCategory[],
 ): SidebarNavItem[] {
-  const categoryItems = categories.flatMap((category) => CATEGORY_NAV_ITEMS[category]);
+  const categoryItems = [
+    ...categories.flatMap((category) => CATEGORY_NAV_ITEMS[category]),
+    ...CATEGORY_NAV_ITEMS["Happy Hour"],
+  ];
   const seen = new Set<string>();
   return [...ALWAYS_VISIBLE_NAV_ITEMS, ...categoryItems].filter((item) => {
     if (seen.has(item.href)) {
@@ -185,6 +186,9 @@ export function isRouteAllowedForCategories(
   categories: VendorCategory[],
 ): boolean {
   if (SHARED_ALLOWED_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+    return true;
+  }
+  if (CATEGORY_ROUTE_PREFIXES["Happy Hour"].some((prefix) => pathname.startsWith(prefix))) {
     return true;
   }
   return categories.some((category) =>

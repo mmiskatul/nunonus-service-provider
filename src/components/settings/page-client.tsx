@@ -96,6 +96,14 @@ export type SettingsNotificationData = {
 };
 
 const DEFAULT_CATEGORIES: VendorCategory[] = ["Restaurant"];
+const SERVICE_TYPES = ["restaurant", "hotel", "spa", "event", "happy_hour"] as const;
+const SERVICE_CATEGORY_NAMES: Record<ServiceType, VendorCategory> = {
+  restaurant: "Restaurant",
+  hotel: "Hotel",
+  spa: "Spa",
+  event: "Event",
+  happy_hour: "Happy Hour",
+};
 
 function getDefaultEventForm(): EventFormState {
   return {
@@ -255,12 +263,12 @@ export function SettingsPageClient({
   const [locationMapOpen, setLocationMapOpen] = useState(false);
   const [locationMapError, setLocationMapError] = useState("");
   const serviceSettingsRef = useRef(serviceSettings);
-  const configuredCategories = categories.length ? categories : extractVendorCategories(initialProfile.categories ?? initialProfile.category);
-  const availableServiceTabs = (['restaurant', 'hotel', 'spa', 'event', 'happy_hour'] as const).filter((service) => {
-    const categoryText = configuredCategories.join(" ").toLowerCase();
-    return categoryText.includes(service === "happy_hour" ? "happy hour" : service);
-  });
-  const visibleServiceTabs = availableServiceTabs.length ? availableServiceTabs : ["restaurant" as const];
+  const configuredCategories = categories.length
+    ? categories
+    : extractVendorCategories(initialProfile.categories ?? initialProfile.category);
+  const visibleServiceTabs = SERVICE_TYPES.filter((service) =>
+    service === "happy_hour" || configuredCategories.includes(SERVICE_CATEGORY_NAMES[service]),
+  );
   const activeServiceTab = visibleServiceTabs.includes(serviceTab) ? serviceTab : visibleServiceTabs[0];
   const activeServiceOffers = normalizeServiceOffers(
     serviceSettings[activeServiceTab].special_offers,
@@ -370,6 +378,17 @@ export function SettingsPageClient({
       setCategoriesLoaded(true);
     }
   };
+
+  useEffect(() => {
+    void ensureCategoriesLoaded();
+    const handleCategoriesUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<unknown>).detail;
+      setCategories(extractVendorCategories(detail));
+      setCategoriesLoaded(true);
+    };
+    window.addEventListener("vendor-categories-updated", handleCategoriesUpdated);
+    return () => window.removeEventListener("vendor-categories-updated", handleCategoriesUpdated);
+  }, []);
 
   const handleServiceProfileImageUpload = async (file: File | null) => {
     if (!file) {
@@ -602,7 +621,7 @@ export function SettingsPageClient({
                     className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-700 outline-none focus:border-sky-400 resize-none transition"
                   />
                 </div>
-                {availableServiceTabs.length ? (
+                {visibleServiceTabs.length ? (
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
                   <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -872,9 +891,9 @@ export function SettingsPageClient({
                       No venue service selected
                     </h3>
                     <p className="mt-2 text-xs leading-5 text-slate-500">
-                      Restaurant, Hotel, and Spa settings appear here only when
-                      one of those onboarding modules is enabled. Event and
-                      Happy Hour management remain in their own sections.
+                      Configure every service profile, location, image, offers,
+                      and publish status from the tabs above. Use the dedicated
+                      management pages to create and manage service records.
                     </p>
                   </div>
                 )}
