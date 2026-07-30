@@ -22,7 +22,7 @@ export function BookingTrendsChart({ trends = [] }: { trends?: TrendPoint[] }) {
   return (
     <section aria-labelledby="booking-trends-title" className="flex h-full flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-8">
       <div className="mb-8 flex items-center justify-between"><h3 id="booking-trends-title" className="text-lg font-bold text-slate-800">Booking Trends</h3></div>
-      <div className="min-h-[300px] w-full flex-1">
+      <div className="h-[300px] min-h-[300px] w-full flex-none">
         {data.length === 0 ? (
           <div className="flex h-full min-h-[300px] items-center justify-center rounded-2xl border border-dashed border-slate-200 text-sm text-slate-400">No trend data available.</div>
         ) : (
