@@ -108,6 +108,7 @@ export function BookingDetailsModal({
             </div>
             {booking.statusNote ? <p className="mt-3 text-xs text-slate-500"><span className="font-black text-slate-700">Provider note:</span> {booking.statusNote}</p> : null}
             {booking.statusHistory?.length ? <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">{booking.statusHistory.map((event, index) => <div key={`${event.status}-${event.at}-${index}`} className="flex items-start justify-between gap-3 text-xs"><span className="font-bold text-slate-700">{event.label ?? `${String(event.status ?? "Status").replaceAll("_", " ")} by ${event.actor === "customer" ? "customer" : "service provider"}`}</span><span className="shrink-0 text-slate-400">{formatBookingTimestamp(event.at)}</span></div>)}</div> : null}
+            {booking.pointsAwarded ? <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3"><p className="text-xs font-black uppercase tracking-wider text-emerald-700">Loyalty reward issued</p><p className="mt-1 text-sm font-black text-emerald-800">+{booking.pointsAwarded.toLocaleString()} points awarded after completion</p></div> : null}
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:col-span-2">

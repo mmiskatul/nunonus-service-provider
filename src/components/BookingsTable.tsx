@@ -34,6 +34,7 @@ export interface Booking {
   canceledAt?: string;
   statusNote?: string;
   statusHistory?: Array<{ status?: string; at?: string; actor?: string; label?: string; note?: string }>;
+  pointsAwarded?: number;
 }
 
 interface BookingsTableProps {

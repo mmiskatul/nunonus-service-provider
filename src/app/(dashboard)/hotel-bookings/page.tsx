@@ -42,6 +42,7 @@ function toHotelBooking(raw: Record<string, unknown>): HotelBooking {
     requestedAt: String(raw.requested_at ?? raw.created_at ?? ""), acceptedAt: String(raw.accepted_at ?? ""),
     completedAt: String(raw.completed_at ?? ""), canceledAt: String(raw.canceled_at ?? ""), statusNote: String(raw.status_note ?? ""),
     statusHistory: Array.isArray(raw.status_history) ? raw.status_history as HotelBooking["statusHistory"] : [],
+    pointsAwarded: Number(raw.points_awarded ?? 0),
   };
 }
 

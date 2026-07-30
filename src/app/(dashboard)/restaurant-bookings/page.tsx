@@ -36,6 +36,7 @@ function toBooking(raw: Record<string, unknown>): Booking {
     requestedAt: String(raw.requested_at ?? raw.created_at ?? ""), acceptedAt: String(raw.accepted_at ?? ""),
     completedAt: String(raw.completed_at ?? ""), canceledAt: String(raw.canceled_at ?? ""), statusNote: String(raw.status_note ?? ""),
     statusHistory: Array.isArray(raw.status_history) ? raw.status_history as Booking["statusHistory"] : [],
+    pointsAwarded: Number(raw.points_awarded ?? 0),
     date: String(raw.date ?? raw.scheduled_date ?? raw.check_in_date ?? "—"),
     time: String(raw.time ?? raw.scheduled_time ?? "—"),
     guests: Number(raw.guests ?? raw.guest_count ?? raw.num_guests ?? 1),
