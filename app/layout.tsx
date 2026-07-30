@@ -3,7 +3,7 @@ import "./globals.css";
 import { AppProviders } from "@/components/providers/AppProviders";
 
 export const metadata: Metadata = {
-  title: { default: "Nunonus Provider", template: "%s | Nunonus Provider" },
+  title: { default: "Nunonas Service Provider", template: "%s | Nunonas Service Provider" },
   description: "Service provider portal for bookings, services, promotions, and account management."
 };
 
