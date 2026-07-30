@@ -1006,6 +1006,22 @@ export async function uploadVendorProfileAvatar(file: File): Promise<string> {
   return avatarUrl;
 }
 
+export async function deleteVendorProfileAvatar(): Promise<void> {
+  const response = await fetch("/api/settings/profile/avatar", { method: "DELETE" });
+  const payload = (await response.json().catch(() => ({}))) as {
+    detail?: string;
+    error?: string;
+  };
+  if (!response.ok) {
+    throw new Error(payload.detail || payload.error || "Failed to remove profile image.");
+  }
+  profileSettingsRevision += 1;
+  profileSettingsRequest = null;
+  profileSettingsCache = profileSettingsCache
+    ? { value: { ...profileSettingsCache.value, avatar_url: "" }, expiresAt: Date.now() + 30_000 }
+    : null;
+}
+
 // ─── Generic JSON Helper ──────────────────────────────────────────────────────
 
 /**

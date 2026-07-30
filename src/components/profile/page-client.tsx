@@ -12,11 +12,13 @@ import {
   Headphones,
   Lock,
   MapPin,
+  Trash2,
   Save,
   Settings,
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import {
+  deleteVendorProfileAvatar,
   uploadVendorProfileAvatar,
   vendorUpdateProfileSettings,
 } from "@/lib/vendor-api";
@@ -180,6 +182,29 @@ export function ProfilePageClient({
     }
   };
 
+  const handleAvatarDelete = async () => {
+    if (!avatarUrl || uploading) return;
+    setUploading(true);
+    setStatusMessage("");
+    try {
+      await deleteVendorProfileAvatar();
+      setAvatarUrl("");
+      queryClient.setQueryData(
+        vendorQueryKeys.profile,
+        (current: Record<string, unknown> | undefined) => ({
+          ...(current ?? initialData),
+          avatar_url: "",
+          profile_image_url: "",
+        }),
+      );
+      setStatusMessage("Profile image removed.");
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Failed to remove profile image.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="min-h-full bg-[#f8fafc]">
       <Header title="Account Profile" />
@@ -213,6 +238,17 @@ export function ProfilePageClient({
                 />
                 <Camera className="h-4 w-4" />
               </label>
+              {avatarUrl ? (
+                <button
+                  type="button"
+                  onClick={() => void handleAvatarDelete()}
+                  disabled={uploading}
+                  aria-label="Remove profile image"
+                  className="absolute -right-2 top-0 flex h-8 w-8 items-center justify-center rounded-xl border-4 border-white bg-rose-500 text-white shadow transition hover:bg-rose-600 disabled:opacity-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
             </div>
             <div className="min-w-0">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-sky-500">
