@@ -654,7 +654,7 @@ export function SettingsPageClient({
                           {activeServiceTab} profile image
                         </h4>
                         <p className="mt-1 text-xs leading-5 text-slate-500">
-                          Upload a square identity image for this service. It is shown separately from cover and gallery photos in the Nuno app.
+                          Upload a square identity image for this service. It is shown separately from cover and gallery photos in the Activity Planner app.
                         </p>
                         <div className="mt-3 flex flex-wrap gap-2">
                           <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[#1e2a5e] px-4 py-2.5 text-xs font-black text-white transition hover:bg-[#263675]">
