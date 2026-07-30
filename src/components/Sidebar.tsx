@@ -64,7 +64,8 @@ export function Sidebar({
       key: "happy-hour",
       name: "Happy Hour",
       icon: BadgePercent,
-      enabled: categories.includes("Happy Hour"),
+      // Happy Hour is a universal provider feature, not an onboarding business module.
+      enabled: true,
       links: [
         { href: "/happy-hours", label: "Happy Hour Management" },
       ],
