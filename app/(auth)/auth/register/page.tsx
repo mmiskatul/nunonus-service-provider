@@ -10,7 +10,6 @@ import {
   CalendarPlus2,
   Utensils, 
   Bed, 
-  Coffee,
   Sparkles, 
   Check, 
   Map, 
@@ -135,11 +134,6 @@ const defaultCategories: RegistrationCategoryOption[] = [
     desc: "Streamline room bookings, guest services, and seasonal rates.",
   },
   {
-    id: "Cafe",
-    title: "Cafe",
-    desc: "Handle coffee shop orders, light dining, and walk-in customer service.",
-  },
-  {
     id: "Spa",
     title: "Spa",
     desc: "Automate treatment scheduling and therapist availability.",
@@ -155,7 +149,10 @@ function accountRegistrationCategories(
   categories: RegistrationCategoryOption[] | undefined,
 ) {
   const filtered = (categories ?? []).filter(
-    (category) => category.id.trim().toLowerCase() !== "event venue",
+    (category) =>
+      !["event venue", "cafe", "café"].includes(
+        category.id.trim().toLowerCase(),
+      ),
   );
   return filtered.length ? filtered : defaultCategories;
 }
@@ -178,7 +175,6 @@ const textFieldNames = new Set<keyof Omit<RegisterFormData, "agreeToTerms">>([
 const categoryIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   Restaurant: Utensils,
   Hotel: Bed,
-  Cafe: Coffee,
   Spa: Sparkles,
   Event: CalendarPlus2,
   "Happy Hour": BadgePercent,
