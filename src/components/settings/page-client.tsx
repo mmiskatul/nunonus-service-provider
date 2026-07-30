@@ -909,7 +909,7 @@ export function SettingsPageClient({
                   { key: "new_booking", label: "New Bookings", description: "Alert when a new booking is made" },
                   { key: "booking_cancellation", label: "Booking Cancellations", description: "Alert when a booking is cancelled" },
                   { key: "new_review", label: "New Reviews", description: "Alert when a customer leaves a review" },
-                  { key: "platform_updates", label: "Platform Updates", description: "News and product updates from Nunonas" },
+                  { key: "platform_updates", label: "Platform Updates", description: "News and product updates from Activity Planner Booking Platform" },
                 ].map(({ key, label, description }) => (
                   <div key={key} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 bg-slate-50/50">
                     <div>
