@@ -2,6 +2,7 @@
 
 import { Header } from "@/components/Header";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/ToastProvider";
 import {
   uploadVendorFile,
   vendorGetProfileSettings,
@@ -276,6 +277,7 @@ function inputClass() {
 }
 
 export function HappyHoursPageClient() {
+  const { toast } = useToast();
   const [items, setItems] = useState<HappyHourRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -407,15 +409,18 @@ export function HappyHoursPageClient() {
       if (editingId) {
         await vendorUpdateHappyHour(editingId, toPayload(form));
         setMessage("Happy Hour updated.");
+        toast("Happy Hour updated.", "success");
       } else {
         await vendorCreateHappyHour(toPayload(form));
         setMessage("Happy Hour created.");
+        toast("Happy Hour created.", "success");
       }
       setFormOpen(false);
       setEditingId(null);
       setForm(defaultForm());
       await loadHappyHours();
     } catch (error) {
+      toast(error instanceof Error ? error.message : "Failed to save Happy Hour.", "error");
       setMessage(
         error instanceof Error ? error.message : "Failed to save Happy Hour.",
       );
@@ -438,7 +443,9 @@ export function HappyHoursPageClient() {
         current.map((item) => (item.id === record.id ? updated : item)),
       );
       setMessage(`Happy Hour moved to ${status}.`);
+      toast(`Happy Hour moved to ${status}.`, "success");
     } catch (error) {
+      toast(error instanceof Error ? error.message : "Failed to update Happy Hour status.", "error");
       setMessage(
         error instanceof Error
           ? error.message
@@ -458,8 +465,10 @@ export function HappyHoursPageClient() {
         current.filter((item) => item.id !== deleteTarget.id),
       );
       setMessage("Happy Hour deleted.");
+      toast("Happy Hour deleted.", "success");
       setDeleteTarget(null);
     } catch (error) {
+      toast(error instanceof Error ? error.message : "Failed to delete Happy Hour.", "error");
       setMessage(
         error instanceof Error
           ? error.message

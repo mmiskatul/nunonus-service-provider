@@ -1,6 +1,7 @@
 "use client";
 
 import { Header } from "@/components/Header";
+import { useToast } from "@/components/ui/ToastProvider";
 import {
   vendorCreateEvent,
   vendorDeleteEvent,
@@ -302,6 +303,7 @@ function buildSavedLocationLabel() {
 }
 
 export function EventsPageClient({ startInCreateMode = false }: { startInCreateMode?: boolean }) {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const detectedTimezone = useMemo(() => detectBrowserTimezone(), []);
   const [events, setEvents] = useState<VendorEventRecord[]>([]);
@@ -708,7 +710,9 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
       const url = await uploadVendorFile(file);
       setForm((prev) => ({ ...prev, bannerImageUrl: url }));
       setStatusMessage("Banner image uploaded.");
+      toast("Event banner uploaded.", "success");
     } catch (error) {
+      toast(error instanceof Error ? error.message : "Failed to upload banner image.", "error");
       setStatusMessage(
         error instanceof Error ? error.message : "Failed to upload banner image.",
       );
@@ -757,6 +761,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
 
       const successMessage = wasEditing ? "Event updated." : "Event created.";
       setStatusMessage(successMessage);
+      toast(successMessage, "success");
       resetForm();
       void queryClient.invalidateQueries({ queryKey: vendorQueryKeys.events() });
       try {
@@ -767,6 +772,7 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
         );
       }
     } catch (error) {
+      toast(error instanceof Error ? error.message : "Failed to save event.", "error");
       setFormError(error instanceof Error ? error.message : "Failed to save event.");
     } finally {
       setShowSaveConfirm(false);
@@ -840,8 +846,10 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
         resetForm();
       }
       setStatusMessage("Event deleted.");
+      toast("Event deleted.", "success");
       return true;
     } catch (error) {
+      toast(error instanceof Error ? error.message : "Failed to delete event.", "error");
       setStatusMessage(error instanceof Error ? error.message : "Failed to delete event.");
       return false;
     }
@@ -853,8 +861,10 @@ export function EventsPageClient({ startInCreateMode = false }: { startInCreateM
       await loadEvents();
       await queryClient.invalidateQueries({ queryKey: vendorQueryKeys.events() });
       setStatusMessage(`Event marked as ${nextStatus}.`);
+      toast(`Event marked as ${nextStatus}.`, "success");
       return true;
     } catch (error) {
+      toast(error instanceof Error ? error.message : "Failed to update event status.", "error");
       setStatusMessage(error instanceof Error ? error.message : "Failed to update event status.");
       return false;
     }
